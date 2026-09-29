@@ -12,6 +12,7 @@ import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -55,6 +56,10 @@ public class User {
 
     /** Currently active refresh token (rotated on every refresh, cleared on logout). */
     private String refreshToken;
+
+    /** RBAC role assigned to this user (see modules/rbac). Null = no permissions. */
+    @Indexed
+    private String roleId;
 
     @CreatedDate
     private Instant createdAt;

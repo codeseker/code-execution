@@ -110,6 +110,54 @@ public class GlobalExceptionHandler {
                                 .body(response);
         }
 
+        @ExceptionHandler(ResourceNotFoundException.class)
+        public ResponseEntity<ApiError<String>> handleResourceNotFound(
+                        ResourceNotFoundException exception) {
+                ApiError<String> response = ApiError.of(
+                                "Resource not found",
+                                exception.getMessage());
+
+                return ResponseEntity
+                                .status(HttpStatus.NOT_FOUND)
+                                .body(response);
+        }
+
+        @ExceptionHandler(ForbiddenException.class)
+        public ResponseEntity<ApiError<String>> handleForbidden(
+                        ForbiddenException exception) {
+                ApiError<String> response = ApiError.of(
+                                "Access denied",
+                                exception.getMessage());
+
+                return ResponseEntity
+                                .status(HttpStatus.FORBIDDEN)
+                                .body(response);
+        }
+
+        @ExceptionHandler(DockerSandboxException.class)
+        public ResponseEntity<ApiError<String>> handleDockerSandbox(
+                        DockerSandboxException exception) {
+                ApiError<String> response = ApiError.of(
+                                "Execution backend unavailable",
+                                exception.getMessage());
+
+                return ResponseEntity
+                                .status(HttpStatus.SERVICE_UNAVAILABLE)
+                                .body(response);
+        }
+
+        @ExceptionHandler(BadRequestException.class)
+        public ResponseEntity<ApiError<String>> handleBadRequest(
+                        BadRequestException exception) {
+                ApiError<String> response = ApiError.of(
+                                "Bad request",
+                                exception.getMessage());
+
+                return ResponseEntity
+                                .status(HttpStatus.BAD_REQUEST)
+                                .body(response);
+        }
+
         @ExceptionHandler(MethodArgumentNotValidException.class)
         public ResponseEntity<ApiError<Map<String, String>>> handleValidationException(
                         MethodArgumentNotValidException exception) {

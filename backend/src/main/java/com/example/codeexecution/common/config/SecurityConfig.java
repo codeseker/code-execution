@@ -2,6 +2,7 @@ package com.example.codeexecution.common.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -38,6 +39,28 @@ public class SecurityConfig {
                                 "/api/v1/auth/resend-otp",
                                 "/api/v1/auth/forgot-password",
                                 "/api/v1/auth/reset-password")
+                        .permitAll()
+                        // Public problem discovery: read-only browsing of
+                        // published problems needs no token. Submission
+                        // ingestion (POST) and admin routes stay protected.
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/problems",
+                                "/problems/**")
+                        .permitAll()
+                        // WebSocket handshake authenticates itself by
+                        // validating ?token= against the JWT services.
+                        .requestMatchers("/ws")
+                        .permitAll()
+                        // API documentation (springdoc): the OpenAPI spec
+                        // and Swagger UI must be browsable without a token.
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/v3/api-docs",
+                                "/v3/api-docs/**",
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/favicon.ico")
                         .permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(exception -> exception

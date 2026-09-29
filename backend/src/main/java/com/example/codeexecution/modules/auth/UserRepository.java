@@ -1,5 +1,6 @@
 package com.example.codeexecution.modules.auth;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -11,5 +12,8 @@ public interface  UserRepository extends MongoRepository<User, String> {
     Optional<User> findByEmail(String email);
 
     Optional<User> findByPasswordResetToken(String passwordResetToken);
+
+    /** Users that were created before RBAC existed and never got a role. */
+    List<User> findByRoleIdIsNull();
 
 }
