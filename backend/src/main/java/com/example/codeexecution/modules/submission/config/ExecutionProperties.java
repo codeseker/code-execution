@@ -86,6 +86,9 @@ public class ExecutionProperties {
     /** Hard cap on submitted source code. */
     private int maxCodeChars = 100000;
 
+    /** Hard cap on the custom stdin of a CUSTOM_RUN (Run button). */
+    private int maxInputChars = 64000;
+
     /** PID limit for sandbox containers (fork-bomb protection). */
     private long pidsLimit = 64;
 }

@@ -27,6 +27,8 @@ public class ProblemResponseMapper {
                 problem.isDeleted(),
                 problem.getCreatedBy(),
                 testCaseCount,
+                problem.getTotalSubmissions(),
+                problem.getAcceptedSubmissions(),
                 problem.getCreatedAt(),
                 problem.getUpdatedAt());
     }
@@ -67,11 +69,12 @@ public class ProblemResponseMapper {
             Difficulty difficulty,
             List<String> tags,
             boolean isPublished,
-            boolean isDeleted,
-            String createdBy,
-            long testCaseCount,
-            Instant createdAt,
-            Instant updatedAt) {
+            boolean isDeleted,                String createdBy,
+                long testCaseCount,
+                long totalSubmissions,
+                long acceptedSubmissions,
+                Instant createdAt,
+                Instant updatedAt) {
     }
 
     public record TestCaseResponse(

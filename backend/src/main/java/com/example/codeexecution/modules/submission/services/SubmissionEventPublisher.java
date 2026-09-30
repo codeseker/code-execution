@@ -14,7 +14,6 @@ import com.example.codeexecution.modules.submission.dtos.JobMessage;
 import com.example.codeexecution.modules.submission.entities.Submission;
 import com.example.codeexecution.modules.submission.entities.SubmissionResult;
 import com.example.codeexecution.modules.submission.entities.SubmissionStatus;
-import com.example.codeexecution.modules.submission.entities.SubmissionType;
 import com.example.codeexecution.modules.submission.mapper.SubmissionResponseMapper;
 import com.example.codeexecution.modules.submission.repositories.SubmissionRepository;
 import com.example.codeexecution.modules.submission.repositories.SubmissionResultRepository;
@@ -126,7 +125,7 @@ public class SubmissionEventPublisher {
             case COMPLETED -> {
                 SubmissionResult result = this.resultRepository
                         .findBySubmissionId(submissionId).orElse(null);
-                boolean includeIo = submission.getType() == SubmissionType.EXAMPLE_EVAL;
+                boolean includeIo = submission.getType().exposesIo();
                 Map<String, Object> data = new LinkedHashMap<>();
                 data.put("submissionId", submissionId);
                 data.put("result", result == null

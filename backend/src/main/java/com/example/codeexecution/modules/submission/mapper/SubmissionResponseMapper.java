@@ -5,9 +5,11 @@ import java.util.List;
 import com.example.codeexecution.modules.submission.dtos.SubmissionResponse;
 import com.example.codeexecution.modules.submission.dtos.SubmissionResultResponse;
 import com.example.codeexecution.modules.submission.dtos.SubmissionResultResponse.TestCaseResultResponse;
+import com.example.codeexecution.modules.submission.dtos.SubmissionSummaryResponse;
 import com.example.codeexecution.modules.submission.entities.Submission;
 import com.example.codeexecution.modules.submission.entities.SubmissionResult;
 import com.example.codeexecution.modules.submission.entities.TestCaseResult;
+import com.example.codeexecution.modules.submission.entities.Verdict;
 
 /**
  * Maps Mongo documents to the client-facing DTO records. Hidden test data
@@ -29,6 +31,22 @@ public final class SubmissionResponseMapper {
                 submission.getStatus(),
                 submission.getCreatedAt(),
                 result == null ? null : toResultResponse(result, includeIo));
+    }
+
+    /**
+     * Lightweight history row for {@code GET /users/me/submissions}:
+     * no code, no testcase output, just the verdict summary.
+     */
+    public static SubmissionSummaryResponse toSummary(
+            Submission submission, Verdict verdict) {
+        return new SubmissionSummaryResponse(
+                submission.getId(),
+                submission.getProblemId(),
+                submission.getLanguage(),
+                submission.getType(),
+                submission.getStatus(),
+                verdict,
+                submission.getCreatedAt());
     }
 
     public static SubmissionResultResponse toResultResponse(

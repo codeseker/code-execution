@@ -1,5 +1,9 @@
 package com.example.codeexecution.modules.submission.services;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -16,6 +20,7 @@ import com.example.codeexecution.modules.problem.ProblemRepository;
 import com.example.codeexecution.modules.problem.TestCaseRepository;
 import com.example.codeexecution.modules.problem.entities.Problem;
 import com.example.codeexecution.modules.problem.entities.TestCase;
+import com.example.codeexecution.modules.problem.services.ProblemStatsService;
 import com.example.codeexecution.modules.stats.UserProblemStatService;
 import com.example.codeexecution.modules.submission.config.ExecutionProperties;
 import com.example.codeexecution.modules.submission.dtos.JobMessage;
@@ -48,6 +53,13 @@ public class SubmissionWorker {
 
     private static final Logger log = LoggerFactory.getLogger(SubmissionWorker.class);
 
+    /** Fallback limits when the problem carries no test cases to inherit from. */
+    private static final int DEFAULT_TIME_LIMIT_MS = 1000;
+    private static final int DEFAULT_MEMORY_LIMIT_KB = 256000;
+
+    /** Synthetic testcase id reported for a custom-input run row. */
+    private static final String CUSTOM_INPUT_CASE_ID = "custom-input";
+
     private final SubmissionQueueService queueService;
     private final SubmissionRepository submissionRepository;
     private final SubmissionResultRepository resultRepository;
@@ -56,6 +68,7 @@ public class SubmissionWorker {
     private final DockerSandboxService sandbox;
     private final SubmissionEventPublisher eventPublisher;
     private final UserProblemStatService statService;
+    private final ProblemStatsService problemStatsService;
     private final ExecutionProperties properties;
 
     private final List<Thread> threads = new ArrayList<>();
@@ -70,6 +83,7 @@ public class SubmissionWorker {
             DockerSandboxService sandbox,
             SubmissionEventPublisher eventPublisher,
             UserProblemStatService statService,
+            ProblemStatsService problemStatsService,
             ExecutionProperties properties) {
         this.queueService = queueService;
         this.submissionRepository = submissionRepository;
@@ -79,6 +93,7 @@ public class SubmissionWorker {
         this.sandbox = sandbox;
         this.eventPublisher = eventPublisher;
         this.statService = statService;
+        this.problemStatsService = problemStatsService;
         this.properties = properties;
     }
 
@@ -164,6 +179,12 @@ public class SubmissionWorker {
             throw new IllegalStateException("Problem is not published");
         }
 
+        // "Run" button: no stored test cases, no comparison, no stats.
+        if (submission.getType() == SubmissionType.CUSTOM_RUN) {
+            evaluateCustomRun(submission, problem);
+            return;
+        }
+
         List<TestCase> testCases = this.testCaseRepository.findByProblemId(problem.getId()).stream()
                 .filter(testCase -> !isExample || testCase.isSample())
                 .sorted(Comparator.comparing(TestCase::getId))
@@ -217,6 +238,94 @@ public class SubmissionWorker {
         Verdict overall = firstFailure == null ? Verdict.ACCEPTED : firstFailure;
         finish(submission, buildResult(
                 submission, overall, passed, testCases.size(), totalMs, peakKb, null, rows));
+    }
+
+    /**
+     * Custom-input run: compile, feed the caller's own stdin to the
+     * program and report what came out. With no expected output the
+     * verdict can only describe execution itself, so WRONG_ANSWER is
+     * impossible and statistics stay untouched.
+     */
+    private void evaluateCustomRun(Submission submission, Problem problem) {
+        CompileOutcome compile = this.sandbox.compile(
+                submission.getId(), submission.getLanguage(), submission.getCode());
+        if (!compile.success()) {
+            finish(submission, buildResult(submission, Verdict.COMPILE_ERROR,
+                    0, 0, 0, 0, compile.errorLogs(), List.of()));
+            return;
+        }
+
+        Path input = writeCustomInput(submission);
+        RunOutcome outcome = this.sandbox.runTestCase(
+                submission.getId(),
+                submission.getLanguage(),
+                input.toString(),
+                problemTimeLimitMs(problem),
+                problemMemoryLimitKb(problem));
+
+        Verdict verdict = runVerdict(outcome);
+        boolean accepted = verdict == Verdict.ACCEPTED;
+
+        TestCaseResult row = TestCaseResult.builder()
+                .testCaseId(CUSTOM_INPUT_CASE_ID)
+                .status(verdict)
+                .executionTimeMs(outcome.elapsedMs())
+                .memoryUsedKb(outcome.memoryUsedKb())
+                .stdout(truncateIo(outcome.stdout()))
+                .stderr(truncateIo(outcome.stderr()))
+                .expectedOutput(null)
+                .actualOutput(accepted ? truncateIo(outcome.stdout()) : null)
+                .build();
+
+        finish(submission, buildResult(
+                submission, verdict,
+                accepted ? 1 : 0, 1,
+                outcome.elapsedMs(), outcome.memoryUsedKb(), null, List.of(row)));
+    }
+
+    /** Writes the caller's stdin into the submission's host work dir. */
+    private Path writeCustomInput(Submission submission) {
+        try {
+            Path dir = this.sandbox.workDirFor(submission.getId());
+            Files.createDirectories(dir);
+            Path input = dir.resolve("custom.in");
+            Files.writeString(
+                    input,
+                    submission.getCustomInput() == null ? "" : submission.getCustomInput(),
+                    StandardCharsets.UTF_8);
+            return input;
+        } catch (IOException exception) {
+            throw new DockerSandboxException("Could not stage custom input", exception);
+        }
+    }
+
+    /** Same matrix as {@link #grade} minus WRONG_ANSWER (nothing to compare). */
+    private Verdict runVerdict(RunOutcome outcome) {
+        if (outcome.timedOut()) {
+            return Verdict.TIME_LIMIT_EXCEEDED;
+        }
+        if (outcome.oomKilled()) {
+            return Verdict.MEMORY_LIMIT_EXCEEDED;
+        }
+        if (outcome.exitCode() != 0) {
+            return Verdict.RUNTIME_ERROR;
+        }
+        return Verdict.ACCEPTED;
+    }
+
+    /** Loosest limit across the problem's test cases (defaults when none). */
+    private int problemTimeLimitMs(Problem problem) {
+        return this.testCaseRepository.findByProblemId(problem.getId()).stream()
+                .mapToInt(TestCase::getTimeLimitMs)
+                .max()
+                .orElse(DEFAULT_TIME_LIMIT_MS);
+    }
+
+    private long problemMemoryLimitKb(Problem problem) {
+        return this.testCaseRepository.findByProblemId(problem.getId()).stream()
+                .mapToLong(TestCase::getMemoryLimitKb)
+                .max()
+                .orElse(DEFAULT_MEMORY_LIMIT_KB);
     }
 
     /** Maps one raw container outcome onto the verdict matrix. */
@@ -313,14 +422,18 @@ public class SubmissionWorker {
         submission.setUpdatedAt(Instant.now());
         this.submissionRepository.save(submission);
 
-        boolean includeIo = submission.getType() == SubmissionType.EXAMPLE_EVAL;
+        boolean includeIo = submission.getType().exposesIo();
         this.eventPublisher.publishCompleted(submission.getId(), result, includeIo);
 
         if (submission.getType() == SubmissionType.FULL_SUBMISSION) {
             this.statService.recordSubmission(submission.getUserId());
-            if (result.getOverallVerdict() == Verdict.ACCEPTED) {
-                this.statService.recordAccepted(submission.getUserId(), submission.getProblemId());
+            boolean accepted = result.getOverallVerdict() == Verdict.ACCEPTED;
+            if (accepted) {
+                this.statService.recordAccepted(
+                        submission.getUserId(), submission.getProblemId());
             }
+            // Per-problem acceptance counters shown in the listings.
+            this.problemStatsService.recordJudged(submission.getProblemId(), accepted);
         }
     }
 

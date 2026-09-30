@@ -40,6 +40,13 @@ public class Submission {
 
     private String code;
 
+    /**
+     * User-provided stdin for {@link SubmissionType#CUSTOM_RUN} jobs;
+     * null for every other type (those read their input from the stored
+     * test case files).
+     */
+    private String customInput;
+
     private Language language;
 
     private SubmissionType type;

@@ -1,14 +1,20 @@
 package com.example.codeexecution.modules.submission;
 
+import java.util.List;
+
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.codeexecution.common.responses.ApiResponse;
+import com.example.codeexecution.modules.submission.dtos.RunRequest;
+import com.example.codeexecution.modules.submission.dtos.SubmissionQueryDTO;
+import com.example.codeexecution.modules.submission.dtos.SubmissionSummaryResponse;
 import com.example.codeexecution.modules.submission.dtos.SubmitRequest;
 import com.example.codeexecution.modules.submission.dtos.SubmitResponse;
 import com.example.codeexecution.modules.submission.dtos.SubmissionResponse;
@@ -21,10 +27,14 @@ import jakarta.validation.Valid;
  * <ul>
  *   <li>{@code POST /problems/{id}/example-eval} - public sample cases
  *       only, fast feedback loop</li>
+ *   <li>{@code POST /problems/{id}/run} - LeetCode's "Run" button:
+ *       code against the caller's own input, no stored test cases</li>
  *   <li>{@code POST /problems/{id}/submit} - all test cases; affects
  *       problem acceptance rate and user solved stats</li>
  *   <li>{@code GET /submissions/{id}} - polling fallback for the
  *       WebSocket lifecycle events</li>
+ *   <li>{@code GET /users/me/submissions} - the caller's own history
+ *       with pagination and problem/status/language/type filters</li>
  * </ul>
  * Both POSTs enqueue onto the language-specific Redis queue and return the
  * {@code JOB_QUEUED} snapshot (submission id + queue position).
@@ -61,6 +71,19 @@ public class SubmissionController {
         return ApiResponse.success("Example evaluation queued", response);
     }
 
+    /**
+     * Runs the code against the caller's own input (the "Run" button).
+     * No stored test cases are involved and no statistics change.
+     */
+    @PostMapping("/problems/{id}/run")
+    public ApiResponse<SubmitResponse> run(
+            @PathVariable String id,
+            @Valid @RequestBody RunRequest request,
+            @AuthenticationPrincipal String userId) {
+        SubmitResponse response = this.submissionService.run(id, request, userId);
+        return ApiResponse.success("Run queued", response);
+    }
+
     /** Status + result of a submission (owner or submission:read). */
     @GetMapping("/submissions/{id}")
     public ApiResponse<SubmissionResponse> get(
@@ -68,5 +91,30 @@ public class SubmissionController {
             @AuthenticationPrincipal String userId) {
         SubmissionResponse submission = this.submissionService.get(id, userId);
         return ApiResponse.success("Submission fetched successfully", submission);
+    }
+
+    /**
+     * The caller's submission history, newest first. Only ever returns
+     * the authenticated user's own rows; enum filters are validated and
+     * rejected with 400 when unknown.
+     */
+    @GetMapping("/users/me/submissions")
+    public ApiResponse<List<SubmissionSummaryResponse>> listMine(
+            @RequestParam(required = false) String problemId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String language,
+            @RequestParam(required = false) String type,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit,
+            @AuthenticationPrincipal String userId) {
+
+        SubmissionQueryDTO query = new SubmissionQueryDTO(
+                problemId, status, language, type, page, limit);
+        SubmissionService.SubmissionPage result =
+                this.submissionService.listMine(userId, query);
+        return ApiResponse.success(
+                "Submissions fetched successfully",
+                result.submissions(),
+                result.pagination());
     }
 }

@@ -4,10 +4,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -24,12 +22,6 @@ import com.example.codeexecution.modules.problem.dtos.PublicProblemResponse;
 import com.example.codeexecution.modules.problem.entities.Difficulty;
 import com.example.codeexecution.modules.problem.entities.Problem;
 import com.example.codeexecution.modules.problem.entities.TestCase;
-import com.example.codeexecution.modules.submission.entities.Submission;
-import com.example.codeexecution.modules.submission.entities.SubmissionStatus;
-import com.example.codeexecution.modules.submission.entities.SubmissionType;
-import com.example.codeexecution.modules.submission.entities.Verdict;
-import com.example.codeexecution.modules.submission.repositories.SubmissionRepository;
-import com.example.codeexecution.modules.submission.repositories.SubmissionResultRepository;
 import com.example.codeexecution.modules.submission.services.LanguageRegistry;
 
 /**
@@ -37,8 +29,10 @@ import com.example.codeexecution.modules.submission.services.LanguageRegistry;
  * problems only.
  *
  * - The list exposes public metadata only (never statement internals,
- *   never test case paths) plus a computed acceptance rate from completed
- *   full submissions.
+ *   never test case paths) plus the judge-maintained acceptance counters
+ *   ({@code totalSubmissions} / {@code acceptedSubmissions} /
+ *   {@code acceptanceRate}) that the workers bump after every full
+ *   submission.
  * - The detail payload includes the markdown statement, limits, language
  *   starter templates and only the public sample test cases with their
  *   literal input/output text.
@@ -53,22 +47,16 @@ public class PublicProblemService {
 
     private final ProblemRepository problemRepository;
     private final TestCaseRepository testCaseRepository;
-    private final SubmissionRepository submissionRepository;
-    private final SubmissionResultRepository resultRepository;
     private final MongoTemplate mongoTemplate;
     private final LanguageRegistry languageRegistry;
 
     public PublicProblemService(
             ProblemRepository problemRepository,
             TestCaseRepository testCaseRepository,
-            SubmissionRepository submissionRepository,
-            SubmissionResultRepository resultRepository,
             MongoTemplate mongoTemplate,
             LanguageRegistry languageRegistry) {
         this.problemRepository = problemRepository;
         this.testCaseRepository = testCaseRepository;
-        this.submissionRepository = submissionRepository;
-        this.resultRepository = resultRepository;
         this.mongoTemplate = mongoTemplate;
         this.languageRegistry = languageRegistry;
     }
@@ -114,10 +102,6 @@ public class PublicProblemService {
                         .limit(limit),
                 Problem.class);
 
-        Map<String, Double> rates = acceptanceRates(problems.stream()
-                .map(Problem::getId)
-                .toList());
-
         List<PublicProblemResponse> items = problems.stream()
                 .map(problem -> new PublicProblemResponse(
                         problem.getId(),
@@ -126,7 +110,9 @@ public class PublicProblemService {
                         problem.getDescription(),
                         problem.getDifficulty(),
                         problem.getTags() == null ? List.of() : problem.getTags(),
-                        rates.get(problem.getId())))
+                        problem.getTotalSubmissions(),
+                        problem.getAcceptedSubmissions(),
+                        acceptanceRate(problem)))
                 .toList();
 
         int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / limit);
@@ -176,45 +162,16 @@ public class PublicProblemService {
     }
 
     /**
-     * acceptanceRate = accepted / completed full submissions, rounded to
-     * 4 decimals; null when the problem has no completed runs yet.
+     * acceptanceRate = acceptedSubmissions / totalSubmissions from the
+     * judge-maintained counters, rounded to 4 decimals; null when the
+     * problem has no completed full run yet.
      */
-    private Map<String, Double> acceptanceRates(List<String> problemIds) {
-        Map<String, Double> rates = new HashMap<>();
-        if (problemIds.isEmpty()) {
-            return rates;
+    private static Double acceptanceRate(Problem problem) {
+        if (problem.getTotalSubmissions() <= 0) {
+            return null;
         }
-
-        List<Submission> completed =
-                this.submissionRepository.findByProblemIdInAndTypeAndStatus(
-                        problemIds, SubmissionType.FULL_SUBMISSION, SubmissionStatus.COMPLETED);
-        if (completed.isEmpty()) {
-            return rates;
-        }
-
-        Map<String, String> problemBySubmission = new HashMap<>();
-        Map<String, Integer> totals = new HashMap<>();
-        for (Submission submission : completed) {
-            problemBySubmission.put(submission.getId(), submission.getProblemId());
-            totals.merge(submission.getProblemId(), 1, Integer::sum);
-        }
-
-        Map<String, Integer> accepted = new HashMap<>();
-        this.resultRepository.findBySubmissionIdIn(problemBySubmission.keySet()).stream()
-                .filter(result -> result.getOverallVerdict() == Verdict.ACCEPTED)
-                .forEach(result -> {
-                    String problemId = problemBySubmission.get(result.getSubmissionId());
-                    if (problemId != null) {
-                        accepted.merge(problemId, 1, Integer::sum);
-                    }
-                });
-
-        for (Map.Entry<String, Integer> entry : totals.entrySet()) {
-            int count = accepted.getOrDefault(entry.getKey(), 0);
-            double rate = Math.round((double) count / entry.getValue() * 10000.0) / 10000.0;
-            rates.put(entry.getKey(), rate);
-        }
-        return rates;
+        double rate = (double) problem.getAcceptedSubmissions() / problem.getTotalSubmissions();
+        return Math.round(rate * 10000.0) / 10000.0;
     }
 
     private static String readCapped(String filePath) {

@@ -15,5 +15,7 @@ public record PublicProblemResponse(
         String description,
         Difficulty difficulty,
         List<String> tags,
+        long totalSubmissions,
+        long acceptedSubmissions,
         Double acceptanceRate) {
 }

@@ -62,6 +62,19 @@ public class Problem {
     @Builder.Default
     private boolean isDeleted = false;
 
+    /**
+     * Judge-maintained acceptance counters: every FULL_SUBMISSION that
+     * finishes judging bumps {@code totalSubmissions} (plus
+     * {@code acceptedSubmissions} on ACCEPTED). Example evaluations and
+     * custom runs never touch them. Updated atomically ($inc) by
+     * {@code ProblemStatsService} after each judging pass.
+     */
+    @Builder.Default
+    private long totalSubmissions = 0;
+
+    @Builder.Default
+    private long acceptedSubmissions = 0;
+
     @CreatedDate
     private Instant createdAt;
 
