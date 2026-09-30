@@ -1,0 +1,36 @@
+services:
+  cpp:
+    build:
+      context: ./cpp
+    container_name: cpp
+    restart: unless-stopped
+    network_mode: none
+    pids_limit: 64
+    mem_limit: 512m
+
+  java:
+    build:
+      context: ./java
+    container_name: java
+    restart: unless-stopped
+    network_mode: none
+    pids_limit: 64
+    mem_limit: 512m
+
+  python:
+    build:
+      context: ./python
+    container_name: python
+    restart: unless-stopped
+    network_mode: none
+    pids_limit: 64
+    mem_limit: 512m
+
+  javascript:
+    build:
+      context: ./javascript
+    container_name: javascript
+    restart: unless-stopped
+    network_mode: none
+    pids_limit: 64
+    mem_limit: 512m

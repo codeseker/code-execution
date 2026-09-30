@@ -39,12 +39,31 @@ public class ExecutionProperties {
     private String dockerHost = "unix:///var/run/docker.sock";
 
     /**
+     * Container mode:
+     * - "auto" (default): Use pre-created static container if running;
+     *   if not running or missing, spin up a dedicated ephemeral container per submission.
+     * - "ephemeral": Always spin up a dedicated, isolated container per submission.
+     * - "static": Require pre-created static containers (fail if stopped/missing).
+     */
+    private String containerMode = "auto";
+
+    /**
      * Centralized runtime registry: language code -> EXISTING container
      * name on this machine (e.g. {@code cpp -> cpp}). The judge runs code
      * via {@code docker exec} inside these containers; a language with no
-     * entry is rejected at submit time.
+     * entry is rejected at submit time in static mode.
      */
     private Map<String, String> containers = new HashMap<>();
+
+    /**
+     * Default Docker images used when creating separate containers per execution flow.
+     */
+    private Map<String, String> images = new HashMap<>(Map.of(
+            "cpp", "gcc:14.2",
+            "java", "eclipse-temurin:21-jdk-jammy",
+            "python", "python:3.12-slim",
+            "javascript", "node:22-slim"
+    ));
 
     /**
      * Optional user override for exec sessions. Empty (default) = the

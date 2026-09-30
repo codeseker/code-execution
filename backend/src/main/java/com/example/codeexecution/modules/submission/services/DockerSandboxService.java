@@ -8,11 +8,15 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import com.example.codeexecution.common.exceptions.DockerSandboxException;
@@ -20,12 +24,16 @@ import com.example.codeexecution.modules.submission.config.ExecutionProperties;
 import com.example.codeexecution.modules.submission.entities.Language;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.async.ResultCallback;
+import com.github.dockerjava.api.command.CreateContainerCmd;
+import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.ExecCreateCmdResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.command.InspectExecResponse;
 import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.api.model.Frame;
+import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.MemoryStatsConfig;
+import com.github.dockerjava.api.model.PullResponseItem;
 import com.github.dockerjava.api.model.Statistics;
 import com.github.dockerjava.api.model.StatsConfig;
 import com.github.dockerjava.api.model.StreamType;
@@ -85,9 +93,14 @@ public class DockerSandboxService {
     private record ExecOutcome(boolean timedOut, int exitCode, String stdout, String stderr) {
     }
 
+    /** Context of an active submission container (static or ephemeral). */
+    private record SubmissionContext(String containerId, boolean isEphemeral, Language language) {
+    }
+
     private final ExecutionProperties properties;
     private final LanguageRegistry languageRegistry;
     private final DockerClient docker;
+    private final Map<String, SubmissionContext> activeSubmissions = new ConcurrentHashMap<>();
 
     public DockerSandboxService(ExecutionProperties properties, LanguageRegistry languageRegistry) {
         this.properties = properties;
@@ -96,8 +109,9 @@ public class DockerSandboxService {
     }
 
     private static DockerClient buildClient(String dockerHost) {
+        String resolvedHost = resolveDockerHost(dockerHost);
         DefaultDockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder()
-                .withDockerHost(dockerHost)
+                .withDockerHost(resolvedHost)
                 .build();
         DockerHttpClient httpClient = new ZerodepDockerHttpClient.Builder()
                 .dockerHost(config.getDockerHost())
@@ -108,8 +122,63 @@ public class DockerSandboxService {
         return DockerClientImpl.getInstance(config, httpClient);
     }
 
+    private static String resolveDockerHost(String configuredHost) {
+        if (configuredHost != null && !configuredHost.isBlank()) {
+            return configuredHost;
+        }
+        String envHost = System.getenv("DOCKER_HOST");
+        if (envHost != null && !envHost.isBlank()) {
+            return envHost;
+        }
+        if (Files.exists(Path.of("/var/run/docker.sock"))) {
+            return "unix:///var/run/docker.sock";
+        }
+        String xdg = System.getenv("XDG_RUNTIME_DIR");
+        if (xdg != null && Files.exists(Path.of(xdg, "docker.sock"))) {
+            return "unix://" + Path.of(xdg, "docker.sock");
+        }
+        String home = System.getProperty("user.home");
+        if (home != null && Files.exists(Path.of(home, ".docker/desktop/docker.sock"))) {
+            return "unix://" + Path.of(home, ".docker/desktop/docker.sock");
+        }
+        if (home != null && Files.exists(Path.of(home, ".docker/run/docker.sock"))) {
+            return "unix://" + Path.of(home, ".docker/run/docker.sock");
+        }
+        return "unix:///var/run/docker.sock";
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void cleanOrphanedContainers() {
+        try {
+            var containers = this.docker.listContainersCmd().withShowAll(true).exec();
+            for (var c : containers) {
+                if (c.getNames() == null) continue;
+                for (String name : c.getNames()) {
+                    if (name.contains("judge-sub-") || name.startsWith("/judge-sub-")) {
+                        try {
+                            this.docker.removeContainerCmd(c.getId()).withForce(true).exec();
+                            log.info("Cleaned up orphaned judge container {}", name);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            log.debug("Orphaned container cleanup skipped: {}", ex.getMessage());
+        }
+    }
+
     @PreDestroy
     public void close() throws IOException {
+        for (SubmissionContext ctx : this.activeSubmissions.values()) {
+            if (ctx.isEphemeral()) {
+                try {
+                    this.docker.removeContainerCmd(ctx.containerId()).withForce(true).exec();
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        this.activeSubmissions.clear();
         this.docker.close();
     }
 
@@ -124,20 +193,15 @@ public class DockerSandboxService {
     // ------------------------------------------------------------------
 
     /**
-     * True when the language has a configured container that exists.
-     * Used at submit time so an unconfigured runtime (e.g. javascript)
-     * fails fast with a clear 400 instead of a late SYSTEM_ERROR.
+     * True when the language can be run on this machine (either via an existing
+     * container or via ephemeral container creation).
      */
     public boolean isRuntimeAvailable(Language language) {
-        String container = containerName(language);
-        if (container == null) {
+        if (language == null) {
             return false;
         }
         try {
-            this.docker.inspectContainerCmd(container).exec();
-            return true;
-        } catch (NotFoundException exception) {
-            return false;
+            this.docker.pingCmd().exec();
         } catch (RuntimeException exception) {
             throw new DockerSandboxException(
                     "Cannot reach the Docker daemon (" + this.properties.getDockerHost()
@@ -146,6 +210,23 @@ public class DockerSandboxService {
                             + "can access it (e.g. is in the docker group).",
                     exception);
         }
+
+        if ("static".equalsIgnoreCase(this.properties.getContainerMode())) {
+            String container = containerName(language);
+            if (container == null) {
+                return false;
+            }
+            try {
+                this.docker.inspectContainerCmd(container).exec();
+                return true;
+            } catch (NotFoundException exception) {
+                return false;
+            }
+        }
+
+        return this.properties.getContainers().containsKey(language.name())
+                || this.properties.getImages().containsKey(language.name())
+                || defaultImage(language) != null;
     }
 
     // ------------------------------------------------------------------
@@ -160,8 +241,7 @@ public class DockerSandboxService {
      * @throws DockerSandboxException on Docker/IO failures (-> SYSTEM_ERROR)
      */
     public CompileOutcome compile(String submissionId, Language language, String code) {
-        String container = requireContainer(language);
-        ensureRunning(container);
+        String container = getOrCreateContainer(submissionId, language);
         stageSource(container, submissionId, language, code);
 
         String compileCommand = compileCommand(language, submissionId);
@@ -203,13 +283,12 @@ public class DockerSandboxService {
             long timeLimitMs,
             long memoryLimitKb) {
 
-        String container = requireContainer(language);
+        String container = getOrCreateContainer(submissionId, language);
         Path input = Path.of(inputFilePath).toAbsolutePath();
         if (!Files.isRegularFile(input)) {
             throw new DockerSandboxException("Testcase input file missing: " + input);
         }
 
-        ensureRunning(container);
         copyInput(container, submissionId, input);
 
         long hostTimeoutMs = timeLimitMs + this.properties.getRunGraceMs();
@@ -237,14 +316,27 @@ public class DockerSandboxService {
         }
     }
 
-    /** Removes the submission's dirs from every configured container + host. */
+    /** Removes ephemeral container (if created) or cleans submission dirs from static containers + host. */
     public void cleanup(String submissionId) {
-        for (String container : configuredContainers()) {
-            String command = "rm -rf /sandbox/" + submissionId + " /tmp/judge/" + submissionId;
+        SubmissionContext context = this.activeSubmissions.remove(submissionId);
+        if (context != null && context.isEphemeral()) {
             try {
-                exec(container, command, 10_000L);
-            } catch (RuntimeException exception) {
-                log.debug("Cleanup exec failed on {}: {}", container, exception.getMessage());
+                this.docker.removeContainerCmd(context.containerId()).withForce(true).exec();
+                log.info("Cleaned up and removed ephemeral sandbox container '{}' for submission {}",
+                        context.containerId(), submissionId);
+            } catch (Exception exception) {
+                log.warn("Could not remove ephemeral container {}: {}", context.containerId(), exception.getMessage());
+            }
+        } else {
+            String staticContainer = (context != null) ? context.containerId() : null;
+            Set<String> targets = (staticContainer != null) ? Set.of(staticContainer) : configuredContainers();
+            for (String container : targets) {
+                String command = "rm -rf /sandbox/" + submissionId + " /tmp/judge/" + submissionId;
+                try {
+                    exec(container, command, 10_000L);
+                } catch (RuntimeException exception) {
+                    log.debug("Cleanup exec failed on {}: {}", container, exception.getMessage());
+                }
             }
         }
         deleteHostWorkDir(submissionId);
@@ -255,18 +347,9 @@ public class DockerSandboxService {
     // ------------------------------------------------------------------
 
     private String containerName(Language language) {
+        if (language == null) return null;
         String name = this.languageRegistry.containerName(language);
         return (name == null || name.isBlank()) ? null : name;
-    }
-
-    private String requireContainer(Language language) {
-        String container = containerName(language);
-        if (container == null) {
-            throw new DockerSandboxException(
-                    "No container configured for language '" + language
-                            + "' (set app.execution.containers." + language.name() + ")");
-        }
-        return container;
     }
 
     private Set<String> configuredContainers() {
@@ -279,36 +362,175 @@ public class DockerSandboxService {
         return containers;
     }
 
-    /** Starts the container if it is stopped; fails fast when missing. */
-    private void ensureRunning(String container) {
+    /**
+     * Resolves the container to use for this submission:
+     * - Returns an existing running static container if mode is auto/static.
+     * - If static container is not running or mode is ephemeral, creates a separate container.
+     */
+    private String getOrCreateContainer(String submissionId, Language language) {
+        SubmissionContext existing = this.activeSubmissions.get(submissionId);
+        if (existing != null) {
+            return existing.containerId();
+        }
+
+        String mode = this.properties.getContainerMode();
+        if ("static".equalsIgnoreCase(mode) || "auto".equalsIgnoreCase(mode)) {
+            String staticName = containerName(language);
+            if (staticName != null) {
+                boolean running = ensureRunning(staticName);
+                if (running) {
+                    SubmissionContext ctx = new SubmissionContext(staticName, false, language);
+                    this.activeSubmissions.put(submissionId, ctx);
+                    return staticName;
+                }
+                if ("static".equalsIgnoreCase(mode)) {
+                    throw new DockerSandboxException(
+                            "Container '" + staticName + "' is not running and app.execution.container-mode is static.");
+                }
+                log.info("Static container '{}' is not running. Spinning up separate ephemeral container for submission {}",
+                        staticName, submissionId);
+            }
+        }
+
+        String containerId = createEphemeralContainer(submissionId, language);
+        SubmissionContext ctx = new SubmissionContext(containerId, true, language);
+        this.activeSubmissions.put(submissionId, ctx);
+        return containerId;
+    }
+
+    private String createEphemeralContainer(String submissionId, Language language) {
+        String imageName = resolveImage(language);
+        ensureImageAvailable(imageName);
+
+        String safeId = submissionId.replaceAll("[^A-Za-z0-9_-]", "_");
+        String name = "judge-sub-" + safeId;
+
+        try {
+            this.docker.removeContainerCmd(name).withForce(true).exec();
+        } catch (NotFoundException ignored) {
+        } catch (Exception e) {
+            log.debug("Pre-clean of container {} failed: {}", name, e.getMessage());
+        }
+
+        long memoryBytes = Math.max(512 * 1024 * 1024L, this.properties.getCompileMemoryKb() * 1024L);
+        HostConfig hostConfig = HostConfig.newHostConfig()
+                .withNetworkMode("none")
+                .withMemory(memoryBytes)
+                .withMemorySwap(memoryBytes)
+                .withPidsLimit(this.properties.getPidsLimit());
+
+        var createCmd = this.docker.createContainerCmd(imageName)
+                .withName(name)
+                .withCmd("/bin/sh", "-c", "trap : TERM INT; sleep 3600 & wait")
+                .withHostConfig(hostConfig)
+                .withWorkingDir("/sandbox");
+
+        if (this.properties.getContainerUser() != null && !this.properties.getContainerUser().isBlank()) {
+            createCmd.withUser(this.properties.getContainerUser());
+        }
+
+        try {
+            CreateContainerResponse response = createCmd.exec();
+            String containerId = response.getId();
+            this.docker.startContainerCmd(containerId).exec();
+
+            // Prepare base directories as root so they are accessible to any user
+            try {
+                exec(containerId, "mkdir -p /sandbox /tmp/judge && chmod 777 /sandbox /tmp/judge", 10_000L, "0:0");
+            } catch (Exception ex) {
+                log.debug("Non-root directory creation for {}: {}", containerId, ex.getMessage());
+                exec(containerId, "mkdir -p /sandbox /tmp/judge", 10_000L, null);
+            }
+
+            log.info("Created and started separate sandbox container '{}' (id: {}) using image '{}'",
+                    name, containerId, imageName);
+            return containerId;
+        } catch (RuntimeException exception) {
+            throw new DockerSandboxException(
+                    "Failed to create separate container for language '" + language + "': " + exception.getMessage(),
+                    exception);
+        }
+    }
+
+    private String resolveImage(Language language) {
+        String staticName = containerName(language);
+        if (staticName != null) {
+            try {
+                InspectContainerResponse info = this.docker.inspectContainerCmd(staticName).exec();
+                if (info.getConfig() != null && info.getConfig().getImage() != null && !info.getConfig().getImage().isBlank()) {
+                    String img = info.getConfig().getImage();
+                    log.debug("Found image '{}' from existing static container '{}'", img, staticName);
+                    return img;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        String configuredImage = this.properties.getImages().get(language.name());
+        if (configuredImage != null && !configuredImage.isBlank()) {
+            return configuredImage;
+        }
+
+        return defaultImage(language);
+    }
+
+    private static String defaultImage(Language language) {
+        return switch (language) {
+            case cpp -> "gcc:14.2";
+            case java -> "eclipse-temurin:21-jdk-jammy";
+            case python -> "python:3.12-slim";
+            case javascript -> "node:22-slim";
+        };
+    }
+
+    private void ensureImageAvailable(String imageName) {
+        try {
+            this.docker.inspectImageCmd(imageName).exec();
+        } catch (NotFoundException e) {
+            log.info("Docker image '{}' not found locally. Pulling image...", imageName);
+            try {
+                this.docker.pullImageCmd(imageName)
+                        .exec(new ResultCallback.Adapter<PullResponseItem>())
+                        .awaitCompletion(5, TimeUnit.MINUTES);
+                log.info("Successfully pulled image '{}'", imageName);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                throw new DockerSandboxException("Interrupted while pulling image '" + imageName + "'", ie);
+            } catch (Exception pe) {
+                throw new DockerSandboxException(
+                        "Image '" + imageName + "' could not be pulled: " + pe.getMessage(), pe);
+            }
+        } catch (RuntimeException e) {
+            log.warn("Could not inspect image '{}': {}", imageName, e.getMessage());
+        }
+    }
+
+    /** Checks if the container is running. If stopped, attempts to start it. */
+    private boolean ensureRunning(String container) {
         try {
             InspectContainerResponse info = this.docker.inspectContainerCmd(container).exec();
             if (Boolean.TRUE.equals(info.getState().getRunning())) {
-                return;
+                return true;
             }
             this.docker.startContainerCmd(container).exec();
-            for (int attempt = 0; attempt < 20; attempt++) {
+            for (int attempt = 0; attempt < 8; attempt++) {
                 Thread.sleep(250);
                 info = this.docker.inspectContainerCmd(container).exec();
                 if (Boolean.TRUE.equals(info.getState().getRunning())) {
-                    return;
+                    return true;
                 }
             }
-            throw new DockerSandboxException(
-                    "Container '" + container + "' exists but failed to start");
+            log.warn("Container '{}' exists but failed to remain running", container);
+            return false;
         } catch (NotFoundException exception) {
-            throw new DockerSandboxException(
-                    "Container '" + container + "' not found. Create it first "
-                            + "(see backend/docker for Dockerfiles)");
+            log.debug("Container '{}' not found", container);
+            return false;
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new DockerSandboxException("Interrupted while starting container", exception);
-        } catch (DockerSandboxException exception) {
-            throw exception;
         } catch (RuntimeException exception) {
-            throw new DockerSandboxException(
-                    "Could not start container '" + container + "': " + exception.getMessage(),
-                    exception);
+            log.warn("Could not start container '{}': {}", container, exception.getMessage());
+            return false;
         }
     }
 
@@ -471,13 +693,21 @@ public class DockerSandboxService {
     // ------------------------------------------------------------------
 
     private ExecOutcome exec(String containerId, String shellCommand, long hostTimeoutMs) {
+        return exec(containerId, shellCommand, hostTimeoutMs, null);
+    }
+
+    private ExecOutcome exec(String containerId, String shellCommand, long hostTimeoutMs, String user) {
         String execId;
         try {
-            ExecCreateCmdResponse created = this.docker.execCreateCmd(containerId)
+            var execCreateCmd = this.docker.execCreateCmd(containerId)
                     .withCmd("/bin/sh", "-c", shellCommand)
                     .withAttachStdout(true)
-                    .withAttachStderr(true)
-                    .exec();
+                    .withAttachStderr(true);
+            String effectiveUser = (user != null && !user.isBlank()) ? user : this.properties.getContainerUser();
+            if (effectiveUser != null && !effectiveUser.isBlank()) {
+                execCreateCmd.withUser(effectiveUser);
+            }
+            ExecCreateCmdResponse created = execCreateCmd.exec();
             execId = created.getId();
         } catch (RuntimeException exception) {
             throw new DockerSandboxException(
