@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+
 import AdminLayout from './AdminLayout'
 import { Icon } from '../../components/icons'
 import { AreaChart, Donut } from '../../components/charts'
 import { Segmented, cx } from '../../components/ui'
-import { useToast } from '../../toast'
 import { ADMIN_SUBMISSIONS, DIFFICULTY_MATRIX, VOLUME_SERIES } from '../../data'
 import type { SubmissionStatus } from '../../data'
+import CustomButton from '../../components/ui/CustomButton'
+import CustomLink from '../../components/ui/CustomLink'
 
 function statusTone(status: SubmissionStatus) {
   if (status === 'Accepted') return 'pill-success'
@@ -77,13 +78,13 @@ function build90() {
   const earlier: Array<{ label: string; value: number }> = []
   for (let i = 0; i < 36; i++) {
     const wave = Math.sin(i / 3.1) * 900 + Math.cos(i / 1.7) * 500
-    earlier.push({ label: `Feb ${String((i % 27) + 1).padStart(2, '0')}`, value: Math.round(5200 + i * 95 + wave) })
+    // earlier.push({ label: `Feb ${String((i % 27) + 1).padStart(2, '0')}`, value: Math.round(5200 + i * 95 + wave) })
   }
   return [...earlier, ...VOLUME_SERIES]
 }
 
 export default function AdminDashboard() {
-  const { push } = useToast()
+  
   const [range, setRange] = useState<'7D' | '30D' | '90D'>('30D')
   const [syncSeconds, setSyncSeconds] = useState(0)
   const [filter, setFilter] = useState('')
@@ -125,29 +126,29 @@ export default function AdminDashboard() {
               <span className="tag tag-gray t-code-tag">v2.14.0-edge</span>
             </div>
             <div className="flex items-center gap-2.5">
-              <button
+              <CustomButton variant="unstyled"
                 type="button"
                 className="btn btn-secondary"
                 onClick={() => {
                   setSyncSeconds(0)
-                  push({ title: 'Telemetry refreshed', description: 'All panels pulled fresh cluster metrics.', tone: 'success' })
+                  // push({ title: 'Telemetry refreshed', description: 'All panels pulled fresh cluster metrics.', tone: 'success' })
                 }}
               >
                 <Icon name="refresh" size={14} />
                 Refresh Data
                 <span className="t-code-tag text-ink-3">{syncSeconds}s ago</span>
-              </button>
-              <button
+              </CustomButton>
+              <CustomButton variant="unstyled"
                 type="button"
                 className="btn btn-primary"
-                onClick={() => push({ title: 'Report exported', description: 'codeforge-telemetry.csv · 24 KB', tone: 'success' })}
+                // onClick={() => push({ title: 'Report exported', description: 'codeforge-telemetry.csv · 24 KB', tone: 'success' })}
               >
                 <Icon name="download" size={14} />
                 Export Report
                 <span className="tag" style={{ background: 'rgba(255,255,255,0.18)', color: 'inherit' }}>
                   CSV
                 </span>
-              </button>
+              </CustomButton>
             </div>
           </div>
         </div>
@@ -327,10 +328,10 @@ export default function AdminDashboard() {
                   <option key={o}>{o}</option>
                 ))}
               </select>
-              <Link to="/admin/submissions" className="link t-ui-med inline-flex items-center gap-1.5 px-1">
+              <CustomLink to="/admin/submissions" className="link t-ui-med inline-flex items-center gap-1.5 px-1">
                 View all
                 <Icon name="arrowRight" size={13} />
-              </Link>
+              </CustomLink>
             </div>
           </div>
 
@@ -362,10 +363,10 @@ export default function AdminDashboard() {
                       </span>
                     </td>
                     <td>
-                      <Link to={`/problems/${s.problemNum === 1 ? 'two-sum' : 'two-sum'}/submissions`} className="flex items-center gap-2 hover:text-accent">
+                      <CustomLink to={`/problems/${s.problemNum === 1 ? 'two-sum' : 'two-sum'}/submissions`} className="flex items-center gap-2 hover:text-accent">
                         <span className="t-code-tag tnum text-ink-3">{s.problemNum}.</span>
                         <span className="t-ui-med text-ink">{s.problemTitle}</span>
-                      </Link>
+                      </CustomLink>
                     </td>
                     <td className="hidden lg:table-cell">
                       <span className="tag tag-gray t-code-tag">{s.language}</span>
@@ -377,16 +378,16 @@ export default function AdminDashboard() {
                     <td className="t-ui tnum hidden text-ink-2 xl:table-cell">{s.memory}</td>
                     <td className="t-caption hidden text-ink-3 md:table-cell">{s.timestamp}</td>
                     <td className="pr-5 text-right">
-                      <button
+                      <CustomButton variant="unstyled"
                         type="button"
                         className="icon-btn reveal inline-flex"
                         aria-label={`Inspect submission ${s.id}`}
-                        onClick={() =>
-                          push({ title: `Inspecting ${s.id}`, description: `${s.developer} · ${s.problemTitle}`, tone: 'neutral' })
-                        }
+                        // onClick={() =>
+                        //   // push({ title: `Inspecting ${s.id}`, description: `${s.developer} · ${s.problemTitle}`, tone: 'neutral' })
+                        // }
                       >
                         <Icon name="terminalSquare" size={16} />
-                      </button>
+                      </CustomButton>
                     </td>
                   </tr>
                 ))}

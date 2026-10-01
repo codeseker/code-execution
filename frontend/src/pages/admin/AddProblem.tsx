@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import AdminLayout from './AdminLayout'
 import { Icon } from '../../components/icons'
 import { Tag, cx } from '../../components/ui'
-import { useToast } from '../../toast'
+import CustomButton from '../../components/ui/CustomButton'
 
 const DEFAULT_TITLE = 'Lowest Common Ancestor of a Binary Search Tree'
 
@@ -42,7 +42,7 @@ const slugify = (s: string) =>
 
 export default function AddProblem() {
   const navigate = useNavigate()
-  const { push } = useToast()
+  
 
   const [title, setTitle] = useState(DEFAULT_TITLE)
   const [tier, setTier] = useState<'Easy' | 'Medium' | 'Hard'>('Medium')
@@ -97,7 +97,7 @@ export default function AddProblem() {
     if (!title.trim()) return setError('A problem title is required.')
     if (markdown.trim().length < 40) return setError('The prompt needs at least a few sentences before publishing.')
     setError('')
-    push({ title: 'Problem published', description: `“${title}” is live in the catalog.`, tone: 'success' })
+    // push({ title: 'Problem published', description: `“${title}” is live in the catalog.`, tone: 'success' })
     navigate('/admin/problems')
   }
 
@@ -115,15 +115,15 @@ export default function AddProblem() {
                 Draft auto-saved {savedAgo}
               </span>
             </div>
-            <button
+            <CustomButton variant="unstyled"
               type="button"
               className="btn btn-secondary"
-              onClick={() => push({ title: 'Opening playground preview', description: 'Renders the candidate-facing view.', tone: 'neutral' })}
+              // onClick={() => push({ title: 'Opening playground preview', description: 'Renders the candidate-facing view.', tone: 'neutral' })}
             >
               <Icon name="eye" size={14} />
               Preview in Playground
               <Icon name="arrowUpRight" size={13} />
-            </button>
+            </CustomButton>
           </div>
         </div>
 
@@ -137,14 +137,14 @@ export default function AddProblem() {
                 <p className="t-caption text-ink-2">Core metadata, slug identifier, and algorithmic taxonomy</p>
               </div>
             </div>
-            <button
+            <CustomButton variant="unstyled"
               type="button"
               className="icon-btn"
               aria-label="Field settings"
-              onClick={() => push({ title: 'Schema settings', description: 'Field visibility rules are demo-only.', tone: 'neutral' })}
+              // onClick={() => push({ title: 'Schema settings', description: 'Field visibility rules are demo-only.', tone: 'neutral' })}
             >
               <Icon name="sliders" size={16} />
-            </button>
+            </CustomButton>
           </div>
 
           <div className="stack gap-5 p-5">
@@ -179,17 +179,17 @@ export default function AddProblem() {
                   <span id="p-slug" className="t-code min-w-0 grow truncate text-ink">
                     {slug || '…'}
                   </span>
-                  <button
+                  <CustomButton variant="unstyled"
                     type="button"
                     className="icon-btn h-6 w-6 flex-none"
                     aria-label="Copy slug"
                     onClick={() => {
                       navigator.clipboard?.writeText(`codeforge.io/p/${slug}`).catch(() => undefined)
-                      push({ title: 'Slug copied', tone: 'success' })
+                      // push({ title: 'Slug copied', tone: 'success' })
                     }}
                   >
                     <Icon name="copy" size={13} />
-                  </button>
+                  </CustomButton>
                 </div>
               </div>
             </div>
@@ -200,7 +200,7 @@ export default function AddProblem() {
                 <p className="field-label">Difficulty Tier</p>
                 <div className="grid grid-cols-3 overflow-hidden rounded-md border border-hair" role="radiogroup" aria-label="Difficulty tier">
                   {TIER_WEIGHTS.map((t) => (
-                    <button
+                    <CustomButton variant="unstyled"
                       key={t.tier}
                       type="button"
                       role="radio"
@@ -218,7 +218,7 @@ export default function AddProblem() {
                       <span className={cx('t-caption', tier === t.tier ? 'opacity-80' : 'text-ink-3')}>
                         Weight: {t.weight}
                       </span>
-                    </button>
+                    </CustomButton>
                   ))}
                 </div>
               </div>
@@ -253,14 +253,14 @@ export default function AddProblem() {
                       aria-label="New topic tag"
                     />
                   ) : (
-                    <button
+                    <CustomButton variant="unstyled"
                       type="button"
                       className="btn btn-ghost btn-sm h-6 px-1.5 text-[12px]"
                       onClick={() => setTopicDraft('')}
                     >
                       <Icon name="plus" size={12} />
                       Add Tag
-                    </button>
+                    </CustomButton>
                   )}
                 </div>
               </div>
@@ -274,18 +274,18 @@ export default function AddProblem() {
                   <span key={c.name} className="tag tag-purple h-7 gap-2 px-2.5 text-[13px]">
                     <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'currentColor' }} aria-hidden />
                     {c.name} ({c.count} appearances)
-                    <button
+                    <CustomButton variant="unstyled"
                       type="button"
                       className="rounded-sm opacity-60 hover:opacity-100"
                       aria-label={`Remove ${c.name}`}
                       onClick={() => { setCompanies((list) => list.filter((x) => x.name !== c.name)); touch() }}
                     >
                       <Icon name="x" size={11} strokeWidth={2.4} />
-                    </button>
+                    </CustomButton>
                   </span>
                 ))}
                 <div className="relative">
-                  <button
+                  <CustomButton variant="unstyled"
                     type="button"
                     className="btn btn-secondary btn-sm h-7"
                     aria-expanded={companyOpen}
@@ -294,10 +294,10 @@ export default function AddProblem() {
                   >
                     <Icon name="plus" size={13} />
                     Select Company
-                  </button>
+                  </CustomButton>
                   {companyOpen && (
                     <>
-                      <button
+                      <CustomButton variant="unstyled"
                         type="button"
                         className="fixed inset-0 z-40 cursor-default"
                         aria-label="Close company picker"
@@ -305,7 +305,7 @@ export default function AddProblem() {
                       />
                       <div className="popover absolute top-full left-0 z-50 mt-1.5 w-[230px] anim-fade-up">
                         {availableCompanies.map((c) => (
-                          <button
+                          <CustomButton variant="unstyled"
                             key={c.name}
                             type="button"
                             className="menu-item"
@@ -318,7 +318,7 @@ export default function AddProblem() {
                             <Icon name="building" size={14} className="text-ink-3" />
                             <span className="grow">{c.name}</span>
                             <span className="t-code-tag text-ink-3">{c.count}</span>
-                          </button>
+                          </CustomButton>
                         ))}
                       </div>
                     </>
@@ -349,7 +349,7 @@ export default function AddProblem() {
                   { icon: 'sigma', label: 'Complexity', snippet: '`O(n)`' },
                 ] as const
               ).map((b) => (
-                <button
+                <CustomButton variant="unstyled"
                   key={b.icon}
                   type="button"
                   className="icon-btn h-7 w-7"
@@ -358,7 +358,7 @@ export default function AddProblem() {
                   onClick={() => insertAtCaret(b.snippet)}
                 >
                   <Icon name={b.icon} size={14} />
-                </button>
+                </CustomButton>
               ))}
               <span className="mx-1 h-4 w-px bg-hair" aria-hidden />
               {(
@@ -369,7 +369,7 @@ export default function AddProblem() {
                   { icon: 'image', label: 'Image', snippet: '\n![diagram](https://…/lca.png)\n' },
                 ] as const
               ).map((b) => (
-                <button
+                <CustomButton variant="unstyled"
                   key={b.icon}
                   type="button"
                   className="icon-btn h-7 w-7"
@@ -378,7 +378,7 @@ export default function AddProblem() {
                   onClick={() => insertAtCaret(b.snippet)}
                 >
                   <Icon name={b.icon} size={14} />
-                </button>
+                </CustomButton>
               ))}
             </div>
           </div>
@@ -467,20 +467,20 @@ export default function AddProblem() {
             )}
           </div>
           <div className="flex flex-wrap gap-2.5">
-            <button
+            <CustomButton variant="unstyled"
               type="button"
               className="btn btn-secondary"
               onClick={() => {
                 touch()
-                push({ title: 'Draft saved', description: 'Everything is stored in this session.', tone: 'neutral' })
+                // push({ title: 'Draft saved', description: 'Everything is stored in this session.', tone: 'neutral' })
               }}
             >
               Save Draft
-            </button>
-            <button type="button" className="btn btn-primary" onClick={publish}>
+            </CustomButton>
+            <CustomButton variant="unstyled" type="button" className="btn btn-primary" onClick={publish}>
               Preview &amp; Publish
               <Icon name="arrowRight" size={14} />
-            </button>
+            </CustomButton>
           </div>
         </div>
       </div>

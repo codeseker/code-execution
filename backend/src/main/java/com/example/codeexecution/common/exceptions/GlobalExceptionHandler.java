@@ -1,6 +1,7 @@
 package com.example.codeexecution.common.exceptions;
 
 import java.util.Map;
+import java.time.Instant;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
@@ -80,6 +81,21 @@ public class GlobalExceptionHandler {
                 ApiError<String> response = ApiError.of(
                                 "Account not verified",
                                 exception.getMessage());
+
+                return ResponseEntity
+                                .status(HttpStatus.FORBIDDEN)
+                                .body(response);
+        }
+
+        @ExceptionHandler(LoginAccountNotVerifiedException.class)
+        public ResponseEntity<Map<String, Object>> handleLoginAccountNotVerified(
+                        LoginAccountNotVerifiedException exception) {
+                Map<String, Object> response = Map.of(
+                                "success", false,
+                                "message", "Account not verified",
+                                "error", exception.getMessage(),
+                                "timestamp", Instant.now(),
+                                "isVerified", false);
 
                 return ResponseEntity
                                 .status(HttpStatus.FORBIDDEN)

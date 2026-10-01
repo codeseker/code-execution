@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useToast } from '../../toast'
-import { AuthLayout, AuthProof, AuthShowcase } from './AuthLayout'
+import { useNavigate } from 'react-router-dom'
+import { AuthLayout, AuthShowcase } from './AuthLayout'
 import { Icon } from '../../components/icons'
-import { RESET_SHOWCASE } from '../../data'
-import { CodeWindow } from '../../components/Code'
 import { StrengthMeter, passwordScore } from './Register'
 import { cx } from '../../components/ui'
+import CustomButton from '../../components/ui/CustomButton'
+import CustomLink from '../../components/ui/CustomLink'
 
 const CRITERIA = [
   { test: (pw: string) => pw.length >= 8, label: 'Minimum 8 characters' },
@@ -19,20 +18,12 @@ const STRENGTH_LABEL = ['Weak', 'Weak', 'Fair', 'Good', 'Strong']
 
 export default function ResetPassword() {
   const navigate = useNavigate()
-  const { push } = useToast()
-  const [token, setToken] = useState('CF-9824-TX')
+  
+  const [token, setToken] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [reveal, setReveal] = useState(false)
   const [error, setError] = useState('')
-  const [cooldown, setCooldown] = useState(45)
-
-  // Live "Resend code (Ns)" countdown.
-  useEffect(() => {
-    if (cooldown <= 0) return
-    const id = window.setInterval(() => setCooldown((s) => (s > 0 ? s - 1 : 0)), 1000)
-    return () => window.clearInterval(id)
-  }, [cooldown])
 
   const score = useMemo(() => passwordScore(password), [password])
   const passed = CRITERIA.map((c) => c.test(password))
@@ -44,59 +35,43 @@ export default function ResetPassword() {
     e.preventDefault()
     if (!token.trim()) return setError('Enter the verification code we sent to your inbox.')
     if (passed.some((ok) => !ok)) return setError('Your password does not meet the security criteria yet.')
-    if (password !== confirm) return setError('Passwords do not match.')
-    push({ title: 'Password updated', description: 'All sessions were rotated — sign in to continue.', tone: 'success' })
+    if (password !== confirm) return setError("Passwords don't match.")
+    // push({ title: 'Password updated', description: 'Sign in with your new password.', tone: 'success' })
     navigate('/login', { replace: true })
   }
 
   const showcase = (
     <AuthShowcase
-      chip="Zero-Trust Architecture"
-      status="Key Derivation Active  ·  SHA-256 / ARGON2ID"
-      overline="Session Integrity"
-      headline="Continuous validation. Zero downtime."
-      sub="Updating your password terminates all active terminal sessions and rotates sandbox authorization keys across all running execution clusters."
-      proof={<AuthProof note="Trusted by 85,000+ engineers worldwide." />}
+      headline="Choose a new password."
+      sub="Set a new password to access your account."
     >
-      <div className="stack gap-4">
-        <CodeWindow
-          title="token_rotation.rs"
-          lang="rust"
-          code={RESET_SHOWCASE.code.join('\n')}
-          activeLine={3}
-          headerRight={
-            <span className="flex items-center gap-2">
-              <span className="tag tag-gray">Rust 1.76</span>
-              <span className="pill pill-success">
-                <Icon name="check" size={12} />
-                Enforced
-              </span>
-            </span>
-          }
-          footer={
-            <>
-              <span className="t-code-tag flex items-center gap-2 text-ink-2">
-                <Icon name="zap" size={12} />
-                {RESET_SHOWCASE.memory}
-              </span>
-              <span className="t-code-tag flex items-center gap-2 text-ink-2">
-                <Icon name="checkCircle" size={12} />
-                {RESET_SHOWCASE.runtime}
-              </span>
-            </>
-          }
-        />
-        <div className="grid grid-cols-2 gap-4">
-          <div className="card px-4 py-3">
-            <p className="t-overline text-ink-3">Parallel invalidation</p>
-            <p className="t-h3 tnum mt-1 text-ink">4,096 nodes</p>
-            <p className="t-caption text-ink-2">Synchronized across edge instances</p>
+      <div className="rounded-md border border-hair bg-canvas p-5">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <p className="t-ui-med text-ink">Password check</p>
+            <p className="t-caption text-ink-2">Updates as you type</p>
           </div>
-          <div className="card px-4 py-3">
-            <p className="t-overline text-ink-3">Cryptographic salt</p>
-            <p className="t-h3 tnum mt-1 font-mono text-[18px] text-ink">Argon2id / 64MB</p>
-            <p className="t-caption text-ink-2">OWASP memory-hard recommended</p>
-          </div>
+          <span className={cx('t-caption', score >= 3 ? 'text-success' : 'text-ink-2')}>
+            {STRENGTH_LABEL[score]}
+          </span>
+        </div>
+        <div className="mt-4 flex flex-col gap-3">
+          <StrengthMeter value={score} />
+          <ul className="flex flex-col gap-2 border-t border-hair pt-3">
+            {CRITERIA.map((criterion) => {
+              const isMet = criterion.test(password)
+              return (
+                <li key={criterion.label} className="flex items-center gap-2.5 t-ui">
+                  <Icon
+                    name={isMet ? 'check' : 'chevronRight'}
+                    size={14}
+                    className={cx('flex-none', isMet ? 'text-success' : 'text-ink-3')}
+                  />
+                  <span className={isMet ? 'text-ink' : 'text-ink-2'}>{criterion.label}</span>
+                </li>
+              )
+            })}
+          </ul>
         </div>
       </div>
     </AuthShowcase>
@@ -104,44 +79,17 @@ export default function ResetPassword() {
 
   return (
     <AuthLayout showcase={showcase}>
-      <div
-        className="stack gap-5"
-        onKeyDown={(e) => {
-          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-            e.currentTarget.querySelector('form')?.requestSubmit()
-          }
-        }}
-      >
-        <span className="pill pill-accent w-fit uppercase">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
-          Security Gate
-        </span>
-
-        <div className="stack gap-2">
-          <h1 className="t-page-title text-ink">Set new password</h1>
-          <p className="t-reading text-ink-2">
-            Enter your verification token and create a strong, secure password for your account.
-          </p>
+      <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-2">
+          <h1 className="t-page-title text-ink">Reset password</h1>
+          <p className="t-reading text-ink-2">Enter your reset code and choose a new password.</p>
         </div>
 
-        <form className="stack gap-4" onSubmit={submit} noValidate>
-          <div>
-            <div className="flex items-baseline justify-between">
-              <label className="field-label" htmlFor="reset-token">
-                Reset Token / Verification Code
-              </label>
-              <button
-                type="button"
-                className={cx('t-code-tag -mt-4 mb-1.5', cooldown > 0 ? 'text-ink-3' : 'link')}
-                disabled={cooldown > 0}
-                onClick={() => {
-                  setCooldown(45)
-                  push({ title: 'New code sent', description: 'Check your inbox for a fresh token.', tone: 'neutral' })
-                }}
-              >
-                {cooldown > 0 ? `Resend code (${cooldown}s)` : 'Resend code'}
-              </button>
-            </div>
+        <form className="flex flex-col gap-5" onSubmit={submit} noValidate>
+          <div className="flex flex-col gap-2">
+            <label className="t-ui-med text-ink" htmlFor="reset-token">
+              Reset code
+            </label>
             <div className="relative">
               <Icon
                 name="key"
@@ -150,41 +98,43 @@ export default function ResetPassword() {
               />
               <input
                 id="reset-token"
-                className="input h-9 font-mono pl-9 tracking-[0.06em]"
+                className="input h-10 font-mono pl-9"
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
-                placeholder="CF-0000-TX"
+                placeholder="Enter your reset code"
+                aria-invalid={!!error && !token.trim()}
               />
             </div>
           </div>
 
-          <div>
-            <label className="field-label" htmlFor="reset-password">
-              New Password
+          <div className="flex flex-col gap-2">
+            <label className="t-ui-med text-ink" htmlFor="reset-password">
+              New password
             </label>
             <div className="relative">
               <input
                 id="reset-password"
-                className="input h-9 pr-10"
+                className="input h-10 pr-11"
                 type={reveal ? 'text' : 'password'}
                 autoComplete="new-password"
                 placeholder="Enter new password"
                 value={password}
+                aria-invalid={!!error && passed.some((ok) => !ok)}
                 onChange={(e) => {
                   setPassword(e.target.value)
                   setError('')
                 }}
               />
-              <button
+              <CustomButton variant="unstyled"
                 type="button"
-                className="icon-btn absolute top-1/2 right-1 h-7 w-7 -translate-y-1/2"
+                className="icon-btn absolute top-1/2 right-1.5 h-7 w-7 -translate-y-1/2"
                 aria-label={reveal ? 'Hide password' : 'Show password'}
                 onClick={() => setReveal((v) => !v)}
               >
                 <Icon name={reveal ? 'eyeOff' : 'eye'} size={15} />
-              </button>
+              </CustomButton>
             </div>
-            <div className="mt-2.5 stack gap-1.5">
+            <div className="mt-2 flex flex-col gap-2">
               <StrengthMeter value={score} />
               <div className="flex justify-between t-caption">
                 <span className="text-ink-3">Complexity score</span>
@@ -195,40 +145,38 @@ export default function ResetPassword() {
             </div>
           </div>
 
-          <div>
-            <label className="field-label" htmlFor="reset-confirm">
-              Confirm New Password
+          <div className="flex flex-col gap-2">
+            <label className="t-ui-med text-ink" htmlFor="reset-confirm">
+              Confirm new password
             </label>
             <div className="relative">
               <input
                 id="reset-confirm"
-                className="input h-9 pr-10"
+                className="input h-10 pr-11"
                 type={reveal ? 'text' : 'password'}
                 autoComplete="new-password"
                 placeholder="Re-enter new password"
                 value={confirm}
+                aria-invalid={!!error && password !== confirm}
                 onChange={(e) => {
                   setConfirm(e.target.value)
                   setError('')
                 }}
               />
-              <button
+              <CustomButton variant="unstyled"
                 type="button"
-                className="icon-btn absolute top-1/2 right-1 h-7 w-7 -translate-y-1/2"
+                className="icon-btn absolute top-1/2 right-1.5 h-7 w-7 -translate-y-1/2"
                 aria-label={reveal ? 'Hide password' : 'Show password'}
                 onClick={() => setReveal((v) => !v)}
               >
                 <Icon name={reveal ? 'eyeOff' : 'eye'} size={15} />
-              </button>
+              </CustomButton>
             </div>
-            {confirm.length > 0 && password !== confirm && (
-              <p className="t-caption mt-1.5 text-error">Passwords do not match yet.</p>
-            )}
           </div>
 
-          <div className="card bg-wash px-4 py-3.5">
-            <p className="t-overline mb-2.5 text-ink-3">Security Criteria</p>
-            <ul className="stack gap-2">
+          <div className="flex flex-col gap-2">
+            <p className="t-ui-med text-ink">Password requirements</p>
+            <ul className="flex flex-col gap-2">
               {CRITERIA.map((c, i) => (
                 <li key={c.label} className="flex items-center gap-2.5 t-ui">
                   <Icon
@@ -243,22 +191,21 @@ export default function ResetPassword() {
           </div>
 
           {error && (
-            <p className="pill pill-error h-auto w-full items-start gap-2 py-1.5 text-left" role="alert">
-              <Icon name="alert" size={13} className="mt-0.5 flex-none" />
+            <p className="pill pill-error h-auto w-full items-start gap-2 py-2 text-left" role="alert">
+              <Icon name="alert" size={14} className="mt-0.5 flex-none" />
               {error}
             </p>
           )}
 
-          <button type="submit" className="btn btn-primary h-9 btn-block gap-2">
-            Update Password &amp; Sign In
-            <span className="kbd">⌘↵</span>
-          </button>
+          <CustomButton variant="unstyled" type="submit" className="btn btn-primary btn-block h-10">
+            Update password
+          </CustomButton>
         </form>
 
-        <Link to="/login" className="t-ui-med mx-auto inline-flex items-center gap-2 text-ink-2 hover:text-ink">
-          <Icon name="arrowLeft" size={15} />
-          Return to login
-        </Link>
+        <p className="t-ui text-center text-ink-2">
+          Remembered your password?{' '}
+          <CustomLink to="/login" className="link t-ui-med">Back to log in</CustomLink>
+        </p>
       </div>
     </AuthLayout>
   )

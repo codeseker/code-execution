@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '../components/icons'
-import { tokenizeLine } from '../components/Code'
-import { DifficultyBadge, Logo, Spinner, ThemeToggle, cx } from '../components/ui'
+import { CodeEditor, monacoLanguageFor } from '../components/CodeEditor'
+import { DifficultyBadge, Spinner, cx } from '../components/ui'
 import { EngineStatusBar } from '../components/shell'
-import { useToast } from '../toast'
 import {
   LANGUAGES,
   PROBLEMS,
@@ -14,6 +13,8 @@ import {
   problemById,
 } from '../data'
 import type { Problem, Submission } from '../data'
+import CustomButton from '../components/ui/CustomButton'
+import CustomLink from '../components/ui/CustomLink'
 
 const TABS = ['Description', 'Submissions', 'Solutions', 'Editorial'] as const
 type Tab = (typeof TABS)[number]
@@ -32,7 +33,6 @@ const fmtTime = (s: number) =>
 export default function Workspace() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { push } = useToast()
   const problem = problemById(id ?? '') ?? PROBLEMS[0]
   const index = PROBLEMS.findIndex((p) => p.id === problem.id)
 
@@ -98,15 +98,17 @@ export default function Workspace() {
     window.setTimeout(() => {
       setRunning(false)
       setResult({ mode: 'submit', passed: 57, total: 57, runtime: 38, memory: 17.2 })
-      push({
-        title: 'Accepted — 57 / 57 test cases',
-        description: 'Runtime 38 ms · beats 94.2% · +25 XP',
-        tone: 'success',
-      })
+      // push({
+      //   title: 'Accepted — 57 / 57 test cases',
+      //   description: 'Runtime 38 ms · beats 94.2% · +25 XP',
+      //   tone: 'success',
+      // })
     }, 950)
   }
 
   // ⌘↵ runs, ⌘⇧↵ submits (design.md keyboard model).
+  // While the editor is focused these are handled by Monaco commands inside <CodeEditor>;
+  // this listener covers the rest of the page.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -122,30 +124,23 @@ export default function Workspace() {
 
   const fullscreen = () => {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined)
-    else document.documentElement.requestFullscreen().catch(() => push({ title: 'Fullscreen unavailable', tone: 'neutral' }))
+    // else document.documentElement.requestFullscreen().catch(() => push({ title: 'Fullscreen unavailable', tone: 'neutral' }))
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-canvas">
+    <div className="flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-canvas">
       {/* ---------------- Workspace topbar ---------------- */}
       <header className="flex h-11 flex-none items-center gap-3 border-b border-hair px-3">
-        <Link to="/problems" aria-label="CodeForge home">
-          <Logo size={24} wordmark={false} />
-        </Link>
-        <span className="hidden h-4 w-px bg-hair sm:block" aria-hidden />
-        <span className="t-ui-med hidden text-ink sm:block">CodeForge</span>
-        <span className="hidden h-4 w-px bg-hair sm:block" aria-hidden />
-
         <div className="flex items-center gap-0.5">
-          <button type="button" className="icon-btn h-7 w-7" aria-label="Previous problem" onClick={() => goTo(-1)}>
+          <CustomButton variant="unstyled" type="button" className="icon-btn h-7 w-7" aria-label="Previous problem" onClick={() => goTo(-1)}>
             <Icon name="chevronLeft" size={15} />
-          </button>
-          <button type="button" className="icon-btn h-7 w-7" aria-label="Next problem" onClick={() => goTo(1)}>
+          </CustomButton>
+          <CustomButton variant="unstyled" type="button" className="icon-btn h-7 w-7" aria-label="Next problem" onClick={() => goTo(1)}>
             <Icon name="chevronRight" size={15} />
-          </button>
+          </CustomButton>
         </div>
 
-        <Link
+        <CustomLink variant="unstyled"
           to="/problems"
           className="group flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-wash"
           title="All problems"
@@ -154,24 +149,21 @@ export default function Workspace() {
             {problem.num}. {problem.title}
           </span>
           <Icon name="chevronDown" size={13} className="text-ink-3" />
-        </Link>
+        </CustomLink>
         <DifficultyBadge difficulty={problem.difficulty} className="hidden sm:inline-flex" />
 
         <nav className="ml-2 hidden items-center gap-1 lg:flex" aria-label="Problem views">
-          <Link to={`/problems/${problem.id}`} className="rounded px-2.5 py-1 text-[14px] text-ink-2 hover:bg-wash hover:text-ink">
+          <CustomLink variant="unstyled" to={`/problems/${problem.id}`} className="rounded px-2.5 py-1 text-[14px] text-ink-2 hover:bg-wash hover:text-ink">
             Problems
-          </Link>
-          <Link to={`/problems/${problem.id}/submissions`} className="rounded px-2.5 py-1 text-[14px] text-ink-2 hover:bg-wash hover:text-ink">
+          </CustomLink>
+          <CustomLink variant="unstyled" to={`/problems/${problem.id}/submissions`} className="rounded px-2.5 py-1 text-[14px] text-ink-2 hover:bg-wash hover:text-ink">
             Submissions
-          </Link>
-          <Link to="/discuss" className="rounded px-2.5 py-1 text-[14px] text-ink-2 hover:bg-wash hover:text-ink">
-            Discuss
-          </Link>
+          </CustomLink>
         </nav>
 
         <span className="grow" />
 
-        <button
+        <CustomButton variant="unstyled"
           type="button"
           className="pill pill-neutral tnum h-7"
           onClick={() => setPaused((p) => !p)}
@@ -179,10 +171,10 @@ export default function Workspace() {
         >
           <Icon name="timer" size={13} />
           {fmtTime(seconds)}
-        </button>
+        </CustomButton>
 
         <div className="hidden items-center gap-0.5 md:flex">
-          <button
+          <CustomButton variant="unstyled"
             type="button"
             className={cx('icon-btn h-7 w-7', leftOpen && 'bg-wash text-ink')}
             aria-label="Toggle problem pane"
@@ -190,8 +182,8 @@ export default function Workspace() {
             onClick={() => setLeftOpen((v) => !v)}
           >
             <Icon name="layoutLeft" size={15} />
-          </button>
-          <button
+          </CustomButton>
+          <CustomButton variant="unstyled"
             type="button"
             className={cx('icon-btn h-7 w-7', consoleOpen && 'bg-wash text-ink')}
             aria-label="Toggle console pane"
@@ -199,27 +191,26 @@ export default function Workspace() {
             onClick={() => setConsoleOpen((v) => !v)}
           >
             <Icon name="layoutRight" size={15} />
-          </button>
-          <button type="button" className="icon-btn h-7 w-7" aria-label="Toggle fullscreen" onClick={fullscreen}>
+          </CustomButton>
+          <CustomButton variant="unstyled" type="button" className="icon-btn h-7 w-7" aria-label="Toggle fullscreen" onClick={fullscreen}>
             <Icon name="maximize" size={15} />
-          </button>
+          </CustomButton>
         </div>
 
-        <ThemeToggle />
         <span className="hidden h-4 w-px bg-hair md:block" aria-hidden />
         <div className="hidden items-center gap-2 md:flex">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={run} disabled={running}>
+          <CustomButton variant="unstyled" type="button" className="btn btn-secondary btn-sm" onClick={run} disabled={running}>
             <Icon name="play" size={12} />
             Run
             <span className="kbd">⌘↵</span>
-          </button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={submit} disabled={running}>
+          </CustomButton>
+          <CustomButton variant="unstyled" type="button" className="btn btn-primary btn-sm" onClick={submit} disabled={running}>
             <Icon name="upload" size={13} />
             Submit
             <span className="kbd" style={{ color: 'inherit', opacity: 0.75 }}>
               ⌘⇧↵
             </span>
-          </button>
+          </CustomButton>
         </div>
       </header>
 
@@ -227,7 +218,7 @@ export default function Workspace() {
       <div className="flex-none border-b border-hair px-3 py-2 lg:hidden">
         <div className="seg w-full" role="tablist" aria-label="Workspace panels">
           {(['problem', 'code', 'console'] as const).map((p) => (
-            <button
+            <CustomButton variant="unstyled"
               key={p}
               type="button"
               role="tab"
@@ -236,7 +227,7 @@ export default function Workspace() {
               onClick={() => setPane(p)}
             >
               {p === 'problem' ? 'Problem' : p === 'code' ? 'Code' : 'Console'}
-            </button>
+            </CustomButton>
           ))}
         </div>
       </div>
@@ -294,7 +285,14 @@ export default function Workspace() {
           style={{ flexBasis: `${100 - splitPct}%` }}
           aria-label="Code editor"
         >
-          <EditorPane lang={lang} code={code} onCode={setCode} onLanguage={changeLanguage} />
+          <EditorPane
+            lang={lang}
+            code={code}
+            onCode={setCode}
+            onLanguage={changeLanguage}
+            onRun={run}
+            onSubmit={submit}
+          />
           <ConsolePane
             open={consoleOpen || pane === 'console'}
             onToggle={() => setConsoleOpen((v) => !v)}
@@ -348,7 +346,6 @@ function ProblemPane({
   setTab: (t: Tab) => void
   submissions: Submission[]
 }) {
-  const { push } = useToast()
   const [saved, setSaved] = useState(false)
 
   const tabIcon: Record<Tab, Parameters<typeof Icon>[0]['name']> = {
@@ -362,7 +359,7 @@ function ProblemPane({
     <div className="flex min-h-0 flex-col">
       <div className="flex h-11 flex-none items-center gap-1 overflow-x-auto border-b border-hair px-3">
         {TABS.map((t) => (
-          <button
+          <CustomButton variant="unstyled"
             key={t}
             type="button"
             className={cx('tab flex-none', tab === t && 'is-active')}
@@ -375,29 +372,29 @@ function ProblemPane({
               <span className="tag tag-gray tnum">{submissions.length}</span>
             )}
             {t === 'Solutions' && <span className="tag tag-gray tnum">4.2k</span>}
-          </button>
+          </CustomButton>
         ))}
         <span className="grow" />
-        <button
+        <CustomButton variant="unstyled"
           type="button"
           className={cx('icon-btn flex-none', saved && 'text-accent')}
           aria-label={saved ? 'Remove bookmark' : 'Bookmark problem'}
           aria-pressed={saved}
           onClick={() => {
             setSaved((v) => !v)
-            push({ title: saved ? 'Removed from bookmarks' : 'Bookmarked', tone: 'neutral' })
+            // push({ title: saved ? 'Removed from bookmarks' : 'Bookmarked', tone: 'neutral' })
           }}
         >
           <Icon name="bookmark" size={15} />
-        </button>
-        <button
+        </CustomButton>
+        <CustomButton variant="unstyled"
           type="button"
           className="icon-btn flex-none"
           aria-label="Share problem"
-          onClick={() => push({ title: 'Link copied to clipboard', description: `codeforge.io/p/${problem.id}`, tone: 'success' })}
+          // onClick={() => push({ title: 'Link copied to clipboard', description: `codeforge.io/p/${problem.id}`, tone: 'success' })}
         >
           <Icon name="share" size={15} />
-        </button>
+        </CustomButton>
       </div>
 
       <div className="scroll-y grow px-5 py-6 lg:px-9">
@@ -507,14 +504,14 @@ function SubmissionsTab({ problem, submissions }: { problem: Problem; submission
     <div className="stack max-w-[720px] gap-4">
       <div className="flex items-center justify-between">
         <h2 className="t-h3 text-ink">Your submissions</h2>
-        <button
+        <CustomButton variant="unstyled"
           type="button"
           className="link t-ui-med inline-flex items-center gap-1.5"
           onClick={() => navigate(`/problems/${problem.id}/submissions`)}
         >
           View all
           <Icon name="arrowRight" size={13} />
-        </button>
+        </CustomButton>
       </div>
       <div className="overflow-hidden rounded-lg border border-hair">
         <table className="ntable">
@@ -551,7 +548,7 @@ function SubmissionsTab({ problem, submissions }: { problem: Problem; submission
 }
 
 function SolutionsTab() {
-  const { push } = useToast()
+  
   const solutions = [
     { author: '@chen_w', initials: 'CW', lang: 'Python3', votes: 412, text: 'One-pass hash map: store every value you have seen, and look up the complement before inserting.' },
     { author: '@sarah_k', initials: 'SK', lang: 'Rust', votes: 268, text: 'Same idea with an array-index iterator — no heap allocation beyond the output vector.' },
@@ -578,13 +575,13 @@ function SolutionsTab() {
               <span>Time O(n)</span>
               <span>Space O(n)</span>
             </span>
-            <button
+            <CustomButton variant="unstyled"
               type="button"
               className="btn btn-secondary btn-sm"
-              onClick={() => push({ title: 'Solution opened', description: 'Full editorials are demo-only in this build.', tone: 'neutral' })}
+              // onClick={() => push({ title: 'Solution opened', description: 'Full editorials are demo-only in this build.', tone: 'neutral' })}
             >
               View solution
-            </button>
+            </CustomButton>
           </div>
         </article>
       ))}
@@ -669,7 +666,7 @@ function StatusPill({ status }: { status: Submission['status'] }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Editor pane — highlighted surface + transparent textarea overlay    */
+/* Editor pane — header + Monaco editor                                */
 /* ------------------------------------------------------------------ */
 
 function EditorPane({
@@ -677,15 +674,17 @@ function EditorPane({
   code,
   onCode,
   onLanguage,
+  onRun,
+  onSubmit,
 }: {
   lang: string
   code: string
   onCode: (v: string) => void
   onLanguage: (v: string) => void
+  onRun: () => void
+  onSubmit: () => void
 }) {
-  const { push } = useToast()
-  const lines = code.split('\n')
-  const codeLang = lang.startsWith('Python') ? 'python' : lang === 'Rust' ? 'rust' : 'js'
+  
 
   return (
     <div className="flex min-h-0 grow flex-col border-b border-hair">
@@ -713,70 +712,38 @@ function EditorPane({
           Auto-complete on
         </span>
         <span className="grow" />
-        <button
+        <CustomButton variant="unstyled"
           type="button"
           className="icon-btn tip h-7 w-7"
           data-tip="Restore starter code"
           aria-label="Restore starter code"
           onClick={() => {
             onCode(STARTER_CODES[lang] ?? '')
-            push({ title: 'Starter code restored', tone: 'neutral' })
+            // push({ title: 'Starter code restored', tone: 'neutral' })
           }}
         >
           <Icon name="refresh" size={14} />
-        </button>
-        <button
+        </CustomButton>
+        <CustomButton variant="unstyled"
           type="button"
           className="icon-btn tip h-7 w-7"
           data-tip="Editor settings"
           aria-label="Editor settings"
-          onClick={() => push({ title: 'Editor settings', description: 'Font size, ligatures and theme follow your design preferences.', tone: 'neutral' })}
+          // onClick={() => push({ title: 'Editor settings', description: 'Font size, ligatures and theme follow your design preferences.', tone: 'neutral' })}
         >
           <Icon name="settings" size={14} />
-        </button>
+        </CustomButton>
       </div>
 
-      {/* Code surface: highlighted <pre> under a transparent textarea */}
-      <div className="relative min-h-0 grow overflow-auto bg-code">
-        <div className="flex min-h-full">
-          <div
-            className="t-code shrink-0 py-3 pr-3 pl-4 text-right text-ink-3 tnum select-none"
-            aria-hidden
-          >
-            {lines.map((_, i) => (
-              <div key={i} className="leading-[22px]">
-                {i + 1}
-              </div>
-            ))}
-          </div>
-          <div className="relative min-w-0 grow">
-            <pre
-              aria-hidden
-              className="t-code m-0 min-h-full px-1 py-3 break-words whitespace-pre-wrap text-ink"
-              style={{ lineHeight: '22px' }}
-            >
-              {lines.map((ln, i) => (
-                <span key={i} className="block leading-[22px]">
-                  {tokenizeLine(ln, codeLang).map((t, ti) => (
-                    <span key={ti} className={t.cls}>
-                      {t.text}
-                    </span>
-                  ))}
-                  {ln.length === 0 ? ' ' : ''}
-                </span>
-              ))}
-            </pre>
-            <textarea
-              value={code}
-              onChange={(e) => onCode(e.target.value)}
-              spellCheck={false}
-              aria-label="Code editor"
-              className="t-code absolute inset-0 h-full w-full resize-none bg-transparent px-1 py-3 break-words whitespace-pre-wrap text-transparent caret-accent outline-none"
-              style={{ lineHeight: '22px' }}
-            />
-          </div>
-        </div>
-      </div>
+      {/* Monaco editor: real syntax highlighting, fills the remaining height */}
+      <CodeEditor
+        className="grow"
+        value={code}
+        onChange={onCode}
+        language={monacoLanguageFor(lang)}
+        onRun={onRun}
+        onSubmit={onSubmit}
+      />
     </div>
   )
 }
@@ -808,7 +775,7 @@ function ConsolePane({
   onRun: () => void
   onSubmit: () => void
 }) {
-  const { push } = useToast()
+  
   const [view, setView] = useState<'testcases' | 'result'>('testcases')
   const [cases, setCases] = useState<TestCase[]>(DEFAULT_CASES)
   const [active, setActive] = useState(0)
@@ -828,15 +795,15 @@ function ConsolePane({
         <>
           {/* Case/result tabs */}
           <div className="flex h-9 flex-none items-center gap-1 border-b border-hair px-3">
-            <button
+            <CustomButton variant="unstyled"
               type="button"
               className={cx('tab h-8', view === 'testcases' && 'is-active')}
               onClick={() => setView('testcases')}
             >
               <Icon name="list" size={14} />
               Testcases
-            </button>
-            <button
+            </CustomButton>
+            <CustomButton variant="unstyled"
               type="button"
               className={cx('tab h-8', view === 'result' && 'is-active')}
               onClick={() => setView('result')}
@@ -848,16 +815,16 @@ function ConsolePane({
               ) : (
                 result && <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
               )}
-            </button>
+            </CustomButton>
             <span className="grow" />
-            <button
+            <CustomButton variant="unstyled"
               type="button"
               className="btn btn-ghost btn-sm h-6 text-[12px]"
-              onClick={() => push({ title: 'Custom testcases', description: 'Add a case with the + button in the testcases tab.', tone: 'neutral' })}
+              // onClick={() => push({ title: 'Custom testcases', description: 'Add a case with the + button in the testcases tab.', tone: 'neutral' })}
             >
               <Icon name="sliders" size={12} />
               Custom Testcase
-            </button>
+            </CustomButton>
           </div>
 
           <div className="scroll-y grow px-4 py-3.5">
@@ -865,7 +832,7 @@ function ConsolePane({
               <div className="stack gap-3.5">
                 <div className="flex flex-wrap items-center gap-2">
                   {cases.map((_, i) => (
-                    <button
+                    <CustomButton variant="unstyled"
                       key={i}
                       type="button"
                       className={cx(
@@ -878,9 +845,9 @@ function ConsolePane({
                       onClick={() => setActive(i)}
                     >
                       Case {i + 1}
-                    </button>
+                    </CustomButton>
                   ))}
-                  <button
+                  <CustomButton variant="unstyled"
                     type="button"
                     className="icon-btn h-7 w-7 rounded-md border border-dashed border-line"
                     aria-label="Add test case"
@@ -890,7 +857,7 @@ function ConsolePane({
                     }}
                   >
                     <Icon name="plus" size={14} />
-                  </button>
+                  </CustomButton>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -991,20 +958,20 @@ function ConsolePane({
 
       {/* Console footer */}
       <div className="flex h-9 flex-none items-center justify-between gap-3 border-t border-hair px-3">
-        <button type="button" className="btn btn-ghost btn-sm h-6 px-1.5" onClick={onToggle} aria-expanded={open}>
+        <CustomButton variant="unstyled" type="button" className="btn btn-ghost btn-sm h-6 px-1.5" onClick={onToggle} aria-expanded={open}>
           <Icon name={open ? 'chevronDown' : 'chevronUp'} size={13} />
           Console
-        </button>
+        </CustomButton>
         <div className="flex items-center gap-2.5">
           <span className="t-code-tag hidden text-ink-3 sm:inline">⌘↵ to submit</span>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onRun} disabled={running}>
+          <CustomButton variant="unstyled" type="button" className="btn btn-secondary btn-sm" onClick={onRun} disabled={running}>
             <Icon name="play" size={11} />
             Run
-          </button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={onSubmit} disabled={running}>
+          </CustomButton>
+          <CustomButton variant="unstyled" type="button" className="btn btn-primary btn-sm" onClick={onSubmit} disabled={running}>
             <Icon name="upload" size={13} />
             Submit
-          </button>
+          </CustomButton>
         </div>
       </div>
     </div>

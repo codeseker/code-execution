@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../auth'
-import { useToast } from '../../toast'
+import { NavLink, useLocation } from 'react-router-dom'
 import { Icon } from '../../components/icons'
 import { Avatar, Logo, ThemeToggle, cx } from '../../components/ui'
 import type { IconName } from '../../components/icons'
+import CustomButton from '../../components/ui/CustomButton'
+import CustomLink from '../../components/ui/CustomLink'
 
 const NAV: Array<{ to: string; label: string; icon: IconName; end?: boolean }> = [
   { to: '/admin', label: 'Dashboard', icon: 'grid', end: true },
@@ -41,10 +41,10 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="flex h-full flex-col gap-1 p-3">
-      <Link to="/" className="mb-3 flex items-center justify-between px-1" aria-label="CodeForge home">
+      <CustomLink variant="unstyled" to="/" className="mb-3 flex items-center justify-between px-1" aria-label="CodeForge home">
         <Logo size={24} />
         <span className="t-code-tag text-ink-4">v2.14</span>
-      </Link>
+      </CustomLink>
       <p className="t-overline px-2 pb-1 text-ink-3">Admin</p>
       {NAV.map(row)}
       <span className="grow" />
@@ -65,24 +65,21 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
 /** Admin shell: sidebar + header + routed content. */
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
-  const { push } = useToast()
   const [drawer, setDrawer] = useState(false)
   const [menu, setMenu] = useState(false)
   const [query, setQuery] = useState('')
 
   return (
-    <div className="flex min-h-screen bg-canvas">
+    <div className="flex min-h-[calc(100vh-3.5rem)] bg-canvas">
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-[240px] flex-none border-r border-hair bg-sidebar lg:block">
+      <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-[240px] flex-none border-r border-hair bg-sidebar lg:block">
         <Sidebar />
       </aside>
 
       {/* Mobile drawer */}
       {drawer && (
         <div className="fixed inset-0 z-[60] lg:hidden">
-          <button
+          <CustomButton variant="unstyled"
             type="button"
             className="absolute inset-0 bg-[var(--scrim)]"
             aria-label="Close navigation"
@@ -96,20 +93,20 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 grow flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-hair bg-canvas px-4">
-          <button
+        <header className="sticky top-14 z-30 flex h-14 items-center gap-3 border-b border-hair bg-canvas px-4">
+          <CustomButton variant="unstyled"
             type="button"
             className="icon-btn lg:hidden"
             aria-label="Open navigation"
             onClick={() => setDrawer(true)}
           >
             <Icon name="menu" size={17} />
-          </button>
-          <Link to="/admin" className="flex items-center gap-2.5">
+          </CustomButton>
+          <CustomLink to="/admin" className="flex items-center gap-2.5">
             <Logo size={24} />
             <span className="hidden h-4 w-px bg-hair sm:block" aria-hidden />
             <span className="t-ui-med hidden text-ink-2 sm:block">Admin Console</span>
-          </Link>
+          </CustomLink>
 
           <div className="relative mx-auto hidden w-full max-w-[440px] md:block">
             <Icon
@@ -126,7 +123,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && query.trim()) {
-                  push({ title: `Searching for “${query}”`, description: 'Global admin search is demo-only.', tone: 'neutral' })
+                  // push({ title: `Searching for “${query}”`, description: 'Global admin search is demo-only.', tone: 'neutral' })
                 }
               }}
             />
@@ -134,18 +131,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
           <span className="grow" />
           <ThemeToggle />
-          <button
+          <CustomButton variant="unstyled"
             type="button"
             className="icon-btn relative"
             aria-label="Notifications"
-            onClick={() => push({ title: '3 new admin alerts', description: 'Runner capacity at 98% — review System Health.', tone: 'neutral' })}
+            // onClick={() => push({ title: '3 new admin alerts', description: 'Runner capacity at 98% — review System Health.', tone: 'neutral' })}
           >
             <Icon name="bell" size={16} />
             <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-warning" aria-hidden />
-          </button>
+          </CustomButton>
 
           <div className="relative">
-            <button
+            <CustomButton variant="unstyled"
               type="button"
               className="flex items-center gap-2.5 rounded px-1.5 py-1 hover:bg-wash"
               aria-haspopup="menu"
@@ -153,41 +150,28 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               onClick={() => setMenu((v) => !v)}
             >
               <span className="hidden text-right sm:block">
-                <span className="block t-ui-med leading-4 text-ink">{user?.name ?? 'Admin'}</span>
-                <span className="block t-caption leading-4 text-ink-3">{user?.title ?? 'Super Admin'}</span>
+                <span className="block t-ui-med leading-4 text-ink">Admin</span>
+                <span className="block t-caption leading-4 text-ink-3">Public access</span>
               </span>
-              <Avatar initials={user?.initials ?? 'AV'} size={28} />
-            </button>
+              <Avatar initials="AD" size={28} />
+            </CustomButton>
             {menu && (
               <>
-                <button
+                <CustomButton variant="unstyled"
                   type="button"
                   className="fixed inset-0 z-40 cursor-default"
                   aria-label="Close menu"
                   onClick={() => setMenu(false)}
                 />
                 <div className="absolute right-0 z-50 mt-2 w-[230px] popover anim-fade-up" role="menu">
-                  <Link to="/profile" className="menu-item" role="menuitem" onClick={() => setMenu(false)}>
+                  <CustomLink variant="unstyled" to="/profile" className="menu-item" role="menuitem" onClick={() => setMenu(false)}>
                     <Icon name="user" size={15} className="text-ink-3" />
                     User portal
-                  </Link>
-                  <Link to="/problems" className="menu-item" role="menuitem" onClick={() => setMenu(false)}>
+                  </CustomLink>
+                  <CustomLink variant="unstyled" to="/problems" className="menu-item" role="menuitem" onClick={() => setMenu(false)}>
                     <Icon name="file" size={15} className="text-ink-3" />
                     Problem bank
-                  </Link>
-                  <button
-                    type="button"
-                    className="menu-item"
-                    role="menuitem"
-                    onClick={() => {
-                      logout()
-                      push({ title: 'Signed out', tone: 'neutral' })
-                      navigate('/')
-                    }}
-                  >
-                    <Icon name="lock" size={15} className="text-ink-3" />
-                    Log out
-                  </button>
+                  </CustomLink>
                 </div>
               </>
             )}

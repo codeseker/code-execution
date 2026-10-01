@@ -1,10 +1,8 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { PortalTopbar, SystemStatusBar } from '../components/shell'
+
 import { DifficultyBadge, Progress, Tag, cx } from '../components/ui'
 import { Icon } from '../components/icons'
 import { Heatmap } from '../components/charts'
-import { useToast } from '../toast'
 import {
   BADGES,
   PROFILE,
@@ -14,6 +12,8 @@ import {
   buildHeatmap,
 } from '../data'
 import type { SubmissionStatus } from '../data'
+import CustomButton from '../components/ui/CustomButton'
+import CustomLink from '../components/ui/CustomLink'
 
 type ActivityTab = 'Recent Submissions' | 'Solved Problems' | 'Badges'
 
@@ -33,7 +33,6 @@ function SubStatusPill({ status }: { status: SubmissionStatus }) {
 }
 
 export default function Profile() {
-  const { push } = useToast()
   const [editing, setEditing] = useState(false)
   const [bio, setBio] = useState(PROFILE.bio)
   const [year, setYear] = useState<'2024' | '2023'>('2024')
@@ -45,9 +44,7 @@ export default function Profile() {
   const solved = PROBLEMS.filter((p) => p.status === 'solved')
 
   return (
-    <div className="flex min-h-screen flex-col bg-canvas">
-      <PortalTopbar />
-
+    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col bg-canvas">
       <main className="mx-auto w-full max-w-[1280px] grow px-4 py-6 lg:px-8">
         <div className="stack gap-4">
           {/* -------- Identity card -------- */}
@@ -89,17 +86,17 @@ export default function Profile() {
                       onChange={(e) => setBio(e.target.value)}
                     />
                     <div className="flex gap-2">
-                      <button
+                      <CustomButton variant="unstyled"
                         type="button"
                         className="btn btn-primary btn-sm"
                         onClick={() => {
                           setEditing(false)
-                          push({ title: 'Profile updated', tone: 'success' })
+                          // push({ title: 'Profile updated', tone: 'success' })
                         }}
                       >
                         Save changes
-                      </button>
-                      <button
+                      </CustomButton>
+                      <CustomButton variant="unstyled"
                         type="button"
                         className="btn btn-secondary btn-sm"
                         onClick={() => {
@@ -108,7 +105,7 @@ export default function Profile() {
                         }}
                       >
                         Cancel
-                      </button>
+                      </CustomButton>
                     </div>
                   </div>
                 ) : (
@@ -137,18 +134,18 @@ export default function Profile() {
               </div>
 
               <div className="flex flex-none gap-2">
-                <button type="button" className="btn btn-secondary" onClick={() => setEditing((v) => !v)}>
+                <CustomButton variant="unstyled" type="button" className="btn btn-secondary" onClick={() => setEditing((v) => !v)}>
                   <Icon name="pencil" size={13} />
                   {editing ? 'Close editor' : 'Edit Profile'}
-                </button>
-                <button
+                </CustomButton>
+                <CustomButton variant="unstyled"
                   type="button"
                   className="btn btn-primary"
-                  onClick={() => push({ title: 'Profile link copied', description: 'codeforge.io/u/alex_dev', tone: 'success' })}
+                  // onClick={() => push({ title: 'Profile link copied', description: 'codeforge.io/u/alex_dev', tone: 'success' })}
                 >
                   <Icon name="share" size={13} />
                   Share
-                </button>
+                </CustomButton>
               </div>
             </div>
           </section>
@@ -167,7 +164,6 @@ export default function Profile() {
         </div>
       </main>
 
-      <SystemStatusBar />
     </div>
   )
 }
@@ -318,7 +314,7 @@ function HeatmapCard({
         </div>
         <div className="seg" role="tablist" aria-label="Year">
           {(['2024', '2023'] as const).map((y) => (
-            <button
+            <CustomButton variant="unstyled"
               key={y}
               type="button"
               role="tab"
@@ -327,7 +323,7 @@ function HeatmapCard({
               onClick={() => onYear(y)}
             >
               {y}
-            </button>
+            </CustomButton>
           ))}
         </div>
       </div>
@@ -358,7 +354,7 @@ function ActivityCard({
     <section className="card min-w-0">
       <div className="flex gap-1 overflow-x-auto border-b border-hair px-3 pt-1.5">
         {tabs.map((t) => (
-          <button
+          <CustomButton variant="unstyled"
             key={t.id}
             type="button"
             className={cx('tab flex-none', tab === t.id && 'is-active')}
@@ -368,7 +364,7 @@ function ActivityCard({
             <Icon name={t.icon} size={14} />
             {t.id}
             {t.badge && <span className="tag tag-gray tnum">{t.badge}</span>}
-          </button>
+          </CustomButton>
         ))}
       </div>
 
@@ -390,13 +386,13 @@ function ActivityCard({
                   {PROFILE_SUBMISSIONS.map((s) => (
                     <tr key={s.id}>
                       <td className="pl-2">
-                        <Link
+                        <CustomLink
                           to={`/problems/${s.problemId}`}
                           className="flex items-center gap-2.5 hover:text-accent"
                         >
                           <span className="t-code-tag tnum text-ink-3">{s.problemNum}.</span>
                           <span className="t-ui-med text-ink">{s.problemTitle}</span>
-                        </Link>
+                        </CustomLink>
                       </td>
                       <td>
                         <SubStatusPill status={s.status} />
@@ -413,10 +409,10 @@ function ActivityCard({
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="t-caption text-ink-3">Showing latest {PROFILE_SUBMISSIONS.length} submissions</span>
-              <Link to="/problems/two-sum/submissions" className="link t-ui-med inline-flex items-center gap-1.5">
+              <CustomLink to="/problems/two-sum/submissions" className="link t-ui-med inline-flex items-center gap-1.5">
                 View all submissions
                 <Icon name="arrowRight" size={13} />
-              </Link>
+              </CustomLink>
             </div>
           </div>
         )}
@@ -425,7 +421,7 @@ function ActivityCard({
           <ul className="stack gap-1">
             {solved.map((p) => (
               <li key={p.id}>
-                <Link
+                <CustomLink variant="unstyled"
                   to={`/problems/${p.id}`}
                   className="flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-wash"
                 >
@@ -433,7 +429,7 @@ function ActivityCard({
                   <span className="t-ui-med min-w-0 grow truncate text-ink">{p.title}</span>
                   <Tag tone={p.topicTone[p.tags[0]] ?? 'gray'}>{p.tags[0]}</Tag>
                   <DifficultyBadge difficulty={p.difficulty} />
-                </Link>
+                </CustomLink>
               </li>
             ))}
           </ul>
@@ -488,9 +484,9 @@ function BadgesCard({ onShowAll }: { onShowAll: () => void }) {
     <section className="card stack gap-3.5 p-5">
       <div className="flex items-center justify-between">
         <h2 className="t-h3 text-ink">Recent Badges</h2>
-        <button type="button" className="link t-caption" onClick={onShowAll}>
+        <CustomButton variant="unstyled" type="button" className="link t-caption" onClick={onShowAll}>
           All ({BADGES.length})
-        </button>
+        </CustomButton>
       </div>
       <div className="grid grid-cols-3 gap-2.5">
         {BADGES.slice(0, 3).map((b) => (

@@ -1,17 +1,11 @@
-import { Link } from 'react-router-dom'
+
 import { Icon } from '../components/icons'
-import { Logo, ThemeToggle, cx } from '../components/ui'
+import { Logo, cx } from '../components/ui'
 import { CodeWindow } from '../components/Code'
-import { useToast } from '../toast'
 import { ENGINE_BULLETS, FAQ, LANDING_FEATURES, LANDING_ROADMAP, LANDING_STATS, PRICING, REGISTER_SHOWCASE, SYSTEM_DESIGN_POINTS } from '../data'
 import { useState } from 'react'
-
-const NAV_LINKS = [
-  { label: 'Features', href: '#features' },
-  { label: 'How It Works', href: '#how-it-works' },
-  { label: 'Pricing', href: '#pricing' },
-  { label: 'FAQ', href: '#faq' },
-]
+import CustomButton from '../components/ui/CustomButton'
+import CustomLink from '../components/ui/CustomLink'
 
 const FEATURE_ICONS: Record<string, Parameters<typeof Icon>[0]['name']> = {
   visualizer: 'monitor',
@@ -22,39 +16,7 @@ const FEATURE_ICONS: Record<string, Parameters<typeof Icon>[0]['name']> = {
   mock: 'users',
 }
 
-function SiteNav() {
-  return (
-    <header className="sticky top-0 z-40 border-b border-hair bg-canvas">
-      <div className="mx-auto flex h-14 max-w-[1160px] items-center gap-8 px-6">
-        <Link to="/" aria-label="CodeForge home">
-          <Logo size={26} />
-        </Link>
-        <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
-          {NAV_LINKS.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              className="t-ui-med rounded px-2.5 py-1.5 text-ink-2 transition-colors hover:bg-wash hover:text-ink"
-            >
-              {l.label}
-            </a>
-          ))}
-        </nav>
-        <span className="grow" />
-        <ThemeToggle />
-        <Link to="/login" className="btn btn-ghost hidden sm:inline-flex">
-          Log in
-        </Link>
-        <Link to="/register" className="btn btn-primary">
-          Start free
-        </Link>
-      </div>
-    </header>
-  )
-}
-
 function Hero() {
-  const { push } = useToast()
   return (
     <section className="mx-auto grid max-w-[1160px] items-center gap-12 px-6 py-16 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:py-24">
       <div className="stack gap-6">
@@ -72,20 +34,20 @@ function Hero() {
           signal, distilled for your dream role.
         </p>
         <div className="flex flex-wrap items-center gap-3">
-          <Link to="/register" className="btn btn-primary h-10 px-5 text-[15px]">
+          <CustomLink variant="unstyled" to="/register" className="btn btn-primary h-10 px-5 text-[15px]">
             Start learning free
             <Icon name="arrowRight" size={15} />
-          </Link>
-          <button
+          </CustomLink>
+          <CustomButton variant="unstyled"
             type="button"
             className="btn btn-secondary h-10 gap-2 px-5 text-[15px]"
-            onClick={() =>
-              push({ title: 'Demo reel queued', description: 'Video playback is disabled in this preview.', tone: 'neutral' })
+            onClick={() => null
+              // push({ title: 'Demo reel queued', description: 'Video playback is disabled in this preview.', tone: 'neutral' })
             }
           >
             <Icon name="play" size={13} />
             Watch demo <span className="t-code-tag text-ink-3">(2:14)</span>
-          </button>
+          </CustomButton>
         </div>
         <div className="flex flex-wrap items-center gap-x-7 gap-y-2 pt-2 text-ink-3">
           {['Google', 'Meta', 'Stripe', 'Amazon', 'Netflix'].map((c) => (
@@ -187,10 +149,10 @@ function Roadmap() {
               An expert roadmap from array two-pointers to dynamic programming.
             </h2>
           </div>
-          <Link to="/register" className="link t-ui-med inline-flex items-center gap-1.5">
+          <CustomLink to="/register" className="link t-ui-med inline-flex items-center gap-1.5">
             View full curriculum
             <Icon name="arrowRight" size={14} />
-          </Link>
+          </CustomLink>
         </div>
         <div className="mt-10 grid gap-4 md:grid-cols-3">
           {LANDING_ROADMAP.map((r) => (
@@ -201,13 +163,13 @@ function Roadmap() {
               </div>
               <h3 className="text-[17px] leading-6 font-semibold text-ink">{r.title}</h3>
               <p className="t-ui text-ink-2">{r.text}</p>
-              <Link
+              <CustomLink
                 to="/register"
                 className="t-ui-med mt-1 inline-flex items-center gap-1.5 text-accent hover:underline"
               >
                 Start chapter
                 <Icon name="arrowRight" size={13} />
-              </Link>
+              </CustomLink>
             </article>
           ))}
         </div>
@@ -263,10 +225,10 @@ function EngineSection() {
             </li>
           ))}
         </ul>
-        <Link to="/register" className="btn btn-secondary w-fit gap-2">
+        <CustomLink variant="unstyled" to="/register" className="btn btn-secondary w-fit gap-2">
           See the profiler
           <Icon name="arrowRight" size={14} />
-        </Link>
+        </CustomLink>
       </div>
     </section>
   )
@@ -302,10 +264,10 @@ function SystemDesignSection() {
               </li>
             ))}
           </ul>
-          <Link to="/register" className="btn btn-secondary w-fit gap-2">
+          <CustomLink variant="unstyled" to="/register" className="btn btn-secondary w-fit gap-2">
             Explore design tracks
             <Icon name="arrowRight" size={14} />
-          </Link>
+          </CustomLink>
         </div>
 
         <div className="code-window">
@@ -344,7 +306,6 @@ function SystemDesignSection() {
 }
 
 function Pricing() {
-  const { push } = useToast()
   return (
     <section id="pricing" className="mx-auto max-w-[1160px] scroll-mt-20 px-6 py-20">
       <div className="mx-auto max-w-[680px] text-center">
@@ -377,17 +338,17 @@ function Pricing() {
               <span className="t-page-title tnum text-ink">{plan.price}</span>
               <span className="t-ui text-ink-3">{plan.period}</span>
             </div>
-            <button
+            <CustomButton variant="unstyled"
               type="button"
               className={cx('btn btn-block', plan.featured ? 'btn-primary' : 'btn-secondary')}
-              onClick={() =>
-                plan.name === 'Teams & Bootcamps'
-                  ? push({ title: 'Sales will reach out shortly', description: 'Enterprise plans are demo-only in this build.', tone: 'neutral' })
-                  : undefined
+              onClick={() => null
+                // plan.name === 'Teams & Bootcamps'
+                //   ? push({ title: 'Sales will reach out shortly', description: 'Enterprise plans are demo-only in this build.', tone: 'neutral' })
+                //   : undefined
               }
             >
               {plan.cta}
-            </button>
+            </CustomButton>
             <ul className="stack gap-2.5 border-t border-hair pt-5">
               {plan.features.map((f) => (
                 <li key={f} className="flex items-start gap-2.5 t-ui text-ink-2">
@@ -428,7 +389,7 @@ function Faq() {
             const isOpen = open === i
             return (
               <div key={item.q} className="border-b border-hair">
-                <button
+                <CustomButton variant="unstyled"
                   type="button"
                   className="flex w-full items-center justify-between gap-4 py-4 text-left"
                   aria-expanded={isOpen}
@@ -443,7 +404,7 @@ function Faq() {
                       isOpen && 'rotate-180',
                     )}
                   />
-                </button>
+                </CustomButton>
                 {isOpen && (
                   <p className="t-ui anim-fade -mt-1 max-w-[660px] pb-4 text-ink-2">{item.a}</p>
                 )}
@@ -465,14 +426,14 @@ function Cta() {
       <p className="t-reading mx-auto mt-3 max-w-[560px] opacity-90" style={{ color: 'var(--on-accent)' }}>
         Join 10,000+ candidates practicing smarter with adaptive feedback — every problem, every day.
       </p>
-      <Link
+      <CustomLink variant="unstyled"
         to="/register"
         className="btn mx-auto mt-7 inline-flex h-10 px-6 text-[15px]"
         style={{ background: 'var(--on-accent)', color: 'var(--accent)' }}
       >
         Start Practicing Free
         <Icon name="arrowRight" size={15} />
-      </Link>
+      </CustomLink>
       <p className="t-caption mt-5 opacity-80" style={{ color: 'var(--on-accent)' }}>
         No credit card required · Free forever tier · Cancel anytime
       </p>
@@ -481,7 +442,7 @@ function Cta() {
 }
 
 const FOOTER_COLUMNS = [
-  { title: 'Product', links: ['Problems', 'Tracks', 'Contests', 'Editorials'] },
+  { title: 'Product', links: ['Problems', 'Features', 'Pricing'] },
   { title: 'Resources', links: ['Docs', 'API', 'Status', 'Changelog'] },
   { title: 'Company', links: ['About', 'Careers', 'Privacy', 'Terms'] },
 ]
@@ -491,9 +452,9 @@ function SiteFooter() {
     <footer className="border-t border-hair bg-canvas">
       <div className="mx-auto grid max-w-[1160px] gap-10 px-6 py-14 md:grid-cols-[1.6fr_repeat(3,1fr)]">
         <div className="stack max-w-[300px] gap-4">
-          <Link to="/" aria-label="CodeForge home">
+          <CustomLink variant="unstyled" to="/" aria-label="CodeForge home">
             <Logo size={26} />
-          </Link>
+          </CustomLink>
           <p className="t-ui text-ink-2">
             The quiet, content-first practice notebook for engineers. Built for deep comprehension,
             not streak anxiety.
@@ -532,8 +493,7 @@ function SiteFooter() {
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-canvas text-ink">
-      <SiteNav />
+    <div className="min-h-[calc(100vh-3.5rem)] bg-canvas text-ink">
       <main>
         <Hero />
         <StatsBand />

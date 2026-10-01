@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '../components/icons'
 import { CodeView } from '../components/Code'
 import { DistributionCurve } from '../components/charts'
-import { DifficultyBadge, EmptyState, Logo, ThemeToggle, cx } from '../components/ui'
+import { DifficultyBadge, EmptyState, cx } from '../components/ui'
 import { EngineStatusBar } from '../components/shell'
-import { useToast } from '../toast'
 import { TWO_SUM_PY, TWO_SUM_SUBMISSIONS, problemById } from '../data'
 import type { SubmissionStatus } from '../data'
+import CustomButton from '../components/ui/CustomButton'
+import CustomLink from '../components/ui/CustomLink'
 
 const PAGE_SIZE = 8
 
@@ -38,7 +39,6 @@ function statusIcon(status: SubmissionStatus) {
 export default function Submissions() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { push } = useToast()
   const problem = problemById(id ?? '') ?? problemById('two-sum')!
 
   const [lang, setLang] = useState('All languages')
@@ -68,70 +68,62 @@ export default function Submissions() {
   const bestMemory = Math.min(...all.filter((s) => s.memoryMb !== null).map((s) => s.memoryMb as number))
 
   return (
-    <div className="flex min-h-screen flex-col bg-canvas">
+    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col bg-canvas">
       {/* Workspace-style topbar */}
       <header className="flex h-11 flex-none items-center gap-3 border-b border-hair px-3">
-        <Link to="/problems" aria-label="CodeForge home">
-          <Logo size={24} />
-        </Link>
-        <span className="hidden h-4 w-px bg-hair sm:block" aria-hidden />
         <div className="flex items-center gap-0.5">
-          <button
+          <CustomButton variant="unstyled"
             type="button"
             className="icon-btn h-7 w-7"
             aria-label="Previous problem"
             onClick={() => navigate(`/problems/valid-parentheses`)}
           >
             <Icon name="chevronLeft" size={15} />
-          </button>
-          <button
+          </CustomButton>
+          <CustomButton variant="unstyled"
             type="button"
             className="icon-btn h-7 w-7"
             aria-label="Next problem"
             onClick={() => navigate(`/problems/lru-cache`)}
           >
             <Icon name="chevronRight" size={15} />
-          </button>
+          </CustomButton>
         </div>
-        <Link to="/problems" className="flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-wash">
+        <CustomLink variant="unstyled" to="/problems" className="flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-wash">
           <span className="t-ui-med text-ink">
             {problem.num}. {problem.title}
           </span>
           <Icon name="chevronDown" size={13} className="text-ink-3" />
-        </Link>
+        </CustomLink>
         <DifficultyBadge difficulty={problem.difficulty} className="hidden sm:inline-flex" />
         <nav className="ml-2 hidden items-center gap-1 lg:flex" aria-label="Problem views">
-          <Link to={`/problems/${problem.id}`} className="rounded px-2.5 py-1 text-[14px] text-ink-2 hover:bg-wash hover:text-ink">
+          <CustomLink variant="unstyled" to={`/problems/${problem.id}`} className="rounded px-2.5 py-1 text-[14px] text-ink-2 hover:bg-wash hover:text-ink">
             Problems
-          </Link>
+          </CustomLink>
           <span className="rounded bg-wash px-2.5 py-1 text-[14px] font-medium text-ink">Submissions</span>
-          <Link to="/discuss" className="rounded px-2.5 py-1 text-[14px] text-ink-2 hover:bg-wash hover:text-ink">
-            Discuss
-          </Link>
         </nav>
         <span className="grow" />
-        <ThemeToggle />
-        <Link to={`/problems/${problem.id}`} className="btn btn-secondary btn-sm">
+        <CustomLink variant="unstyled" to={`/problems/${problem.id}`} className="btn btn-secondary btn-sm">
           <Icon name="play" size={12} />
           Run
           <span className="kbd">⌘↵</span>
-        </Link>
-        <Link to={`/problems/${problem.id}`} className="btn btn-primary btn-sm">
+        </CustomLink>
+        <CustomLink variant="unstyled" to={`/problems/${problem.id}`} className="btn btn-primary btn-sm">
           <Icon name="upload" size={13} />
           Submit
-        </Link>
+        </CustomLink>
       </header>
 
       {/* Breadcrumb + controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-hair px-4 py-2.5">
         <nav className="t-ui flex items-center gap-1.5 text-ink-3" aria-label="Breadcrumb">
-          <Link to="/problems" className="hover:text-ink">
+          <CustomLink to="/problems" className="hover:text-ink">
             Problems
-          </Link>
+          </CustomLink>
           <span>/</span>
-          <Link to={`/problems/${problem.id}`} className="hover:text-ink">
+          <CustomLink to={`/problems/${problem.id}`} className="hover:text-ink">
             {problem.num}. {problem.title}
-          </Link>
+          </CustomLink>
           <span>/</span>
           <span className="text-ink">Submissions</span>
         </nav>
@@ -162,10 +154,10 @@ export default function Submissions() {
               <option key={o}>{o}</option>
             ))}
           </select>
-          <Link to={`/problems/${problem.id}`} className="btn btn-primary h-8">
+          <CustomLink variant="unstyled" to={`/problems/${problem.id}`} className="btn btn-primary h-8">
             Problem Workspace
             <Icon name="arrowRight" size={14} />
-          </Link>
+          </CustomLink>
         </div>
       </div>
 
@@ -289,16 +281,16 @@ export default function Submissions() {
                 of <span className="tnum text-ink-2">{filtered.length}</span> submissions
               </span>
               <div className="flex items-center gap-1">
-                <button
+                <CustomButton variant="unstyled"
                   type="button"
                   className="btn btn-ghost btn-sm h-7"
                   disabled={currentPage <= 1}
                   onClick={() => setPage(currentPage - 1)}
                 >
                   <Icon name="chevronLeft" size={13} />
-                </button>
+                </CustomButton>
                 {Array.from({ length: totalPages }).map((_, i) => (
-                  <button
+                  <CustomButton variant="unstyled"
                     key={i}
                     type="button"
                     className={cx(
@@ -308,16 +300,16 @@ export default function Submissions() {
                     onClick={() => setPage(i + 1)}
                   >
                     {i + 1}
-                  </button>
+                  </CustomButton>
                 ))}
-                <button
+                <CustomButton variant="unstyled"
                   type="button"
                   className="btn btn-ghost btn-sm h-7"
                   disabled={currentPage >= totalPages}
                   onClick={() => setPage(currentPage + 1)}
                 >
                   <Icon name="chevronRight" size={13} />
-                </button>
+                </CustomButton>
               </div>
             </div>
           )}
@@ -328,7 +320,7 @@ export default function Submissions() {
           <div className="flex items-center justify-between gap-3">
             <h2 className="t-h3 text-ink">Submission Details</h2>
             {selected ? (
-              <button
+              <CustomButton variant="unstyled"
                 type="button"
                 className="btn btn-ghost btn-sm h-7"
                 onClick={() => setSelectedId(null)}
@@ -336,7 +328,7 @@ export default function Submissions() {
               >
                 <span className="kbd">ESC</span>
                 <Icon name="x" size={13} />
-              </button>
+              </CustomButton>
             ) : null}
           </div>
 
@@ -444,21 +436,21 @@ export default function Submissions() {
                   <span className="tag tag-gray">{selected.language}</span>
                   <span className="t-code-tag text-ink-3">hashmap_twosum.py</span>
                   <span className="grow" />
-                  <button
+                  <CustomButton variant="unstyled"
                     type="button"
                     className="btn btn-ghost btn-sm h-7"
                     onClick={() => {
                       navigator.clipboard?.writeText(TWO_SUM_PY).catch(() => undefined)
-                      push({ title: 'Code copied', tone: 'success' })
+                      // push({ title: 'Code copied', tone: 'success' })
                     }}
                   >
                     <Icon name="copy" size={13} />
                     Copy
-                  </button>
-                  <Link to={`/problems/${problem.id}`} className="btn btn-primary btn-sm h-7">
+                  </CustomButton>
+                  <CustomLink variant="unstyled" to={`/problems/${problem.id}`} className="btn btn-primary btn-sm h-7">
                     <Icon name="terminalSquare" size={13} />
                     Workspace
-                  </Link>
+                  </CustomLink>
                 </div>
                 <div className="bg-code">
                   <CodeView code={TWO_SUM_PY} lang="python" />

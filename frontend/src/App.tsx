@@ -1,13 +1,7 @@
 import { useEffect } from 'react'
-import type { ReactNode } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { ROLE_HOME, useAuth } from './auth'
-import { AuthProvider } from './auth'
-import { ThemeProvider } from './theme'
-import { ToastProvider } from './toast'
+import { Route, Routes, useLocation } from 'react-router-dom'
 import { Icon } from './components/icons'
-import { Logo } from './components/ui'
-import { Link } from 'react-router-dom'
+
 
 import Landing from './pages/Landing'
 import Login from './pages/auth/Login'
@@ -18,29 +12,13 @@ import Problems from './pages/Problems'
 import Workspace from './pages/Workspace'
 import Submissions from './pages/Submissions'
 import Profile from './pages/Profile'
-import { Contests, Discuss, InterviewPrep } from './pages/PortalPages'
 import AdminDashboard from './pages/admin/Dashboard'
 import { AdminProblems, AdminSubmissions, AdminUsers } from './pages/admin/AdminPages'
 import { AdminHealth, AdminSettings } from './pages/admin/AdminOps'
 import AddProblem from './pages/admin/AddProblem'
-
-/* ---------------- guards ---------------- */
-
-/** Requires a session; `adminOnly` further restricts to the admin role. */
-function RequireAuth({ children, adminOnly = false }: { children: ReactNode; adminOnly?: boolean }) {
-  const { user } = useAuth()
-  const location = useLocation()
-  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
-  if (adminOnly && user.role !== 'admin') return <Navigate to="/problems" replace />
-  return <>{children}</>
-}
-
-/** Keeps signed-in visitors away from the auth screens. */
-function GuestOnly({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
-  if (user) return <Navigate to={ROLE_HOME[user.role]} replace />
-  return <>{children}</>
-}
+import CustomLink from './components/ui/CustomLink'
+import AuthGuard, { GuestGuard } from './components/AuthGuard'
+import AppNavbar from './components/AppNavbar'
 
 /* ---------------- extras ---------------- */
 
@@ -54,12 +32,7 @@ function ScrollToTop() {
 
 function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col bg-canvas">
-      <header className="flex h-11 items-center border-b border-hair px-4">
-        <Link to="/" aria-label="CodeForge home">
-          <Logo size={24} />
-        </Link>
-      </header>
+    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col bg-canvas">
       <div className="empty-state grow">
         <span className="empty-icon">
           <Icon name="search" size={48} strokeWidth={1.2} />
@@ -69,12 +42,12 @@ function NotFound() {
           The route you followed does not exist — it may have been renamed or archived.
         </p>
         <div className="mt-3 flex gap-2.5">
-          <Link to="/" className="btn btn-primary">
+          <CustomLink variant="unstyled" to="/" className="btn btn-primary">
             Back home
-          </Link>
-          <Link to="/problems" className="btn btn-secondary">
+          </CustomLink>
+          <CustomLink variant="unstyled" to="/problems" className="btn btn-secondary">
             Problem bank
-          </Link>
+          </CustomLink>
         </div>
       </div>
     </div>
@@ -86,32 +59,27 @@ function NotFound() {
 function AppRoutes() {
   return (
     <>
+      <AppNavbar />
       <ScrollToTop />
       <Routes>
-        {/* Public */}
         <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<GuestOnly><Login /></GuestOnly>} />
-        <Route path="/register" element={<GuestOnly><Register /></GuestOnly>} />
-        <Route path="/forgot-password" element={<GuestOnly><ForgotPassword /></GuestOnly>} />
-        <Route path="/reset-password" element={<GuestOnly><ResetPassword /></GuestOnly>} />
+        <Route path="/login" element={<GuestGuard><Login /></GuestGuard>} />
+        <Route path="/register" element={<GuestGuard><Register /></GuestGuard>} />
+        <Route path="/forgot-password" element={<GuestGuard><ForgotPassword /></GuestGuard>} />
+        <Route path="/reset-password" element={<GuestGuard><ResetPassword /></GuestGuard>} />
 
-        {/* User portal (both roles may browse) */}
-        <Route path="/problems" element={<RequireAuth><Problems /></RequireAuth>} />
-        <Route path="/problems/:id" element={<RequireAuth><Workspace /></RequireAuth>} />
-        <Route path="/problems/:id/submissions" element={<RequireAuth><Submissions /></RequireAuth>} />
-        <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
-        <Route path="/contests" element={<RequireAuth><Contests /></RequireAuth>} />
-        <Route path="/discuss" element={<RequireAuth><Discuss /></RequireAuth>} />
-        <Route path="/prep" element={<RequireAuth><InterviewPrep /></RequireAuth>} />
+        <Route path="/problems" element={<Problems />} />
+        <Route path="/problems/:id" element={<Workspace />} />
+        <Route path="/problems/:id/submissions" element={<Submissions />} />
+        <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
 
-        {/* Admin portal */}
-        <Route path="/admin" element={<RequireAuth adminOnly><AdminDashboard /></RequireAuth>} />
-        <Route path="/admin/problems" element={<RequireAuth adminOnly><AdminProblems /></RequireAuth>} />
-        <Route path="/admin/problems/new" element={<RequireAuth adminOnly><AddProblem /></RequireAuth>} />
-        <Route path="/admin/users" element={<RequireAuth adminOnly><AdminUsers /></RequireAuth>} />
-        <Route path="/admin/submissions" element={<RequireAuth adminOnly><AdminSubmissions /></RequireAuth>} />
-        <Route path="/admin/health" element={<RequireAuth adminOnly><AdminHealth /></RequireAuth>} />
-        <Route path="/admin/settings" element={<RequireAuth adminOnly><AdminSettings /></RequireAuth>} />
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/problems" element={<AdminProblems />} />
+        <Route path="/admin/problems/new" element={<AddProblem />} />
+        <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/submissions" element={<AdminSubmissions />} />
+        <Route path="/admin/health" element={<AdminHealth />} />
+        <Route path="/admin/settings" element={<AdminSettings />} />
 
         {/* Fallback */}
         <Route path="*" element={<NotFound />} />
@@ -120,16 +88,10 @@ function AppRoutes() {
   )
 }
 
+
+
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <ToastProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </ToastProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <AppRoutes />
   )
 }

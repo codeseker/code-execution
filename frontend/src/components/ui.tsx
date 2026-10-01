@@ -3,6 +3,7 @@ import { useTheme } from '../theme'
 import { Icon } from './icons'
 import type { Difficulty, ProblemStatus } from '../data'
 import { DIFFICULTY_TONE } from '../data'
+import CustomButton from './ui/CustomButton'
 
 /** Tiny class-name joiner. */
 export function cx(...parts: Array<string | false | null | undefined>): string {
@@ -41,7 +42,7 @@ export function Logo({
 export function ThemeToggle({ className }: { className?: string }) {
   const { resolved, toggle } = useTheme()
   return (
-    <button
+    <CustomButton variant="unstyled"
       type="button"
       className={cx('icon-btn tip', className)}
       data-tip="Toggle theme ⌘⇧L"
@@ -49,7 +50,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       onClick={toggle}
     >
       <Icon name={resolved === 'dark' ? 'sun' : 'moon'} size={17} />
-    </button>
+    </CustomButton>
   )
 }
 
@@ -116,14 +117,14 @@ export function Tag({
     <span className={cx('tag', `tag-${tone}`, className)}>
       {children}
       {onRemove && (
-        <button
+        <CustomButton variant="unstyled"
           type="button"
           className="ml-0.5 rounded-xs opacity-60 hover:opacity-100"
           aria-label="Remove tag"
           onClick={onRemove}
         >
           <Icon name="x" size={10} strokeWidth={2.4} />
-        </button>
+        </CustomButton>
       )}
     </span>
   )
@@ -218,7 +219,7 @@ export function Segmented<T extends string>({
   return (
     <div className="seg" role="tablist" aria-label={ariaLabel}>
       {options.map((o) => (
-        <button
+        <CustomButton variant="unstyled"
           key={o.value}
           type="button"
           role="tab"
@@ -227,7 +228,7 @@ export function Segmented<T extends string>({
           onClick={() => onChange(o.value)}
         >
           {o.label}
-        </button>
+        </CustomButton>
       ))}
     </div>
   )

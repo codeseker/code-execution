@@ -1,23 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useTheme } from '../theme'
-import { useToast } from '../toast'
 import { Icon } from './icons'
 import { Avatar, Logo, ThemeToggle, cx } from './ui'
 import { PROBLEMS } from '../data'
 import type { IconName } from './icons'
+import CustomButton from './ui/CustomButton'
+import CustomLink from './ui/CustomLink'
 
 const PORTAL_NAV: Array<{ label: string; to: string }> = [
   { label: 'Problems', to: '/problems' },
-  { label: 'Contests', to: '/contests' },
-  { label: 'Discuss', to: '/discuss' },
-  { label: 'Interview Prep', to: '/prep' },
 ]
 
 const NOTIFICATIONS = [
   { title: 'Daily Challenge is live', body: '146. LRU Cache · +20 XP if you solve it today.', unread: true },
-  { title: 'Weekly Contest 402 starts soon', body: 'Starts in 2d 14h — registration open.', unread: true },
   { title: 'Editorial published', body: 'New O(n) walkthrough for Two Sum.', unread: false },
 ]
 
@@ -29,7 +25,6 @@ type PaletteAction = { group: string; icon: IconName; label: string; hint?: stri
 
 function CommandPalette({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate()
-  const { user, logout } = useAuth()
   const { toggle } = useTheme()
   const inputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
@@ -48,21 +43,11 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
         run: () => navigate(n.to),
       })),
       { group: 'Navigate', icon: 'user' as IconName, label: 'Profile', run: () => navigate('/profile') },
+      { group: 'Navigate', icon: 'grid' as IconName, label: 'Admin console', run: () => navigate('/admin') },
+      { group: 'Navigate', icon: 'user' as IconName, label: 'Log in', run: () => navigate('/login') },
     ]
-    if (user?.role === 'admin') {
-      navActions.push({ group: 'Navigate', icon: 'grid' as IconName, label: 'Admin console', run: () => navigate('/admin') })
-    }
     const pageActions: PaletteAction[] = [
       { group: 'Actions', icon: 'moon' as IconName, label: 'Toggle light / dark theme', hint: '⌘⇧L', run: toggle },
-      {
-        group: 'Actions',
-        icon: 'lock' as IconName,
-        label: 'Log out',
-        run: () => {
-          logout()
-          navigate('/')
-        },
-      },
     ]
     const problemActions: PaletteAction[] = PROBLEMS.filter(
       (p) =>
@@ -83,7 +68,7 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
     return [...problemActions, ...navActions, ...pageActions].filter(
       (a) => !q || a.label.toLowerCase().includes(q.toLowerCase()) || a.group === 'Problems',
     )
-  }, [query, navigate, user, logout, toggle])
+  }, [query, navigate, toggle])
 
   // Close on Escape; Enter runs the first hit.
   useEffect(() => {
@@ -137,7 +122,7 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
             <div key={group} className="mb-1.5 last:mb-0">
               <p className="t-overline px-2 pt-2 pb-1 text-ink-3">{group}</p>
               {items.map((a) => (
-                <button
+                <CustomButton variant="unstyled"
                   key={group + a.label}
                   type="button"
                   className="menu-item h-8"
@@ -149,7 +134,7 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
                   <Icon name={a.icon} size={15} className="text-ink-3" />
                   <span className="grow truncate text-left">{a.label}</span>
                   {a.hint && <span className="tag tag-gray">{a.hint}</span>}
-                </button>
+                </CustomButton>
               ))}
             </div>
           ))}
@@ -169,10 +154,8 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
 /* ------------------------------------------------------------------ */
 
 export function PortalTopbar({ active }: { active?: string }) {
-  const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const { push } = useToast()
   const [palette, setPalette] = useState(false)
   const [panel, setPanel] = useState<'none' | 'bell' | 'user' | 'mobile'>('none')
 
@@ -193,30 +176,24 @@ export function PortalTopbar({ active }: { active?: string }) {
     setPanel('none')
   }, [location.pathname])
 
-  const doLogout = () => {
-    logout()
-    push({ title: 'Signed out', tone: 'neutral' })
-    navigate('/')
-  }
-
   return (
     <header className="sticky top-0 z-40 border-b border-hair bg-canvas">
       <div className="flex h-11 items-center gap-3 px-4">
-        <button
+        <CustomButton variant="unstyled"
           type="button"
           className="icon-btn md:hidden"
           aria-label="Open navigation"
           onClick={() => setPanel(panel === 'mobile' ? 'none' : 'mobile')}
         >
           <Icon name="menu" size={17} />
-        </button>
-        <Link to="/problems" aria-label="CodeForge home">
+        </CustomButton>
+        <CustomLink variant="unstyled" to="/problems" aria-label="CodeForge home">
           <Logo size={24} />
-        </Link>
+        </CustomLink>
         <span className="hidden h-4 w-px bg-hair md:block" aria-hidden />
         <nav className="hidden items-center gap-1 md:flex" aria-label="Portal">
           {PORTAL_NAV.map((n) => (
-            <Link
+            <CustomLink variant="unstyled"
               key={n.to}
               to={n.to}
               className={cx(
@@ -225,14 +202,14 @@ export function PortalTopbar({ active }: { active?: string }) {
               )}
             >
               {n.label}
-            </Link>
+            </CustomLink>
           ))}
         </nav>
 
         <span className="grow" />
 
         {/* Search trigger (opens ⌘K palette) */}
-        <button
+        <CustomButton variant="unstyled"
           type="button"
           className="input hidden h-7 w-[240px] cursor-pointer items-center gap-2 border-hair text-left text-ink-4 lg:flex"
           onClick={() => setPalette(true)}
@@ -241,20 +218,20 @@ export function PortalTopbar({ active }: { active?: string }) {
           <Icon name="search" size={13} />
           <span className="grow text-[13px]">Search problems…</span>
           <span className="kbd">⌘K</span>
-        </button>
-        <button
+        </CustomButton>
+        <CustomButton variant="unstyled"
           type="button"
           className="icon-btn lg:hidden"
           aria-label="Search (Command K)"
           onClick={() => setPalette(true)}
         >
           <Icon name="search" size={16} />
-        </button>
+        </CustomButton>
 
         <ThemeToggle />
 
         <div className="relative">
-          <button
+          <CustomButton variant="unstyled"
             type="button"
             className="icon-btn relative"
             aria-label="Notifications"
@@ -263,10 +240,10 @@ export function PortalTopbar({ active }: { active?: string }) {
           >
             <Icon name="bell" size={16} />
             <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
-          </button>
+          </CustomButton>
           {panel === 'bell' && (
             <>
-              <button
+              <CustomButton variant="unstyled"
                 type="button"
                 className="fixed inset-0 z-40 cursor-default"
                 aria-label="Close notifications"
@@ -292,20 +269,20 @@ export function PortalTopbar({ active }: { active?: string }) {
         </div>
 
         <div className="relative">
-          <button
+          <CustomButton variant="unstyled"
             type="button"
             className="flex items-center gap-2 rounded px-1.5 py-1 transition-colors hover:bg-wash"
             aria-haspopup="menu"
             aria-expanded={panel === 'user'}
             onClick={() => setPanel(panel === 'user' ? 'none' : 'user')}
           >
-            <Avatar initials={user?.initials ?? 'ND'} size={24} />
-            <span className="t-ui-med hidden text-ink sm:block">{user?.handle ?? 'Guest'}</span>
+            <Avatar initials="GU" size={24} />
+            <span className="t-ui-med hidden text-ink sm:block">Guest</span>
             <Icon name="chevronDown" size={13} className="text-ink-3" />
-          </button>
+          </CustomButton>
           {panel === 'user' && (
             <>
-              <button
+              <CustomButton variant="unstyled"
                 type="button"
                 className="fixed inset-0 z-40 cursor-default"
                 aria-label="Close menu"
@@ -313,25 +290,22 @@ export function PortalTopbar({ active }: { active?: string }) {
               />
               <div className="absolute right-0 z-50 mt-2 w-[240px] popover anim-fade-up" role="menu">
                 <div className="border-b border-hair px-2 pt-1.5 pb-2">
-                  <p className="t-ui-med truncate text-ink">{user?.name}</p>
-                  <p className="t-caption truncate text-ink-2">{user?.email}</p>
-                  <span className="tag tag-blue mt-1.5">{user?.role}</span>
+                  <p className="t-ui-med truncate text-ink">Guest</p>
+                  <p className="t-caption truncate text-ink-2">Public access</p>
                 </div>
                 <div className="pt-1">
-                  <button type="button" className="menu-item" role="menuitem" onClick={() => navigate('/profile')}>
+                  <CustomButton variant="unstyled" type="button" className="menu-item" role="menuitem" onClick={() => navigate('/profile')}>
                     <Icon name="user" size={15} className="text-ink-3" />
                     Profile
-                  </button>
-                  {user?.role === 'admin' && (
-                    <button type="button" className="menu-item" role="menuitem" onClick={() => navigate('/admin')}>
-                      <Icon name="grid" size={15} className="text-ink-3" />
-                      Admin console
-                    </button>
-                  )}
-                  <button type="button" className="menu-item" role="menuitem" onClick={doLogout}>
-                    <Icon name="lock" size={15} className="text-ink-3" />
-                    Log out
-                  </button>
+                  </CustomButton>
+                  <CustomButton variant="unstyled" type="button" className="menu-item" role="menuitem" onClick={() => navigate('/admin')}>
+                    <Icon name="grid" size={15} className="text-ink-3" />
+                    Admin console
+                  </CustomButton>
+                  <CustomLink variant="unstyled" to="/login" className="menu-item" role="menuitem" onClick={() => setPanel('none')}>
+                    <Icon name="user" size={15} className="text-ink-3" />
+                    Log in
+                  </CustomLink>
                 </div>
               </div>
             </>
@@ -343,13 +317,13 @@ export function PortalTopbar({ active }: { active?: string }) {
       {panel === 'mobile' && (
         <nav className="border-t border-hair px-3 py-2 md:hidden" aria-label="Mobile">
           {PORTAL_NAV.map((n) => (
-            <Link key={n.to} to={n.to} className="side-row">
+            <CustomLink variant="unstyled" key={n.to} to={n.to} className="side-row">
               {n.label}
-            </Link>
+            </CustomLink>
           ))}
-          <Link to="/profile" className="side-row">
+          <CustomLink variant="unstyled" to="/profile" className="side-row">
             Profile
-          </Link>
+          </CustomLink>
         </nav>
       )}
 

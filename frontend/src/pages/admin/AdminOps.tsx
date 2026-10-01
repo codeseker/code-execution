@@ -2,9 +2,9 @@ import { useState } from 'react'
 import AdminLayout from './AdminLayout'
 import { Icon } from '../../components/icons'
 import { EmptyState, Progress, cx } from '../../components/ui'
-import { useToast } from '../../toast'
 import { useTheme } from '../../theme'
 import type { ThemeMode } from '../../theme'
+import CustomButton from '../../components/ui/CustomButton'
 
 /* ================================================================== */
 /* Admin · System Health                                               */
@@ -26,7 +26,7 @@ const REGIONS = [
 ]
 
 export function AdminHealth() {
-  const { push } = useToast()
+
   return (
     <AdminLayout>
       <div className="mx-auto w-full max-w-[1440px] stack gap-5 px-4 py-6 lg:px-8">
@@ -40,14 +40,14 @@ export function AdminHealth() {
                 All systems operational
               </span>
             </div>
-            <button
+            <CustomButton variant="unstyled"
               type="button"
               className="btn btn-secondary"
-              onClick={() => push({ title: 'Health checks re-run', description: '6/6 probes answered.', tone: 'success' })}
+              // onClick={() => push({ title: 'Health checks re-run', description: '6/6 probes answered.', tone: 'success' })}
             >
               <Icon name="refresh" size={14} />
               Run probes
-            </button>
+            </CustomButton>
           </div>
         </div>
 
@@ -153,7 +153,7 @@ export function AdminHealth() {
 /* ================================================================== */
 
 export function AdminSettings() {
-  const { push } = useToast()
+
   const { mode, setMode } = useTheme()
   const [siteName, setSiteName] = useState('CodeForge')
   const [supportEmail, setSupportEmail] = useState('support@codeforge.io')
@@ -221,7 +221,7 @@ export function AdminSettings() {
             </div>
             <div className="seg" role="radiogroup" aria-label="Theme">
               {(['light', 'dark', 'system'] as ThemeMode[]).map((m) => (
-                <button
+                <CustomButton variant="unstyled"
                   key={m}
                   type="button"
                   role="radio"
@@ -233,7 +233,7 @@ export function AdminSettings() {
                     <Icon name={m === 'light' ? 'sun' : m === 'dark' ? 'moon' : 'grid'} size={13} />
                     {m}
                   </span>
-                </button>
+                </CustomButton>
               ))}
             </div>
           </div>
@@ -306,34 +306,36 @@ export function AdminSettings() {
               <p className="t-ui-med text-ink">Reset demo data</p>
               <p className="t-caption text-ink-2">Restores seeds for problems, users and submission history.</p>
             </div>
-            <button
+            <CustomButton variant="unstyled"
               type="button"
               className="btn btn-destructive-solid"
-              onClick={() => push({ title: 'Demo data reset', description: 'Seeds restored to factory state.', tone: 'error' })}
+              // onClick={() => push({ title: 'Demo data reset', description: 'Seeds restored to factory state.', tone: 'error' })}
             >
               Reset data
-            </button>
+            </CustomButton>
           </div>
         </section>
 
         {/* Save bar */}
         <div className="flex justify-end gap-2.5 pb-6">
-          <button type="button" className="btn btn-secondary" onClick={() => push({ title: 'Changes discarded', tone: 'neutral' })}>
+          <CustomButton variant="unstyled" type="button" className="btn btn-secondary"
+            // onClick={() => push({ title: 'Changes discarded', tone: 'neutral' })}
+            >
             Discard
-          </button>
-          <button
+          </CustomButton>
+          <CustomButton variant="unstyled"
             type="button"
             className="btn btn-primary"
-            onClick={() =>
-              push({
-                title: 'Settings saved',
-                description: `${siteName} · ${defaultLang} · ${timeout}s timeout`,
-                tone: 'success',
-              })
-            }
+          // onClick={() =>
+          //   push({
+          //     title: 'Settings saved',
+          //     description: `${siteName} · ${defaultLang} · ${timeout}s timeout`,
+          //     tone: 'success',
+          //   })
+          // }
           >
             Save changes
-          </button>
+          </CustomButton>
         </div>
       </div>
     </AdminLayout>

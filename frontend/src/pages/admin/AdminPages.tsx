@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+
 import AdminLayout from './AdminLayout'
 import { Icon } from '../../components/icons'
 import { DifficultyBadge, EmptyState, Tag, cx } from '../../components/ui'
-import { useToast } from '../../toast'
 import { ADMIN_SUBMISSIONS, ADMIN_USERS, PROBLEMS } from '../../data'
 import type { AdminUser, SubmissionStatus } from '../../data'
+import CustomButton from '../../components/ui/CustomButton'
+import CustomLink from '../../components/ui/CustomLink'
 
 function PageHead({
   crumbs,
@@ -46,7 +47,7 @@ function statusTone(status: SubmissionStatus) {
 type CatalogStatus = 'Live' | 'Draft' | 'Archived'
 
 export function AdminProblems() {
-  const { push } = useToast()
+  
   const [query, setQuery] = useState('')
   const [difficulty, setDifficulty] = useState('All')
   const [overrides, setOverrides] = useState<Record<string, CatalogStatus>>({})
@@ -70,7 +71,7 @@ export function AdminProblems() {
     const order: CatalogStatus[] = ['Live', 'Draft', 'Archived']
     const next = order[(order.indexOf(current) + 1) % order.length]
     setOverrides((o) => ({ ...o, [id]: next }))
-    push({ title: `Problem set to ${next}`, tone: next === 'Archived' ? 'neutral' : 'success' })
+    // push({ title: `Problem set to ${next}`, tone: next === 'Archived' ? 'neutral' : 'success' })
   }
 
   return (
@@ -82,18 +83,18 @@ export function AdminProblems() {
           meta={`${PROBLEMS.length} problems`}
           actions={
             <>
-              <button
+              <CustomButton variant="unstyled"
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => push({ title: 'Import queued', description: 'CSV importer is demo-only in this build.', tone: 'neutral' })}
+                // onClick={() => push({ title: 'Import queued', description: 'CSV importer is demo-only in this build.', tone: 'neutral' })}
               >
                 <Icon name="upload" size={14} />
                 Import CSV
-              </button>
-              <Link to="/admin/problems/new" className="btn btn-primary">
+              </CustomButton>
+              <CustomLink variant="unstyled" to="/admin/problems/new" className="btn btn-primary">
                 <Icon name="plus" size={14} />
                 New Problem
-              </Link>
+              </CustomLink>
             </>
           }
         />
@@ -143,9 +144,9 @@ export function AdminProblems() {
                     <tr key={p.id}>
                       <td className="t-code-tag pl-5 text-ink-3">{p.num}</td>
                       <td>
-                        <Link to={`/problems/${p.id}`} className="t-ui-med text-ink hover:text-accent">
+                        <CustomLink to={`/problems/${p.id}`} className="t-ui-med text-ink hover:text-accent">
                           {p.title}
-                        </Link>
+                        </CustomLink>
                       </td>
                       <td>
                         <DifficultyBadge difficulty={p.difficulty} />
@@ -161,7 +162,7 @@ export function AdminProblems() {
                       </td>
                       <td className="t-ui tnum hidden text-ink-2 md:table-cell">{p.acceptance.toFixed(1)}%</td>
                       <td>
-                        <button
+                        <CustomButton variant="unstyled"
                           type="button"
                           className={cx(
                             'pill',
@@ -172,30 +173,30 @@ export function AdminProblems() {
                         >
                           <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
                           {status}
-                        </button>
+                        </CustomButton>
                       </td>
                       <td className="pr-5 text-right">
                         <span className="flex justify-end gap-1">
-                          <Link
+                          <CustomLink variant="unstyled"
                             to="/admin/problems/new"
                             className="icon-btn tip"
                             data-tip="Edit"
                             aria-label={`Edit ${p.title}`}
                           >
                             <Icon name="pencil" size={15} />
-                          </Link>
-                          <button
+                          </CustomLink>
+                          <CustomButton variant="unstyled"
                             type="button"
                             className="icon-btn tip"
                             data-tip="Archive"
                             aria-label={`Archive ${p.title}`}
                             onClick={() => {
                               setOverrides((o) => ({ ...o, [p.id]: 'Archived' }))
-                              push({ title: 'Problem archived', description: p.title, tone: 'neutral' })
+                              // push({ title: 'Problem archived', description: p.title, tone: 'neutral' })
                             }}
                           >
                             <Icon name="folder" size={15} />
-                          </button>
+                          </CustomButton>
                         </span>
                       </td>
                     </tr>
@@ -222,7 +223,7 @@ export function AdminProblems() {
 /* ================================================================== */
 
 export function AdminUsers() {
-  const { push } = useToast()
+  
   const [query, setQuery] = useState('')
   const [role, setRole] = useState('All roles')
   const [state, setState] = useState<Record<string, AdminUser['status']>>({})
@@ -245,14 +246,14 @@ export function AdminUsers() {
           title="User Management"
           meta={`${ADMIN_USERS.length} accounts`}
           actions={
-            <button
+            <CustomButton variant="unstyled"
               type="button"
               className="btn btn-primary"
-              onClick={() => push({ title: 'Invite sent', description: 'A magic link was emailed to the invitee.', tone: 'success' })}
+              // onClick={() => push({ title: 'Invite sent', description: 'A magic link was emailed to the invitee.', tone: 'success' })}
             >
               <Icon name="plus" size={14} />
               Invite user
-            </button>
+            </CustomButton>
           }
         />
 
@@ -328,20 +329,20 @@ export function AdminUsers() {
                         </span>
                       </td>
                       <td className="pr-5 text-right">
-                        <button
+                        <CustomButton variant="unstyled"
                           type="button"
                           className={cx('btn btn-sm h-7', status === 'Suspended' ? 'btn-secondary' : 'btn-destructive')}
                           onClick={() => {
                             const next: AdminUser['status'] = status === 'Suspended' ? 'Active' : 'Suspended'
                             setState((s) => ({ ...s, [u.handle]: next }))
-                            push({
-                              title: next === 'Suspended' ? `${u.handle} suspended` : `${u.handle} restored`,
-                              tone: next === 'Suspended' ? 'error' : 'success',
-                            })
+                            // push({
+                            //   title: next === 'Suspended' ? `${u.handle} suspended` : `${u.handle} restored`,
+                            //   tone: next === 'Suspended' ? 'error' : 'success',
+                            // })
                           }}
                         >
                           {status === 'Suspended' ? 'Restore' : 'Suspend'}
-                        </button>
+                        </CustomButton>
                       </td>
                     </tr>
                   )
@@ -367,7 +368,7 @@ export function AdminUsers() {
 /* ================================================================== */
 
 export function AdminSubmissions() {
-  const { push } = useToast()
+  
   const [status, setStatus] = useState('All statuses')
   const [language, setLanguage] = useState('All languages')
 
@@ -386,14 +387,14 @@ export function AdminSubmissions() {
           title="Submission Stream"
           meta="1,842,910 total"
           actions={
-            <button
+            <CustomButton variant="unstyled"
               type="button"
               className="btn btn-secondary"
-              onClick={() => push({ title: 'Stream paused', description: 'Live updates are frozen for this view.', tone: 'neutral' })}
+              // onClick={() => push({ title: 'Stream paused', description: 'Live updates are frozen for this view.', tone: 'neutral' })}
             >
               <Icon name="history" size={14} />
               Pause stream
-            </button>
+            </CustomButton>
           }
         />
 
@@ -445,7 +446,7 @@ export function AdminSubmissions() {
                   <tr
                     key={s.id}
                     className="cursor-pointer"
-                    onClick={() => push({ title: `Inspecting ${s.id}`, description: `${s.developer} · ${s.problemTitle}`, tone: 'neutral' })}
+                    // onClick={() => push({ title: `Inspecting ${s.id}`, description: `${s.developer} · ${s.problemTitle}`, tone: 'neutral' })}
                   >
                     <td className="t-code-tag pl-5 text-ink-3">{s.id}</td>
                     <td>

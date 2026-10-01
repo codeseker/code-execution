@@ -1,10 +1,6 @@
-/* ============================================================
-   CodeForge design system — design.md tokens exposed to Tailwind
-   Components reference semantic tokens, never raw hex.
-   ============================================================ */
+
 @import 'tailwindcss';
 
-/* Dark mode is driven by :root[data-theme] (see theme.tsx), not OS only. */
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
 @theme inline {

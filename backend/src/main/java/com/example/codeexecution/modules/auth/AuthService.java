@@ -16,6 +16,8 @@ import com.example.codeexecution.common.exceptions.DuplicateEmailException;
 import com.example.codeexecution.common.exceptions.InvalidCredentialsException;
 import com.example.codeexecution.common.exceptions.InvalidOtpException;
 import com.example.codeexecution.common.exceptions.InvalidTokenException;
+import com.example.codeexecution.common.exceptions.LoginAccountNotVerifiedException;
+import com.example.codeexecution.modules.auth.dtos.EmailJobMessage;
 import com.example.codeexecution.modules.auth.dtos.ForgotPasswordDTO;
 import com.example.codeexecution.modules.auth.dtos.LoginUserDTO;
 import com.example.codeexecution.modules.auth.dtos.RegisterUserDTO;
@@ -28,16 +30,23 @@ import com.example.codeexecution.modules.auth.entities.UserStatus;
 import com.example.codeexecution.modules.auth.mapper.RegisterResponseMapper;
 import com.example.codeexecution.modules.auth.mapper.RegisterResponseMapper.RegisterResponse;
 import com.example.codeexecution.modules.auth.mapper.RegisterResponseMapper.UserResponse;
-import com.example.codeexecution.modules.auth.services.EmailService;
+import com.example.codeexecution.modules.auth.services.EmailQueueService;
 import com.example.codeexecution.modules.auth.services.OtpService;
 import com.example.codeexecution.modules.auth.services.TokenService;
 import com.example.codeexecution.modules.auth.services.TokenStoreService;
+import com.example.codeexecution.modules.rbac.RoleRepository;
+import com.example.codeexecution.modules.rbac.entities.Role;
 
 /**
  * Auth flows:
  *
- * 1. Register  -> account created with status PENDING, a 6-digit OTP is
- *    emailed. Login/refresh are rejected until the OTP is verified.
+ * 1. Register  -> account created with status PENDING and the default USER
+ *    role, a 6-digit OTP job is pushed to the Redis email queue and sent
+ *    asynchronously by the email worker. Login/refresh are rejected until
+ *    the OTP is verified.
+ *    Every outbound auth email (register OTP, resend OTP, password reset
+ *    token) travels through the same queue, so no request ever waits on
+ *    the SMTP server.
  * 2. Verify    -> correct OTP flips status to ACTIVE (login works after).
  * 3. Login     -> password check for ACTIVE, non-deleted accounts only;
  *    issues an access/refresh pair stored both in Redis and on the user
@@ -48,6 +57,10 @@ import com.example.codeexecution.modules.auth.services.TokenStoreService;
  * 6. Reset     -> forgot-password emails a one-time token stored in
  *    passwordResetToken/passwordResetExpires; reset-password consumes it,
  *    stores the new password and kills every active session.
+ *
+ * Every user-facing response (register, login, refresh, profile) carries
+ * the resolved role NAME in {@code role} (e.g. USER, ADMIN) rather than
+ * the raw roleId.
  */
 @Service
 public class AuthService {
@@ -55,12 +68,16 @@ public class AuthService {
     private static final String GENERIC_RESET_MESSAGE =
             "If an account with this email exists, a password reset email has been sent";
 
+    /** Role granted to brand-new registrations (seeded at startup by RbacSeeder). */
+    private static final String DEFAULT_ROLE_NAME = "USER";
+
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
     private final TokenService tokenService;
     private final TokenStoreService tokenStoreService;
     private final OtpService otpService;
-    private final EmailService emailService;
+    private final EmailQueueService emailQueueService;
+    private final RoleRepository roleRepository;
     private final SecureRandom secureRandom = new SecureRandom();
     private final long passwordResetTtlMs;
 
@@ -70,19 +87,24 @@ public class AuthService {
             TokenService tokenService,
             TokenStoreService tokenStoreService,
             OtpService otpService,
-            EmailService emailService,
+            EmailQueueService emailQueueService,
+            RoleRepository roleRepository,
             @Value("${app.password-reset.ttl-ms:900000}") long passwordResetTtlMs) {
         this.passwordEncoder = passwordEncoder;
         this.userRepository = userRepository;
         this.tokenService = tokenService;
         this.tokenStoreService = tokenStoreService;
         this.otpService = otpService;
-        this.emailService = emailService;
+        this.emailQueueService = emailQueueService;
+        this.roleRepository = roleRepository;
         this.passwordResetTtlMs = passwordResetTtlMs;
     }
 
     /**
-     * Creates a PENDING account and emails a verification OTP.
+     * Creates a PENDING account with the default USER role and queues an
+     * asynchronous verification OTP email on the Redis email queue: the
+     * response returns immediately while the email worker performs the
+     * SMTP round-trip, so a slow mail server never delays registration.
      *
      * No tokens are issued here: the user must verify the OTP first and
      * then log in with email + password.
@@ -93,14 +115,18 @@ public class AuthService {
             throw new DuplicateEmailException();
         }
 
-        User user = RegisterResponseMapper.toEntity(request, passwordEncoder);
+        User user = RegisterResponseMapper.toEntity(request, passwordEncoder, defaultUserRoleId());
 
         User savedUser = this.userRepository.save(user);
 
         String otp = this.otpService.issue(savedUser.getId());
-        this.emailService.sendOtpEmail(savedUser.getEmail(), savedUser.getUsername(), otp);
+        this.emailQueueService.enqueue(new EmailJobMessage(
+                EmailJobMessage.Type.OTP,
+                savedUser.getEmail(),
+                savedUser.getUsername(),
+                otp));
 
-        return RegisterResponseMapper.toUserResponse(savedUser);
+        return RegisterResponseMapper.toUserResponse(savedUser, resolveRoleName(savedUser.getRoleId()));
     }
 
     /**
@@ -117,7 +143,7 @@ public class AuthService {
                 .orElseThrow(() -> new InvalidOtpException("Invalid or expired OTP"));
 
         if (user.getStatus() != UserStatus.PENDING) {
-            return RegisterResponseMapper.toUserResponse(user);
+            return RegisterResponseMapper.toUserResponse(user, resolveRoleName(user.getRoleId()));
         }
 
         this.otpService.verify(user.getId(), request.getOtp());
@@ -126,11 +152,12 @@ public class AuthService {
         user.setUpdatedAt(Instant.now());
         User savedUser = this.userRepository.save(user);
 
-        return RegisterResponseMapper.toUserResponse(savedUser);
+        return RegisterResponseMapper.toUserResponse(savedUser, resolveRoleName(savedUser.getRoleId()));
     }
 
     /**
-     * Emails a fresh OTP for a PENDING account.
+     * Queues a fresh OTP email for a PENDING account (sent asynchronously
+     * by the email worker).
      *
      * Unknown emails get the same generic answer so the endpoint cannot be
      * used to probe which emails are registered, and the resend cooldown
@@ -152,13 +179,18 @@ public class AuthService {
         }
 
         String otp = this.otpService.issue(user.getId());
-        this.emailService.sendOtpEmail(user.getEmail(), user.getUsername(), otp);
+        this.emailQueueService.enqueue(new EmailJobMessage(
+                EmailJobMessage.Type.OTP,
+                user.getEmail(),
+                user.getUsername(),
+                otp));
 
         return "OTP sent to " + user.getEmail();
     }
 
     /**
-     * Emails a one-time password reset token for an existing account.
+     * Queues a one-time password reset token email for an existing
+     * account (sent asynchronously by the email worker).
      *
      * The same generic message is always returned so the endpoint cannot
      * be used to discover registered emails.
@@ -179,7 +211,11 @@ public class AuthService {
         user.setUpdatedAt(Instant.now());
         this.userRepository.save(user);
 
-        this.emailService.sendPasswordResetEmail(user.getEmail(), user.getUsername(), user.getPasswordResetToken());
+        this.emailQueueService.enqueue(new EmailJobMessage(
+                EmailJobMessage.Type.PASSWORD_RESET,
+                user.getEmail(),
+                user.getUsername(),
+                user.getPasswordResetToken()));
 
         return GENERIC_RESET_MESSAGE;
     }
@@ -233,14 +269,14 @@ public class AuthService {
         }
 
         if (user.getStatus() == UserStatus.PENDING) {
-            throw new AccountNotVerifiedException();
+            throw new LoginAccountNotVerifiedException();
         }
 
         TokenPair tokens = this.tokenService.generateTokens(user.getId());
         this.tokenStoreService.saveRefreshToken(user.getId(), tokens.refreshToken());
         this.persistRefreshToken(user, tokens.refreshToken());
 
-        return RegisterResponseMapper.toResponse(user, tokens);
+        return RegisterResponseMapper.toResponse(user, tokens, resolveRoleName(user.getRoleId()));
     }
 
     /**
@@ -278,7 +314,7 @@ public class AuthService {
         this.tokenStoreService.saveRefreshToken(user.getId(), tokens.refreshToken());
         this.persistRefreshToken(user, tokens.refreshToken());
 
-        return RegisterResponseMapper.toResponse(user, tokens);
+        return RegisterResponseMapper.toResponse(user, tokens, resolveRoleName(user.getRoleId()));
     }
 
     /**
@@ -317,7 +353,27 @@ public class AuthService {
         User user = this.userRepository.findById(userId)
                 .orElseThrow(() -> new InvalidTokenException("User for this token no longer exists"));
 
-        return RegisterResponseMapper.toUserResponse(user);
+        return RegisterResponseMapper.toUserResponse(user, resolveRoleName(user.getRoleId()));
+    }
+
+    /**
+     * Role NAME for API responses (e.g. USER, ADMIN), resolved through
+     * {@code User.roleId}; null when the account has no role. Responses
+     * never expose the raw roleId.
+     */
+    private String resolveRoleName(String roleId) {
+        if (roleId == null || roleId.isBlank()) {
+            return null;
+        }
+        return this.roleRepository.findById(roleId).map(Role::getName).orElse(null);
+    }
+
+    /**
+     * Id of the default USER role assigned to new registrations; null when
+     * RBAC seeding is disabled and no such role exists yet.
+     */
+    private String defaultUserRoleId() {
+        return this.roleRepository.findByName(DEFAULT_ROLE_NAME).map(Role::getId).orElse(null);
     }
 
     /** Mirrors the rotated refresh token onto the user document. */

@@ -1,43 +1,23 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import Editor from '@monaco-editor/react'
+import type { Monaco, OnMount } from '@monaco-editor/react'
 import { cx } from './ui'
 import { Icon } from './icons'
+import CustomButton from './ui/CustomButton'
 
 export type CodeLang = 'python' | 'js' | 'rust' | 'generic'
 
-const KEYWORDS: Record<CodeLang, Set<string>> = {
-  python: new Set([
-    'class', 'def', 'return', 'if', 'elif', 'else', 'for', 'while', 'in', 'not', 'and', 'or',
-    'import', 'from', 'as', 'with', 'try', 'except', 'finally', 'raise', 'pass', 'lambda',
-    'yield', 'None', 'True', 'False', 'self', 'async', 'await', 'global', 'nonlocal', 'assert',
-  ]),
-  js: new Set([
-    'function', 'return', 'if', 'else', 'for', 'while', 'const', 'let', 'var', 'new', 'class',
-    'extends', 'import', 'from', 'export', 'default', 'async', 'await', 'try', 'catch', 'finally',
-    'throw', 'typeof', 'instanceof', 'interface', 'type', 'enum', 'public', 'private', 'readonly',
-    'null', 'undefined', 'true', 'false', 'this', 'super', 'delete', 'in', 'of', 'void', 'number',
-    'string', 'boolean', 'any', 'void', 'never', 'as',
-  ]),
-  rust: new Set([
-    'fn', 'let', 'mut', 'pub', 'impl', 'struct', 'enum', 'trait', 'match', 'if', 'else', 'for',
-    'while', 'loop', 'in', 'return', 'use', 'mod', 'crate', 'self', 'Self', 'super', 'where',
-    'async', 'await', 'move', 'ref', 'dyn', 'unsafe', 'const', 'static', 'type', 'true', 'false',
-    'Some', 'None', 'Ok', 'Err', 'Result', 'Option', 'Vec', 'Box',
-  ]),
-  generic: new Set(['function', 'return', 'if', 'else', 'for', 'while', 'const', 'let', 'var', 'new', 'class', 'import', 'export', 'true', 'false', 'null', 'void', 'public', 'private', 'static']),
+/* -------------------------------------------------------------------------- */
+/*  Language mapping                                                          */
+/* -------------------------------------------------------------------------- */
+
+const MONACO_LANG: Record<CodeLang, string> = {
+  python: 'python',
+  js: 'typescript', // superset of JS, also highlights type keywords
+  rust: 'rust',
+  generic: 'typescript',
 }
-
-type Tok = { text: string; cls?: string }
-
-const TOK_CLS = {
-  keyword: 'text-syn-keyword',
-  string: 'text-syn-string',
-  number: 'text-syn-number',
-  comment: 'text-syn-comment',
-  function: 'text-syn-function',
-  type: 'text-syn-type',
-  operator: 'text-syn-operator',
-} as const
 
 function langFor(code: string, lang?: CodeLang): CodeLang {
   if (lang) return lang
@@ -45,70 +25,130 @@ function langFor(code: string, lang?: CodeLang): CodeLang {
   return 'js'
 }
 
-/** Small state-machine lexer — comments never swallow strings, and vice versa. */
-export function tokenizeLine(line: string, lang: CodeLang): Tok[] {
-  const kws = KEYWORDS[lang]
-  const out: Tok[] = []
-  const push = (text: string, cls?: string) => {
-    const last = out[out.length - 1]
-    if (last && last.cls === cls && !cls) last.text += text
-    else out.push({ text, cls })
-  }
+/* -------------------------------------------------------------------------- */
+/*  Theme: read colours from your CSS variables, fall back to sane defaults   */
+/* -------------------------------------------------------------------------- */
 
-  let i = 0
-  while (i < line.length) {
-    const ch = line[i]
-    const rest = line.slice(i)
+export const THEME = 'app-code'
 
-    // Comments
-    if ((ch === '#' && lang === 'python') || rest.startsWith('//')) {
-      push(rest, TOK_CLS.comment)
-      break
-    }
-    // Strings
-    if (ch === '"' || ch === "'") {
-      let j = i + 1
-      while (j < line.length && line[j] !== ch) {
-        if (line[j] === '\\') j++
-        j++
-      }
-      push(line.slice(i, Math.min(j + 1, line.length)), TOK_CLS.string)
-      i = j + 1
-      continue
-    }
-    // Numbers
-    if (/[0-9]/.test(ch)) {
-      let j = i
-      while (j < line.length && /[0-9._xb]/.test(line[j])) j++
-      push(line.slice(i, j), TOK_CLS.number)
-      i = j
-      continue
-    }
-    // Identifiers
-    if (/[A-Za-z_$@]/.test(ch)) {
-      let j = i
-      while (j < line.length && /[\w$]/.test(line[j])) j++
-      const word = line.slice(i, j)
-      const after = line.slice(j).match(/^\s*\(/)
-      let cls: string | undefined
-      if (kws.has(word)) cls = TOK_CLS.keyword
-      else if (after) cls = TOK_CLS.function
-      else if (/^[A-Z]/.test(word)) cls = TOK_CLS.type
-      push(word, cls)
-      i = j
-      continue
-    }
-    // Whitespace stays plain; punctuation gets the operator tone.
-    if (/\s/.test(ch)) {
-      push(ch)
-      i++
-      continue
-    }
-    push(ch, TOK_CLS.operator)
-    i++
-  }
-  return out
+type Palette = Record<
+  'bg' | 'fg' | 'keyword' | 'string' | 'number' | 'comment' | 'type' | 'operator' | 'gutter' | 'selection',
+  string
+>
+
+const FALLBACK_LIGHT: Palette = {
+  bg: '#F7F7F8', fg: '#24292F', keyword: '#CF222E', string: '#0A3069', number: '#0550AE',
+  comment: '#6E7781', type: '#8250DF', operator: '#57606A', gutter: '#8C959F', selection: '#B6D6FD',
 }
+const FALLBACK_DARK: Palette = {
+  bg: '#0F1115', fg: '#E6EDF3', keyword: '#FF7B72', string: '#A5D6FF', number: '#79C0FF',
+  comment: '#8B949E', type: '#D2A8FF', operator: '#8B949E', gutter: '#6E7681', selection: '#264F78',
+}
+
+/**
+ * Tries each CSS variable name in turn (Tailwind v4 uses --color-*), converts the
+ * value to #RRGGBB via a canvas, and returns `fallback` when nothing usable is found.
+ */
+function readColor(names: string[], fallback: string): string {
+  if (typeof document === 'undefined') return fallback
+  const style = getComputedStyle(document.documentElement)
+  const ctx = document.createElement('canvas').getContext('2d')
+  if (!ctx) return fallback
+  for (const name of names) {
+    let raw = style.getPropertyValue(name).trim()
+    if (!raw) continue
+    if (/^\d+\s+\d+\s+\d+$/.test(raw)) raw = `rgb(${raw.replace(/\s+/g, ',')})` // "12 34 56"
+    ctx.fillStyle = '#000000'
+    ctx.fillStyle = raw
+    const out = ctx.fillStyle
+    if (/^#[0-9a-f]{6}$/i.test(out)) return out
+  }
+  return fallback
+}
+
+function readPalette(dark: boolean): Palette {
+  const fb = dark ? FALLBACK_DARK : FALLBACK_LIGHT
+  const v = (key: string, fallback: string) => readColor([`--color-${key}`, `--${key}`], fallback)
+  return {
+    bg: v('code', fb.bg),
+    fg: v('ink', fb.fg),
+    keyword: v('syn-keyword', fb.keyword),
+    string: v('syn-string', fb.string),
+    number: v('syn-number', fb.number),
+    comment: v('syn-comment', fb.comment),
+    type: v('syn-type', fb.type),
+    operator: v('syn-operator', fb.operator),
+    gutter: v('ink-3', fb.gutter),
+    selection: fb.selection,
+  }
+}
+
+export function buildTheme(dark: boolean): Parameters<Monaco['editor']['defineTheme']>[1] {
+  const p = readPalette(dark)
+  const c = (hex: string) => hex.replace('#', '')
+  return {
+    base: dark ? 'vs-dark' : 'vs',
+    inherit: true,
+    rules: [
+      { token: '', foreground: c(p.fg) },
+      { token: 'keyword', foreground: c(p.keyword) },
+      { token: 'keyword.control', foreground: c(p.keyword) },
+      { token: 'string', foreground: c(p.string) },
+      { token: 'string.escape', foreground: c(p.string) },
+      { token: 'number', foreground: c(p.number) },
+      { token: 'number.float', foreground: c(p.number) },
+      { token: 'number.hex', foreground: c(p.number) },
+      { token: 'comment', foreground: c(p.comment), fontStyle: 'italic' },
+      { token: 'type', foreground: c(p.type) },
+      { token: 'type.identifier', foreground: c(p.type) },
+      { token: 'delimiter', foreground: c(p.operator) },
+      { token: 'operator', foreground: c(p.operator) },
+    ],
+    colors: {
+      'editor.background': p.bg,
+      'editor.foreground': p.fg,
+      'editorLineNumber.foreground': p.gutter,
+      'editorLineNumber.activeForeground': p.gutter,
+      'editor.lineHighlightBackground': '#00000000',
+      'editor.selectionBackground': p.selection,
+      'editorGutter.background': p.bg,
+      'scrollbarSlider.background': '#8884',
+      'scrollbarSlider.hoverBackground': '#8886',
+    },
+  }
+}
+
+/** Follows `.dark` / `data-theme="dark"` on <html>, else the OS preference. */
+export function useIsDark(): boolean {
+  const read = () => {
+    if (typeof document === 'undefined') return false
+    const root = document.documentElement
+    if (root.classList.contains('dark') || root.dataset.theme === 'dark') return true
+    if (root.classList.contains('light') || root.dataset.theme === 'light') return false
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
+  }
+  const [dark, setDark] = useState(read)
+  useEffect(() => {
+    const update = () => setDark(read())
+    const obs = new MutationObserver(update)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] })
+    const mq = window.matchMedia?.('(prefers-color-scheme: dark)')
+    mq?.addEventListener('change', update)
+    return () => {
+      obs.disconnect()
+      mq?.removeEventListener('change', update)
+    }
+  }, [])
+  return dark
+}
+
+/* -------------------------------------------------------------------------- */
+/*  CodeView                                                                  */
+/* -------------------------------------------------------------------------- */
+
+const LINE_HEIGHT = 22
+const PAD_Y = 12
+const SCROLLBAR = 8
 
 type CodeViewProps = {
   code: string
@@ -120,7 +160,7 @@ type CodeViewProps = {
   gutter?: boolean
 }
 
-/** Line-numbered, highlighted code block (bg-code, no inner border). */
+/** Read-only Monaco block, auto-sized to its content. Same props as before. */
 export function CodeView({
   code,
   lang,
@@ -130,46 +170,113 @@ export function CodeView({
   gutter = true,
 }: CodeViewProps) {
   const resolved = langFor(code, lang)
-  const lines = code.replace(/\n$/, '').split('\n')
+  const text = code.replace(/\n$/, '')
+  const lineCount = text.split('\n').length
+  const height = lineCount * LINE_HEIGHT + PAD_Y * 2 + SCROLLBAR
+  const isDark = useIsDark()
+
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null)
+  const monacoRef = useRef<Monaco | null>(null)
+  const decoRef = useRef<{ clear(): void } | null>(null)
+
+  const applyActive = useCallback(() => {
+    const editor = editorRef.current
+    const monaco = monacoRef.current
+    if (!editor || !monaco) return
+    decoRef.current?.clear()
+    decoRef.current = null
+    if (activeLine == null) return
+    const rel = activeLine - startLine + 1
+    if (rel < 1 || rel > lineCount) return
+    decoRef.current = editor.createDecorationsCollection([
+      {
+        range: new monaco.Range(rel, 1, rel, 1),
+        options: { isWholeLine: true, className: 'code-active-line' },
+      },
+    ])
+  }, [activeLine, startLine, lineCount])
+
+  useEffect(applyActive, [applyActive])
+
+  // Re-theme when the app switches light/dark (setTheme is global in Monaco).
+  useEffect(() => {
+    const monaco = monacoRef.current
+    if (!monaco) return
+    monaco.editor.defineTheme(THEME, buildTheme(isDark))
+    monaco.editor.setTheme(THEME)
+  }, [isDark])
+
   return (
-    <div className={cx('t-code flex overflow-x-auto', className)}>
-      {gutter && (
-        <div
-          className="sticky left-0 shrink-0 select-none bg-code py-3 pr-3 pl-4 text-right text-ink-3 tnum"
-          aria-hidden
-        >
-          {lines.map((_, idx) => (
-            <div key={idx} className="leading-[22px]">
-              {startLine + idx}
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="min-w-0 grow py-3 pr-4">
-        {lines.map((line, idx) => {
-          const active = activeLine === startLine + idx
-          const toks = tokenizeLine(line, resolved)
-          return (
-            <div
-              key={idx}
-              className={cx('whitespace-pre leading-[22px]', active && 'bg-wash')}
-            >
-              {toks.length === 0 ? (
-                ' '
-              ) : (
-                toks.map((t, tIdx) => (
-                  <span key={tIdx} className={t.cls}>
-                    {t.text}
-                  </span>
-                ))
-              )}
-            </div>
-          )
-        })}
-      </div>
+    <div className={cx('overflow-hidden bg-code', className)} style={{ height }}>
+      <Editor
+        height={height}
+        width="100%"
+        language={MONACO_LANG[resolved]}
+        value={text}
+        theme={THEME}
+        loading={<div style={{ height }} />}
+        beforeMount={(monaco) => {
+          monacoRef.current = monaco
+          monaco.editor.defineTheme(THEME, buildTheme(isDark))
+        }}
+        onMount={(editor, monaco) => {
+          editorRef.current = editor
+          monacoRef.current = monaco
+          monaco.editor.setTheme(THEME)
+          applyActive()
+        }}
+        options={{
+          readOnly: true,
+          domReadOnly: true,
+          automaticLayout: true,
+
+          fontFamily: 'ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace',
+          fontSize: 13,
+          lineHeight: LINE_HEIGHT,
+          fontLigatures: false,
+          padding: { top: PAD_Y, bottom: PAD_Y },
+
+          lineNumbers: gutter ? (n: number) => String(startLine + n - 1) : 'off',
+          lineNumbersMinChars: 3,
+          lineDecorationsWidth: gutter ? 12 : 16,
+          glyphMargin: false,
+          folding: false,
+
+          minimap: { enabled: false },
+          scrollBeyondLastLine: false,
+          wordWrap: 'off',
+          scrollbar: {
+            vertical: 'hidden',
+            horizontal: 'auto',
+            horizontalScrollbarSize: SCROLLBAR,
+            alwaysConsumeMouseWheel: false, // let the page scroll over the editor
+            useShadows: false,
+          },
+          overviewRulerLanes: 0,
+          overviewRulerBorder: false,
+          hideCursorInOverviewRuler: true,
+
+          renderLineHighlight: 'none',
+          occurrencesHighlight: 'off',
+          selectionHighlight: false,
+          matchBrackets: 'never',
+          bracketPairColorization: { enabled: false },
+          guides: { indentation: false },
+          renderValidationDecorations: 'off', // no red squiggles on snippets
+          hover: { enabled: "off" },
+          links: false,
+          contextmenu: false,
+          stickyScroll: { enabled: false },
+          renderWhitespace: 'none',
+        }}
+      />
     </div>
   )
 }
+
+/* -------------------------------------------------------------------------- */
+/*  CodeWindow (unchanged API)                                                */
+/* -------------------------------------------------------------------------- */
 
 type CodeWindowProps = {
   /** Tab label, e.g. "Solution.ts". */
@@ -218,7 +325,7 @@ export function CodeWindow({
         <span className="grow" />
         {headerRight}
         {copyable && (
-          <button
+          <CustomButton variant="unstyled"
             type="button"
             className="btn btn-ghost btn-sm h-6 gap-1 px-1.5 text-[12px] opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
             onClick={copy}
@@ -226,7 +333,7 @@ export function CodeWindow({
           >
             <Icon name={copied ? 'check' : 'copy'} size={12} />
             {copied ? 'Copied' : 'Copy'}
-          </button>
+          </CustomButton>
         )}
       </div>
       <div className="group">
