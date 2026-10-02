@@ -7,8 +7,16 @@ import { DifficultyBadge, EmptyState, cx } from '../components/ui'
 import { EngineStatusBar } from '../components/shell'
 import { TWO_SUM_PY, TWO_SUM_SUBMISSIONS, problemById } from '../data'
 import type { SubmissionStatus } from '../data'
-import CustomButton from '../components/ui/CustomButton'
-import CustomLink from '../components/ui/CustomLink'
+import CustomButton from '../components/CustomButton'
+import CustomLink from '../components/CustomLink'
+import { Button } from '../components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select'
 
 const PAGE_SIZE = 8
 
@@ -24,9 +32,9 @@ const STATUS_NOTE: Record<SubmissionStatus, string> = {
 }
 
 function statusTone(status: SubmissionStatus) {
-  if (status === 'Accepted') return 'pill-success'
-  if (status === 'Time Limit Exceeded') return 'pill-warning'
-  return 'pill-error'
+  if (status === 'Accepted') return 'bg-primary/10 text-primary'
+  if (status === 'Time Limit Exceeded') return 'bg-muted text-muted-foreground'
+  return 'bg-destructive/10 text-destructive'
 }
 
 function statusIcon(status: SubmissionStatus) {
@@ -68,9 +76,9 @@ export default function Submissions() {
   const bestMemory = Math.min(...all.filter((s) => s.memoryMb !== null).map((s) => s.memoryMb as number))
 
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col bg-canvas">
+    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col bg-background">
       {/* Workspace-style topbar */}
-      <header className="flex h-11 flex-none items-center gap-3 border-b border-hair px-3">
+      <header className="flex h-11 flex-none items-center gap-3 border-b border-border px-3">
         <div className="flex items-center gap-0.5">
           <CustomButton variant="unstyled"
             type="button"
@@ -89,18 +97,18 @@ export default function Submissions() {
             <Icon name="chevronRight" size={15} />
           </CustomButton>
         </div>
-        <CustomLink variant="unstyled" to="/problems" className="flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-wash">
-          <span className="t-ui-med text-ink">
+        <CustomLink variant="unstyled" to="/problems" className="flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-muted/40">
+          <span className="text-sm font-medium text-foreground">
             {problem.num}. {problem.title}
           </span>
-          <Icon name="chevronDown" size={13} className="text-ink-3" />
+          <Icon name="chevronDown" size={13} className="text-muted-foreground" />
         </CustomLink>
         <DifficultyBadge difficulty={problem.difficulty} className="hidden sm:inline-flex" />
         <nav className="ml-2 hidden items-center gap-1 lg:flex" aria-label="Problem views">
-          <CustomLink variant="unstyled" to={`/problems/${problem.id}`} className="rounded px-2.5 py-1 text-[14px] text-ink-2 hover:bg-wash hover:text-ink">
+          <CustomLink variant="unstyled" to={`/problems/${problem.id}`} className="rounded px-2.5 py-1 text-[14px] text-muted-foreground hover:bg-muted/40 hover:text-foreground">
             Problems
           </CustomLink>
-          <span className="rounded bg-wash px-2.5 py-1 text-[14px] font-medium text-ink">Submissions</span>
+          <span className="rounded bg-muted/40 px-2.5 py-1 text-[14px] font-medium text-foreground">Submissions</span>
         </nav>
         <span className="grow" />
         <CustomLink variant="unstyled" to={`/problems/${problem.id}`} className="btn btn-secondary btn-sm">
@@ -108,52 +116,54 @@ export default function Submissions() {
           Run
           <span className="kbd">⌘↵</span>
         </CustomLink>
-        <CustomLink variant="unstyled" to={`/problems/${problem.id}`} className="btn btn-primary btn-sm">
+        <CustomLink variant="unstyled" to={`/problems/${problem.id}`} className="btn btn-primary">
           <Icon name="upload" size={13} />
           Submit
         </CustomLink>
       </header>
 
       {/* Breadcrumb + controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-hair px-4 py-2.5">
-        <nav className="t-ui flex items-center gap-1.5 text-ink-3" aria-label="Breadcrumb">
-          <CustomLink to="/problems" className="hover:text-ink">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2.5">
+        <nav className="text-sm flex items-center gap-1.5 text-muted-foreground" aria-label="Breadcrumb">
+          <CustomLink to="/problems" className="hover:text-foreground">
             Problems
           </CustomLink>
           <span>/</span>
-          <CustomLink to={`/problems/${problem.id}`} className="hover:text-ink">
+          <CustomLink to={`/problems/${problem.id}`} className="hover:text-foreground">
             {problem.num}. {problem.title}
           </CustomLink>
           <span>/</span>
-          <span className="text-ink">Submissions</span>
+          <span className="text-foreground">Submissions</span>
         </nav>
         <div className="flex flex-wrap items-center gap-2.5">
-          <select
-            className="input select h-8 w-[144px] text-[13px]"
+          <Select
             value={lang}
-            aria-label="Filter by language"
-            onChange={(e) => {
-              setLang(e.target.value)
+            onValueChange={(value) => {
+              if (value !== null) setLang(value)
               setPage(1)
             }}
           >
-            {LANG_OPTIONS.map((o) => (
-              <option key={o}>{o}</option>
-            ))}
-          </select>
-          <select
-            className="input select h-8 w-[172px] text-[13px]"
+            <SelectTrigger className="h-8 w-[144px] text-[13px]" aria-label="Filter by language">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LANG_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select
             value={status}
-            aria-label="Filter by status"
-            onChange={(e) => {
-              setStatus(e.target.value)
+            onValueChange={(value) => {
+              if (value !== null) setStatus(value)
               setPage(1)
             }}
           >
-            {STATUS_OPTIONS.map((o) => (
-              <option key={o}>{o}</option>
-            ))}
-          </select>
+            <SelectTrigger className="h-8 w-[172px] text-[13px]" aria-label="Filter by status">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <CustomLink variant="unstyled" to={`/problems/${problem.id}`} className="btn btn-primary h-8">
             Problem Workspace
             <Icon name="arrowRight" size={14} />
@@ -162,28 +172,28 @@ export default function Submissions() {
       </div>
 
       {/* Stats strip */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-hair px-4 py-2.5">
-        <span className="t-ui-med tnum flex items-center gap-2 text-ink">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-border px-4 py-2.5">
+        <span className="text-sm font-medium tabular-nums flex items-center gap-2 text-foreground">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
           {all.length} Total Submissions
         </span>
-        <span className="t-ui tnum text-ink-2">
-          <span className="font-medium text-ink">{acceptedCount}</span> Accepted (
+        <span className="text-sm tabular-nums text-muted-foreground">
+          <span className="font-medium text-foreground">{acceptedCount}</span> Accepted (
           {((acceptedCount / Math.max(1, all.length)) * 100).toFixed(1)}%)
         </span>
-        <span className="t-ui tnum text-ink-2">
-          Best Runtime: <span className="font-medium text-ink">{bestRuntime} ms</span>{' '}
-          <span className="tag tag-green">Beats 94.2%</span>
+        <span className="text-sm tabular-nums text-muted-foreground">
+          Best Runtime: <span className="font-medium text-foreground">{bestRuntime} ms</span>{' '}
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">Beats 94.2%</span>
         </span>
-        <span className="t-ui tnum text-ink-2">
-          Best Memory: <span className="font-medium text-ink">{bestMemory} MB</span>{' '}
-          <span className="tag tag-blue">Beats 88.1%</span>
+        <span className="text-sm tabular-nums text-muted-foreground">
+          Best Memory: <span className="font-medium text-foreground">{bestMemory} MB</span>{' '}
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">Beats 88.1%</span>
         </span>
       </div>
 
       {/* Main: list + details */}
       <main className="mx-auto grid w-full max-w-[1460px] grow items-start gap-5 px-4 py-5 lg:grid-cols-[minmax(0,1fr)_460px] lg:px-8">
-        <section className="min-w-0 overflow-hidden rounded-lg border border-hair bg-panel" aria-label="Submissions list">
+        <section className="min-w-0 overflow-hidden rounded-lg border border-border bg-card" aria-label="Submissions list">
           {rows.length === 0 ? (
             <EmptyState
               icon="history"
@@ -209,7 +219,7 @@ export default function Submissions() {
                     return (
                       <tr
                         key={s.id}
-                        className={cx('cursor-pointer', isSel && 'bg-wash')}
+                        className={cx('cursor-pointer', isSel && 'bg-muted/40')}
                         tabIndex={0}
                         aria-selected={isSel}
                         onClick={() => setSelectedId(s.id)}
@@ -218,42 +228,42 @@ export default function Submissions() {
                         }}
                       >
                         <td className="pl-4">
-                          <span className={cx('pill', statusTone(s.status))}>
+                          <span className={cx('inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium', statusTone(s.status))}>
                             <Icon name={statusIcon(s.status)} size={12} />
                             {s.status}
                           </span>
                         </td>
-                        <td className="t-ui text-ink-2">{s.language}</td>
-                        <td className="tnum">
+                        <td className="text-sm text-muted-foreground">{s.language}</td>
+                        <td className="tabular-nums">
                           {s.runtimeMs === null ? (
-                            <span className="t-ui text-ink-3">N/A</span>
+                            <span className="text-sm text-muted-foreground">N/A</span>
                           ) : (
-                            <span className="stack">
-                              <span className="t-ui-med text-ink">
+                            <span className="flex flex-col">
+                              <span className="text-sm font-medium text-foreground">
                                 {s.runtimeMs === 2000 ? '> 2000 ms' : `${s.runtimeMs} ms`}
                               </span>
                               {s.runtimeBeats != null && (
-                                <span className="t-caption text-ink-3">Beats {s.runtimeBeats}%</span>
+                                <span className="text-xs text-muted-foreground">Beats {s.runtimeBeats}%</span>
                               )}
                             </span>
                           )}
                         </td>
-                        <td className="tnum hidden sm:table-cell">
+                        <td className="tabular-nums hidden sm:table-cell">
                           {s.memoryMb === null ? (
-                            <span className="t-ui text-ink-3">N/A</span>
+                            <span className="text-sm text-muted-foreground">N/A</span>
                           ) : (
-                            <span className="stack">
-                              <span className="t-ui-med text-ink">{s.memoryMb} MB</span>
+                            <span className="flex flex-col">
+                              <span className="text-sm font-medium text-foreground">{s.memoryMb} MB</span>
                               {s.memoryBeats != null && (
-                                <span className="t-caption text-ink-3">Beats {s.memoryBeats}%</span>
+                                <span className="text-xs text-muted-foreground">Beats {s.memoryBeats}%</span>
                               )}
                             </span>
                           )}
                         </td>
-                        <td className="t-caption hidden text-ink-3 md:table-cell">{s.submitted}</td>
+                        <td className="text-xs hidden text-muted-foreground md:table-cell">{s.submitted}</td>
                         <td className="pr-4 text-right">
                           {isSel ? (
-                            <span className="t-ui-med inline-flex items-center gap-1.5 text-accent">
+                            <span className="text-sm font-medium inline-flex items-center gap-1.5 text-primary">
                               Inspecting
                               <Icon name="arrowRight" size={13} />
                             </span>
@@ -272,35 +282,37 @@ export default function Submissions() {
           )}
 
           {rows.length > 0 && (
-            <div className="flex items-center justify-between gap-3 border-t border-hair px-4 py-2.5">
-              <span className="t-caption text-ink-3">
+            <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-2.5">
+              <span className="text-xs text-muted-foreground">
                 Showing{' '}
-                <span className="tnum text-ink-2">
+                <span className="tabular-nums text-muted-foreground">
                   {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(filtered.length, currentPage * PAGE_SIZE)}
                 </span>{' '}
-                of <span className="tnum text-ink-2">{filtered.length}</span> submissions
+                of <span className="tabular-nums text-muted-foreground">{filtered.length}</span> submissions
               </span>
               <div className="flex items-center gap-1">
-                <CustomButton variant="unstyled"
+                <Button
                   type="button"
-                  className="btn btn-ghost btn-sm h-7"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
                   disabled={currentPage <= 1}
                   onClick={() => setPage(currentPage - 1)}
                 >
                   <Icon name="chevronLeft" size={13} />
-                </CustomButton>
+                </Button>
                 {Array.from({ length: totalPages }).map((_, i) => (
-                  <CustomButton variant="unstyled"
+                  <Button
                     key={i}
                     type="button"
-                    className={cx(
-                      'tnum h-7 min-w-7 rounded px-2 text-[13px]',
-                      i + 1 === currentPage ? 'bg-accent text-on-accent' : 'text-ink-2 hover:bg-wash',
-                    )}
+                    variant={i + 1 === currentPage ? 'default' : 'ghost'}
+                    size="sm"
+                    className="min-w-7 px-2 tabular-nums"
+                    aria-current={i + 1 === currentPage ? 'page' : undefined}
                     onClick={() => setPage(i + 1)}
                   >
                     {i + 1}
-                  </CustomButton>
+                  </Button>
                 ))}
                 <CustomButton variant="unstyled"
                   type="button"
@@ -316,9 +328,9 @@ export default function Submissions() {
         </section>
 
         {/* Details panel */}
-        <aside className="stack min-w-0 gap-4 lg:sticky lg:top-4" aria-label="Submission details">
+        <aside className="flex flex-col min-w-0 gap-4 lg:sticky lg:top-4" aria-label="Submission details">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="t-h3 text-ink">Submission Details</h2>
+            <h2 className="text-lg font-semibold text-foreground">Submission Details</h2>
             {selected ? (
               <CustomButton variant="unstyled"
                 type="button"
@@ -333,7 +345,7 @@ export default function Submissions() {
           </div>
 
           {!selected ? (
-            <div className="card">
+            <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
               <EmptyState
                 icon="search"
                 title="No submission selected"
@@ -343,22 +355,22 @@ export default function Submissions() {
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-2.5">
-                <span className={cx('pill', statusTone(selected.status))}>
+                <span className={cx('inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium', statusTone(selected.status))}>
                   <Icon name={statusIcon(selected.status)} size={12} />
                   {selected.status}
                 </span>
-                <span className="tag tag-gray tnum">#{selected.id}</span>
-                <span className="t-caption text-ink-3">
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground tabular-nums">#{selected.id}</span>
+                <span className="text-xs text-muted-foreground">
                   Submitted {selected.submitted} • {selected.language}
                 </span>
               </div>
 
-              <section className="card stack gap-4 p-4">
+              <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col gap-4 p-4">
                 <div className="flex flex-wrap items-center gap-3">
                   <span
                     className={cx(
                       'center h-8 w-8 rounded-full',
-                      selected.status === 'Accepted' ? 'bg-success-soft text-success' : 'bg-error-soft text-error',
+                      selected.status === 'Accepted' ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive',
                     )}
                   >
                     <Icon name={statusIcon(selected.status)} size={17} />
@@ -366,14 +378,14 @@ export default function Submissions() {
                   <span
                     className={cx(
                       'text-[20px] leading-7 font-semibold',
-                      selected.status === 'Accepted' ? 'text-success' : 'text-error',
+                      selected.status === 'Accepted' ? 'text-primary' : 'text-destructive',
                     )}
                   >
                     {selected.status}
                   </span>
                   <span className="grow" />
                   {selected.runtimeMs !== null && (
-                    <span className="t-code-tag rounded-sm bg-wash px-2 py-1 text-ink-2">
+                    <span className="font-mono text-xs rounded-sm bg-muted/40 px-2 py-1 text-muted-foreground">
                       {selected.runtimeMs} ms
                     </span>
                   )}
@@ -381,30 +393,30 @@ export default function Submissions() {
 
                 {selected.status === 'Accepted' ? (
                   <>
-                    <p className="t-ui tnum text-ink-2">57 / 57 Test Cases Passed</p>
+                    <p className="text-sm tabular-nums text-muted-foreground">57 / 57 Test Cases Passed</p>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-md border border-hair bg-code px-3.5 py-3">
-                        <p className="t-overline text-ink-3">Runtime</p>
-                        <p className="t-ui-med tnum mt-1 text-ink">{selected.runtimeMs} ms</p>
-                        <p className="t-caption text-success">Beats {selected.runtimeBeats}%</p>
+                      <div className="rounded-md border border-border bg-muted/50 px-3.5 py-3">
+                        <p className="text-sm font-semibold text-muted-foreground">Runtime</p>
+                        <p className="text-sm font-medium tabular-nums mt-1 text-foreground">{selected.runtimeMs} ms</p>
+                        <p className="text-xs text-primary">Beats {selected.runtimeBeats}%</p>
                       </div>
-                      <div className="rounded-md border border-hair bg-code px-3.5 py-3">
-                        <p className="t-overline text-ink-3">Memory</p>
-                        <p className="t-ui-med tnum mt-1 text-ink">{selected.memoryMb} MB</p>
-                        <p className="t-caption text-success">Beats {selected.memoryBeats}%</p>
+                      <div className="rounded-md border border-border bg-muted/50 px-3.5 py-3">
+                        <p className="text-sm font-semibold text-muted-foreground">Memory</p>
+                        <p className="text-sm font-medium tabular-nums mt-1 text-foreground">{selected.memoryMb} MB</p>
+                        <p className="text-xs text-primary">Beats {selected.memoryBeats}%</p>
                       </div>
                     </div>
-                    <div className="stack gap-2">
+                    <div className="flex flex-col gap-2">
                       <div className="flex items-center justify-between">
-                        <p className="t-overline text-ink-3">Runtime distribution ({selected.language})</p>
-                        <p className="t-code-tag text-ink-2">
+                        <p className="text-sm font-semibold text-muted-foreground">Runtime distribution ({selected.language})</p>
+                        <p className="font-mono text-xs text-muted-foreground">
                           YOUR SOLUTION: {selected.runtimeMs}MS
                         </p>
                       </div>
                       <DistributionCurve you={0.18} />
-                      <div className="flex justify-between t-code-tag text-ink-3">
+                      <div className="flex justify-between font-mono text-xs text-muted-foreground">
                         <span>20 ms</span>
-                        <span className="text-accent">{selected.runtimeMs} ms (You)</span>
+                        <span className="text-primary">{selected.runtimeMs} ms (You)</span>
                         <span>120 ms</span>
                         <span>250 ms</span>
                       </div>
@@ -412,17 +424,17 @@ export default function Submissions() {
                   </>
                 ) : (
                   <>
-                    <p className="t-ui text-ink-2">{STATUS_NOTE[selected.status]}</p>
+                    <p className="text-sm text-muted-foreground">{STATUS_NOTE[selected.status]}</p>
                     {selected.status === 'Wrong Answer' && (
-                      <div className="stack gap-1.5 rounded-md border border-hair bg-code p-3 font-mono text-[13px]">
-                        <p className="text-ink-3">Expected</p>
-                        <p className="rounded bg-error-soft px-1 text-error">[0, 1]</p>
-                        <p className="mt-1 text-ink-3">Received</p>
-                        <p className="rounded bg-error-soft px-1 text-error">[1, 0]</p>
+                      <div className="flex flex-col gap-1.5 rounded-md border border-border bg-muted/50 p-3 font-mono text-[13px]">
+                        <p className="text-muted-foreground">Expected</p>
+                        <p className="rounded bg-destructive/10 px-1 text-destructive">[0, 1]</p>
+                        <p className="mt-1 text-muted-foreground">Received</p>
+                        <p className="rounded bg-destructive/10 px-1 text-destructive">[1, 0]</p>
                       </div>
                     )}
                     {selected.status === 'Compile Error' && (
-                      <pre className="scroll-x overflow-x-auto rounded-md border border-hair bg-code p-3 font-mono text-[13px] leading-5 text-error">
+                      <pre className="scroll-x overflow-x-auto rounded-md border border-border bg-muted/50 p-3 font-mono text-[13px] leading-5 text-destructive">
                         {'solution.cpp:12:18: error: expected initializer before ‘]’ token\n   12 |   return {seen[comp], i};\n      |                  ^'}
                       </pre>
                     )}
@@ -430,11 +442,11 @@ export default function Submissions() {
                 )}
               </section>
 
-              {/* Code card */}
-              <section className="card overflow-hidden">
-                <div className="flex flex-wrap items-center gap-2.5 border-b border-hair px-3 py-2.5">
-                  <span className="tag tag-gray">{selected.language}</span>
-                  <span className="t-code-tag text-ink-3">hashmap_twosum.py</span>
+              {/* Code rounded-xl border border-border bg-card text-card-foreground shadow-sm */}
+              <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">
+                <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-3 py-2.5">
+                  <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">{selected.language}</span>
+                  <span className="font-mono text-xs text-muted-foreground">hashmap_twosum.py</span>
                   <span className="grow" />
                   <CustomButton variant="unstyled"
                     type="button"
@@ -452,13 +464,13 @@ export default function Submissions() {
                     Workspace
                   </CustomLink>
                 </div>
-                <div className="bg-code">
+                <div className="bg-muted/50">
                   <CodeView code={TWO_SUM_PY} lang="python" />
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-                  <span className="t-code-tag text-ink-3">Compiler: Python 3.11.4</span>
-                  <span className="t-code-tag flex items-center gap-1.5 text-ink-3">
-                    <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
+                  <span className="font-mono text-xs text-muted-foreground">Compiler: Python 3.11.4</span>
+                  <span className="font-mono text-xs flex items-center gap-1.5 text-muted-foreground">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
                     gVisor MicroVM v2.4 (sandbox)
                   </span>
                 </div>

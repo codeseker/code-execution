@@ -16,7 +16,7 @@ export const loginSchema = z.object({
 export type LoginFormSchema = z.infer<typeof loginSchema>
 
 export default function useLogin() {
-    const { actions: { setIsAuthenticated } } = useAuthStore((s) => s);
+    const { actions: { setIsAuthenticated, setAuthUser } } = useAuthStore((s) => s);
     const { mutateAsync, isPending } = useMutation({
         mutationFn: async (data: LoginFormSchema) => {
             const response = await apiPost<LoginResponse>(ENDPOINTS.LOGIN, data);
@@ -25,6 +25,7 @@ export default function useLogin() {
         },
         onSuccess: (data) => {
             setIsAuthenticated(true);
+            setAuthUser({ username: data.user.username, role: data.user.role });
             setAuthTokens(data.accessToken, data.refreshToken);
             successToast("Logged in successfully!");
         },

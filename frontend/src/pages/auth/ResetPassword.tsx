@@ -5,8 +5,9 @@ import { AuthLayout, AuthShowcase } from './AuthLayout'
 import { Icon } from '../../components/icons'
 import { StrengthMeter, passwordScore } from './Register'
 import { cx } from '../../components/ui'
-import CustomButton from '../../components/ui/CustomButton'
-import CustomLink from '../../components/ui/CustomLink'
+import CustomLink from '../../components/CustomLink'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
 
 const CRITERIA = [
   { test: (pw: string) => pw.length >= 8, label: 'Minimum 8 characters' },
@@ -45,29 +46,29 @@ export default function ResetPassword() {
       headline="Choose a new password."
       sub="Set a new password to access your account."
     >
-      <div className="rounded-md border border-hair bg-canvas p-5">
+      <div className="rounded-md border border-border bg-background p-5">
         <div className="flex items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <p className="t-ui-med text-ink">Password check</p>
-            <p className="t-caption text-ink-2">Updates as you type</p>
+            <p className="text-sm font-medium text-foreground">Password check</p>
+            <p className="text-xs text-muted-foreground">Updates as you type</p>
           </div>
-          <span className={cx('t-caption', score >= 3 ? 'text-success' : 'text-ink-2')}>
+          <span className={cx('text-xs', score >= 3 ? 'text-primary' : 'text-muted-foreground')}>
             {STRENGTH_LABEL[score]}
           </span>
         </div>
         <div className="mt-4 flex flex-col gap-3">
           <StrengthMeter value={score} />
-          <ul className="flex flex-col gap-2 border-t border-hair pt-3">
+          <ul className="flex flex-col gap-2 border-t border-border pt-3">
             {CRITERIA.map((criterion) => {
               const isMet = criterion.test(password)
               return (
-                <li key={criterion.label} className="flex items-center gap-2.5 t-ui">
+                <li key={criterion.label} className="flex items-center gap-2.5 text-sm">
                   <Icon
                     name={isMet ? 'check' : 'chevronRight'}
                     size={14}
-                    className={cx('flex-none', isMet ? 'text-success' : 'text-ink-3')}
+                    className={cx('flex-none', isMet ? 'text-primary' : 'text-muted-foreground')}
                   />
-                  <span className={isMet ? 'text-ink' : 'text-ink-2'}>{criterion.label}</span>
+                  <span className={isMet ? 'text-foreground' : 'text-muted-foreground'}>{criterion.label}</span>
                 </li>
               )
             })}
@@ -81,24 +82,24 @@ export default function ResetPassword() {
     <AuthLayout showcase={showcase}>
       <div className="flex flex-col gap-8">
         <div className="flex flex-col gap-2">
-          <h1 className="t-page-title text-ink">Reset password</h1>
-          <p className="t-reading text-ink-2">Enter your reset code and choose a new password.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Reset password</h1>
+          <p className="text-sm leading-7 text-muted-foreground">Enter your reset code and choose a new password.</p>
         </div>
 
         <form className="flex flex-col gap-5" onSubmit={submit} noValidate>
           <div className="flex flex-col gap-2">
-            <label className="t-ui-med text-ink" htmlFor="reset-token">
+            <label className="text-sm font-medium text-foreground" htmlFor="reset-token">
               Reset code
             </label>
             <div className="relative">
               <Icon
                 name="key"
                 size={15}
-                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-3"
+                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
               />
-              <input
+              <Input
                 id="reset-token"
-                className="input h-10 font-mono pl-9"
+                className="h-10 pl-9 font-mono"
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
                 placeholder="Enter your reset code"
@@ -108,13 +109,13 @@ export default function ResetPassword() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="t-ui-med text-ink" htmlFor="reset-password">
+            <label className="text-sm font-medium text-foreground" htmlFor="reset-password">
               New password
             </label>
             <div className="relative">
-              <input
+              <Input
                 id="reset-password"
-                className="input h-10 pr-11"
+                className="h-10 pr-11"
                 type={reveal ? 'text' : 'password'}
                 autoComplete="new-password"
                 placeholder="Enter new password"
@@ -125,20 +126,22 @@ export default function ResetPassword() {
                   setError('')
                 }}
               />
-              <CustomButton variant="unstyled"
+              <Button
+                variant="ghost"
+                size="icon"
                 type="button"
-                className="icon-btn absolute top-1/2 right-1.5 h-7 w-7 -translate-y-1/2"
+                className="absolute top-1/2 right-1.5 h-7 w-7 -translate-y-1/2"
                 aria-label={reveal ? 'Hide password' : 'Show password'}
                 onClick={() => setReveal((v) => !v)}
               >
                 <Icon name={reveal ? 'eyeOff' : 'eye'} size={15} />
-              </CustomButton>
+              </Button>
             </div>
             <div className="mt-2 flex flex-col gap-2">
               <StrengthMeter value={score} />
-              <div className="flex justify-between t-caption">
-                <span className="text-ink-3">Complexity score</span>
-                <span className={cx('tnum', percent >= 70 ? 'text-success' : 'text-warning')}>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Complexity score</span>
+                <span className={cx('tabular-nums', percent >= 70 ? 'text-primary' : 'text-muted-foreground')}>
                   {STRENGTH_LABEL[score]} ({percent}%)
                 </span>
               </div>
@@ -146,13 +149,13 @@ export default function ResetPassword() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="t-ui-med text-ink" htmlFor="reset-confirm">
+            <label className="text-sm font-medium text-foreground" htmlFor="reset-confirm">
               Confirm new password
             </label>
             <div className="relative">
-              <input
+              <Input
                 id="reset-confirm"
-                className="input h-10 pr-11"
+                className="h-10 pr-11"
                 type={reveal ? 'text' : 'password'}
                 autoComplete="new-password"
                 placeholder="Re-enter new password"
@@ -163,48 +166,50 @@ export default function ResetPassword() {
                   setError('')
                 }}
               />
-              <CustomButton variant="unstyled"
+              <Button
+                variant="ghost"
+                size="icon"
                 type="button"
-                className="icon-btn absolute top-1/2 right-1.5 h-7 w-7 -translate-y-1/2"
+                className="absolute top-1/2 right-1.5 h-7 w-7 -translate-y-1/2"
                 aria-label={reveal ? 'Hide password' : 'Show password'}
                 onClick={() => setReveal((v) => !v)}
               >
                 <Icon name={reveal ? 'eyeOff' : 'eye'} size={15} />
-              </CustomButton>
+              </Button>
             </div>
           </div>
 
           <div className="flex flex-col gap-2">
-            <p className="t-ui-med text-ink">Password requirements</p>
+            <p className="text-sm font-medium text-foreground">Password requirements</p>
             <ul className="flex flex-col gap-2">
               {CRITERIA.map((c, i) => (
-                <li key={c.label} className="flex items-center gap-2.5 t-ui">
+                <li key={c.label} className="flex items-center gap-2.5 text-sm">
                   <Icon
                     name={passed[i] ? 'check' : 'chevronRight'}
                     size={14}
-                    className={cx('flex-none', passed[i] ? 'text-success' : 'text-ink-4')}
+                    className={cx('flex-none', passed[i] ? 'text-primary' : 'text-muted-foreground')}
                   />
-                  <span className={passed[i] ? 'text-ink' : 'text-ink-2'}>{c.label}</span>
+                  <span className={passed[i] ? 'text-foreground' : 'text-muted-foreground'}>{c.label}</span>
                 </li>
               ))}
             </ul>
           </div>
 
           {error && (
-            <p className="pill pill-error h-auto w-full items-start gap-2 py-2 text-left" role="alert">
+            <p className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-destructive/10 text-destructive h-auto w-full items-start gap-2 py-2 text-left" role="alert">
               <Icon name="alert" size={14} className="mt-0.5 flex-none" />
               {error}
             </p>
           )}
 
-          <CustomButton variant="unstyled" type="submit" className="btn btn-primary btn-block h-10">
+          <Button type="submit" className="h-10 w-full">
             Update password
-          </CustomButton>
+          </Button>
         </form>
 
-        <p className="t-ui text-center text-ink-2">
+        <p className="text-sm text-center text-muted-foreground">
           Remembered your password?{' '}
-          <CustomLink to="/login" className="link t-ui-med">Back to log in</CustomLink>
+          <CustomLink to="/login" className="link text-sm font-medium">Back to log in</CustomLink>
         </p>
       </div>
     </AuthLayout>

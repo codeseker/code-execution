@@ -49,16 +49,16 @@ export function AreaChart({
             x2={W - padR}
             y1={y(t)}
             y2={y(t)}
-            stroke="var(--border)"
+            className="stroke-border"
             strokeDasharray="3 4"
           />
-          <text x={padL - 8} y={y(t) + 3.5} textAnchor="end" className="fill-[var(--text-muted)] font-mono text-[10px]">
+          <text x={padL - 8} y={y(t) + 3.5} textAnchor="end" className="fill-muted-foreground font-mono text-xs">
             {t >= 1000 ? `${t / 1000}k` : t}
           </text>
         </g>
       ))}
-      <path d={area} fill="var(--chart-fill)" />
-      <path d={line} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round" />
+      <path d={area} className="fill-primary/10" />
+      <path d={line} className="fill-none stroke-primary" strokeWidth="2" strokeLinejoin="round" />
       {data.map((d, i) =>
         i % 3 === 0 || i === data.length - 1 ? (
           <text
@@ -66,21 +66,21 @@ export function AreaChart({
             x={x(i)}
             y={H - 8}
             textAnchor="middle"
-            className="fill-[var(--text-muted)] font-mono text-[10px]"
+            className="fill-muted-foreground font-mono text-xs"
           >
             {d.label}
           </text>
         ) : null,
       )}
-      <circle cx={x(peakIndex)} cy={y(data[peakIndex].value)} r="4.5" fill="var(--accent)" stroke="var(--bg-panel)" strokeWidth="2" />
+      <circle cx={x(peakIndex)} cy={y(data[peakIndex].value)} r="4.5" className="fill-primary stroke-card" strokeWidth="2" />
       {peakLabel && (
         <g transform={`translate(${Math.min(x(peakIndex) + 12, W - 190)}, ${Math.max(y(data[peakIndex].value) - 46, 8)})`}>
-          <rect width="176" height="38" rx="6" fill="var(--bg-raised)" stroke="var(--border)" />
-          <circle cx="12" cy="13" r="3.5" fill="var(--accent)" />
-          <text x="22" y="16.5" className="fill-[var(--text-primary)] text-[11px] font-medium">
+          <rect width="176" height="38" rx="6" className="fill-popover stroke-border" />
+          <circle cx="12" cy="13" r="3.5" className="fill-primary" />
+          <text x="22" y="16.5" className="fill-popover-foreground text-xs font-medium">
             {peakLabel}
           </text>
-          <text x="12" y="30" className="fill-[var(--text-secondary)] font-mono text-[10px]">
+          <text x="12" y="30" className="fill-muted-foreground font-mono text-xs">
             68% Accepted
           </text>
         </g>
@@ -99,7 +99,7 @@ export function Donut({
   thickness = 14,
   children,
 }: {
-  segments: Array<{ value: number; color: string }>
+  segments: Array<{ value: number }>
   size?: number
   thickness?: number
   children?: ReactNode
@@ -108,10 +108,11 @@ export function Donut({
   const r = (size - thickness) / 2
   const c = 2 * Math.PI * r
   let offset = 0
+  const chartStrokes = ['stroke-chart-1', 'stroke-chart-2', 'stroke-chart-3', 'stroke-chart-4', 'stroke-chart-5']
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    <div className="relative aspect-square w-full max-w-48">
       <svg width={size} height={size} className="-rotate-90" aria-hidden>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--bg-active)" strokeWidth={thickness} />
+        <circle cx={size / 2} cy={size / 2} r={r} className="fill-none stroke-muted" strokeWidth={thickness} />
         {segments.map((seg, i) => {
           const len = (seg.value / total) * c
           const el = (
@@ -121,7 +122,7 @@ export function Donut({
               cy={size / 2}
               r={r}
               fill="none"
-              stroke={seg.color}
+              className={cx('fill-none', chartStrokes[i % chartStrokes.length])}
               strokeWidth={thickness}
               strokeDasharray={`${Math.max(0, len - 2)} ${c - Math.max(0, len - 2)}`}
               strokeDashoffset={-offset}
@@ -144,55 +145,40 @@ export function Donut({
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export function Heatmap({ grid, className }: { grid: number[][]; className?: string }) {
-  const cell = 11
+  const levels = ['bg-muted', 'bg-primary/20', 'bg-primary/40', 'bg-primary/60', 'bg-primary/80']
   return (
     <div className={cx('flex flex-col gap-1 overflow-x-auto pb-1', className)}>
-      <div className="flex gap-[30px] pl-7 text-ink-3 t-caption" aria-hidden>
+      <div className="flex gap-8 pl-7 text-xs text-muted-foreground" aria-hidden>
         {MONTH_LABELS.map((m) => (
-          <span key={m} className="w-[26px] shrink-0">
+          <span key={m} className="w-7 shrink-0">
             {m}
           </span>
         ))}
       </div>
       <div className="flex gap-2">
-        <div className="flex w-5 shrink-0 flex-col justify-between py-[1px] text-ink-3 t-caption" aria-hidden>
+        <div className="flex w-6 shrink-0 flex-col justify-between py-px text-xs text-muted-foreground" aria-hidden>
           <span>Mon</span>
           <span>Wed</span>
           <span>Fri</span>
         </div>
-        <div className="flex gap-[3px]" role="grid" aria-label="Submission activity over the past year">
+        <div className="flex gap-1" role="grid" aria-label="Submission activity over the past year">
           {grid.map((week, wi) => (
-            <div key={wi} className="flex flex-col gap-[3px]">
+            <div key={wi} className="flex flex-col gap-1">
               {week.map((level, di) => (
                 <span
                   key={di}
                   title={`${level === 0 ? 'No' : level * 2} submissions`}
-                  style={{
-                    width: cell,
-                    height: cell,
-                    borderRadius: 2,
-                    background: level === 0 ? 'var(--bg-active)' : 'var(--accent)',
-                    opacity: level === 0 ? 1 : 0.25 + level * 0.19,
-                  }}
+                  className={cx('size-3 rounded-sm', levels[Math.max(0, Math.min(levels.length - 1, level))])}
                 />
               ))}
             </div>
           ))}
         </div>
       </div>
-      <div className="mt-1 flex items-center justify-end gap-1.5 text-ink-3 t-caption">
+      <div className="mt-1 flex items-center justify-end gap-2 text-xs text-muted-foreground">
         Less
         {[0, 1, 2, 3, 4].map((lvl) => (
-          <span
-            key={lvl}
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 2,
-              background: lvl === 0 ? 'var(--bg-active)' : 'var(--accent)',
-              opacity: lvl === 0 ? 1 : 0.25 + lvl * 0.19,
-            }}
-          />
+          <span key={lvl} className={cx('size-3 rounded-sm', levels[lvl])} />
         ))}
         More
       </div>
@@ -219,18 +205,18 @@ export function DistributionCurve({ you }: { you: number }) {
   const youX = Math.min(0.94, Math.max(0.06, you))
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Runtime distribution of accepted solutions">
-      <path d={`${pts.join(' ')} L${W},${H - 12} L0,${H - 12} Z`} fill="var(--bg-active)" />
-      <path d={pts.join(' ')} fill="none" stroke="var(--border-strong)" strokeWidth="1.5" />
+      <path d={`${pts.join(' ')} L${W},${H - 12} L0,${H - 12} Z`} className="fill-muted/50" />
+      <path d={pts.join(' ')} className="fill-none stroke-border" strokeWidth="1.5" />
       <line
         x1={youX * W}
         x2={youX * W}
         y1="8"
         y2={H - 12}
-        stroke="var(--accent)"
+        className="stroke-primary"
         strokeDasharray="3 3"
       />
-      <circle cx={youX * W} cy={H - 40} r="5" fill="var(--accent)" stroke="var(--bg-panel)" strokeWidth="2" />
-      <line x1="0" x2={W} y1={H - 12} y2={H - 12} stroke="var(--border)" />
+      <circle cx={youX * W} cy={H - 40} r="5" className="fill-primary stroke-card" strokeWidth="2" />
+      <line x1="0" x2={W} y1={H - 12} y2={H - 12} className="stroke-border" />
     </svg>
   )
 }

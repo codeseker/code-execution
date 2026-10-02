@@ -6,8 +6,37 @@ import { Icon } from '../../components/icons'
 import { DifficultyBadge, EmptyState, Tag, cx } from '../../components/ui'
 import { ADMIN_SUBMISSIONS, ADMIN_USERS, PROBLEMS } from '../../data'
 import type { AdminUser, SubmissionStatus } from '../../data'
-import CustomButton from '../../components/ui/CustomButton'
-import CustomLink from '../../components/ui/CustomLink'
+import CustomButton from '../../components/CustomButton'
+import CustomLink from '../../components/CustomLink'
+import { Input } from '../../components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+  className,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  options: string[]
+  className: string
+}) {
+  return (
+    <Select value={value} onValueChange={(nextValue) => {
+      if (nextValue !== null) onChange(nextValue)
+    }}>
+      <SelectTrigger className={className} aria-label={label}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  )
+}
 
 function PageHead({
   crumbs,
@@ -21,12 +50,12 @@ function PageHead({
   actions?: ReactNode
 }) {
   return (
-    <div className="stack gap-1">
-      <p className="t-code-tag text-ink-3">{crumbs}</p>
+    <div className="flex flex-col gap-1">
+      <p className="font-mono text-xs text-muted-foreground">{crumbs}</p>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="t-page-title text-ink">{title}</h1>
-          {meta && <span className="tag tag-gray t-code-tag">{meta}</span>}
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+          {meta && <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground font-mono text-xs">{meta}</span>}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2.5">{actions}</div>}
       </div>
@@ -35,9 +64,9 @@ function PageHead({
 }
 
 function statusTone(status: SubmissionStatus) {
-  if (status === 'Accepted') return 'pill-success'
-  if (status === 'Time Limit Exceeded') return 'pill-warning'
-  return 'pill-error'
+  if (status === 'Accepted') return 'bg-primary/10 text-primary'
+  if (status === 'Time Limit Exceeded') return 'bg-muted text-muted-foreground'
+  return 'bg-destructive/10 text-destructive'
 }
 
 /* ================================================================== */
@@ -76,7 +105,7 @@ export function AdminProblems() {
 
   return (
     <AdminLayout>
-      <div className="mx-auto w-full max-w-[1440px] stack gap-5 px-4 py-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1440px] flex flex-col gap-5 px-4 py-6 lg:px-8">
         <PageHead
           crumbs="ADMIN / PROBLEMS"
           title="Problem Catalog"
@@ -99,30 +128,27 @@ export function AdminProblems() {
           }
         />
 
-        <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-hair bg-panel px-3 py-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5">
           <div className="relative min-w-[220px] grow">
-            <Icon name="search" size={14} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-3" />
-            <input
-              className="input h-8 pl-8"
+            <Icon name="search" size={14} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="h-8 pl-8"
               placeholder="Search title or number…"
               aria-label="Search catalog"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-          <select
-            className="input select h-8 w-[136px] text-[13px]"
-            aria-label="Difficulty"
+          <FilterSelect
+            label="Difficulty"
             value={difficulty}
-            onChange={(e) => setDifficulty(e.target.value)}
-          >
-            {['All', 'Easy', 'Medium', 'Hard'].map((d) => (
-              <option key={d}>{d}</option>
-            ))}
-          </select>
+            onChange={setDifficulty}
+            options={['All', 'Easy', 'Medium', 'Hard']}
+            className="h-8 w-[136px] text-[13px]"
+          />
         </div>
 
-        <section className="card overflow-hidden">
+        <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="ntable">
               <thead>
@@ -142,9 +168,9 @@ export function AdminProblems() {
                   const status = statusOf(p.id, idx)
                   return (
                     <tr key={p.id}>
-                      <td className="t-code-tag pl-5 text-ink-3">{p.num}</td>
+                      <td className="font-mono text-xs pl-5 text-muted-foreground">{p.num}</td>
                       <td>
-                        <CustomLink to={`/problems/${p.id}`} className="t-ui-med text-ink hover:text-accent">
+                        <CustomLink to={`/problems/${p.id}`} className="text-sm font-medium text-foreground hover:text-primary">
                           {p.title}
                         </CustomLink>
                       </td>
@@ -160,13 +186,13 @@ export function AdminProblems() {
                           ))}
                         </span>
                       </td>
-                      <td className="t-ui tnum hidden text-ink-2 md:table-cell">{p.acceptance.toFixed(1)}%</td>
+                      <td className="text-sm tabular-nums hidden text-muted-foreground md:table-cell">{p.acceptance.toFixed(1)}%</td>
                       <td>
                         <CustomButton variant="unstyled"
                           type="button"
                           className={cx(
-                            'pill',
-                            status === 'Live' ? 'pill-success' : status === 'Draft' ? 'pill-warning' : 'pill-error',
+                            'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium',
+                            status === 'Live' ? 'bg-primary/10 text-primary' : status === 'Draft' ? 'bg-muted text-muted-foreground' : 'bg-destructive/10 text-destructive',
                           )}
                           title="Click to cycle status"
                           onClick={() => cycle(p.id, status)}
@@ -240,7 +266,7 @@ export function AdminUsers() {
 
   return (
     <AdminLayout>
-      <div className="mx-auto w-full max-w-[1440px] stack gap-5 px-4 py-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1440px] flex flex-col gap-5 px-4 py-6 lg:px-8">
         <PageHead
           crumbs="ADMIN / USERS"
           title="User Management"
@@ -257,30 +283,27 @@ export function AdminUsers() {
           }
         />
 
-        <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-hair bg-panel px-3 py-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5">
           <div className="relative min-w-[220px] grow">
-            <Icon name="search" size={14} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-3" />
-            <input
-              className="input h-8 pl-8"
+            <Icon name="search" size={14} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="h-8 pl-8"
               placeholder="Search handle or email…"
               aria-label="Search users"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-          <select
-            className="input select h-8 w-[140px] text-[13px]"
-            aria-label="Role"
+          <FilterSelect
+            label="Role"
             value={role}
-            onChange={(e) => setRole(e.target.value)}
-          >
-            {['All roles', 'Member', 'Moderator', 'Admin'].map((r) => (
-              <option key={r}>{r}</option>
-            ))}
-          </select>
+            onChange={setRole}
+            options={['All roles', 'Member', 'Moderator', 'Admin']}
+            className="h-8 w-[140px] text-[13px]"
+          />
         </div>
 
-        <section className="card overflow-hidden">
+        <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="ntable">
               <thead>
@@ -301,12 +324,12 @@ export function AdminUsers() {
                     <tr key={u.handle}>
                       <td className="pl-5">
                         <span className="flex items-center gap-3">
-                          <span className="center h-7 w-7 flex-none rounded-full bg-accent-soft text-[11px] font-semibold text-accent">
+                          <span className="center h-7 w-7 flex-none rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
                             {u.initials}
                           </span>
-                          <span className="stack">
-                            <span className="t-ui-med text-ink">{u.handle}</span>
-                            <span className="t-caption text-ink-3">{u.email}</span>
+                          <span className="flex flex-col">
+                            <span className="text-sm font-medium text-foreground">{u.handle}</span>
+                            <span className="text-xs text-muted-foreground">{u.email}</span>
                           </span>
                         </span>
                       </td>
@@ -315,14 +338,14 @@ export function AdminUsers() {
                           {u.role}
                         </Tag>
                       </td>
-                      <td className="t-ui tnum hidden text-ink-2 md:table-cell">{u.problemsSolved}</td>
-                      <td className="t-ui tnum hidden text-ink-2 md:table-cell">{u.submissions.toLocaleString()}</td>
-                      <td className="t-caption hidden text-ink-3 lg:table-cell">{u.joined}</td>
+                      <td className="text-sm tabular-nums hidden text-muted-foreground md:table-cell">{u.problemsSolved}</td>
+                      <td className="text-sm tabular-nums hidden text-muted-foreground md:table-cell">{u.submissions.toLocaleString()}</td>
+                      <td className="text-xs hidden text-muted-foreground lg:table-cell">{u.joined}</td>
                       <td>
                         <span
                           className={cx(
-                            'pill',
-                            status === 'Active' ? 'pill-success' : status === 'Idle' ? 'pill-neutral' : 'pill-error',
+                            'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium',
+                            status === 'Active' ? 'bg-primary/10 text-primary' : status === 'Idle' ? 'bg-muted text-muted-foreground' : 'bg-destructive/10 text-destructive',
                           )}
                         >
                           {status}
@@ -381,7 +404,7 @@ export function AdminSubmissions() {
 
   return (
     <AdminLayout>
-      <div className="mx-auto w-full max-w-[1440px] stack gap-5 px-4 py-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1440px] flex flex-col gap-5 px-4 py-6 lg:px-8">
         <PageHead
           crumbs="ADMIN / SUBMISSIONS"
           title="Submission Stream"
@@ -398,35 +421,29 @@ export function AdminSubmissions() {
           }
         />
 
-        <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-hair bg-panel px-3 py-2.5">
-          <span className="t-code-tag flex items-center gap-2 text-ink-2">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" aria-hidden />
+        <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5">
+          <span className="font-mono text-xs flex items-center gap-2 text-muted-foreground">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" aria-hidden />
             LIVE · 420 req/m
           </span>
           <span className="grow" />
-          <select
-            className="input select h-8 w-[190px] text-[13px]"
-            aria-label="Status"
+          <FilterSelect
+            label="Status"
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            {['All statuses', 'Accepted', 'Wrong Answer', 'Time Limit Exceeded', 'Memory Limit Exceeded'].map((o) => (
-              <option key={o}>{o}</option>
-            ))}
-          </select>
-          <select
-            className="input select h-8 w-[160px] text-[13px]"
-            aria-label="Language"
+            onChange={setStatus}
+            options={['All statuses', 'Accepted', 'Wrong Answer', 'Time Limit Exceeded', 'Memory Limit Exceeded']}
+            className="h-8 w-[190px] text-[13px]"
+          />
+          <FilterSelect
+            label="Language"
             value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-          >
-            {languages.map((l) => (
-              <option key={l}>{l}</option>
-            ))}
-          </select>
+            onChange={setLanguage}
+            options={languages}
+            className="h-8 w-[160px] text-[13px]"
+          />
         </div>
 
-        <section className="card overflow-hidden">
+        <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="ntable">
               <thead>
@@ -448,30 +465,30 @@ export function AdminSubmissions() {
                     className="cursor-pointer"
                     // onClick={() => push({ title: `Inspecting ${s.id}`, description: `${s.developer} · ${s.problemTitle}`, tone: 'neutral' })}
                   >
-                    <td className="t-code-tag pl-5 text-ink-3">{s.id}</td>
+                    <td className="font-mono text-xs pl-5 text-muted-foreground">#{s.id}</td>
                     <td>
                       <span className="flex items-center gap-2.5">
-                        <span className="center h-6 w-6 flex-none rounded-full bg-accent-soft text-[10px] font-semibold text-accent">
+                        <span className="center h-6 w-6 flex-none rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
                           {s.initials}
                         </span>
-                        <span className="t-ui-med text-ink">{s.developer}</span>
+                        <span className="text-sm font-medium text-foreground">{s.developer}</span>
                       </span>
                     </td>
                     <td>
                       <span className="flex items-center gap-2">
-                        <span className="t-code-tag tnum text-ink-3">{s.problemNum}.</span>
-                        <span className="t-ui-med text-ink">{s.problemTitle}</span>
+                        <span className="font-mono text-xs tabular-nums text-muted-foreground">{s.problemNum}.</span>
+                        <span className="text-sm font-medium text-foreground">{s.problemTitle}</span>
                       </span>
                     </td>
                     <td className="hidden lg:table-cell">
-                      <span className="tag tag-gray t-code-tag">{s.language}</span>
+                      <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground font-mono text-xs">{s.language}</span>
                     </td>
                     <td>
-                      <span className={cx('pill', statusTone(s.status))}>{s.status}</span>
+                      <span className={cx('inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium', statusTone(s.status))}>{s.status}</span>
                     </td>
-                    <td className="t-ui tnum hidden text-ink-2 md:table-cell">{s.runtime}</td>
-                    <td className="t-ui tnum hidden text-ink-2 md:table-cell">{s.memory}</td>
-                    <td className="t-caption pr-5 text-right whitespace-nowrap text-ink-3">{s.timestamp}</td>
+                    <td className="text-sm tabular-nums hidden text-muted-foreground md:table-cell">{s.runtime}</td>
+                    <td className="text-sm tabular-nums hidden text-muted-foreground md:table-cell">{s.memory}</td>
+                    <td className="text-xs pr-5 text-right whitespace-nowrap text-muted-foreground">{s.timestamp}</td>
                   </tr>
                 ))}
                 {rows.length === 0 && (
@@ -484,13 +501,13 @@ export function AdminSubmissions() {
               </tbody>
             </table>
           </div>
-          <div className="flex items-center justify-between gap-3 border-t border-hair px-5 py-3">
-            <span className="t-caption text-ink-3">
-              Showing <span className="tnum text-ink-2">{rows.length}</span> of{' '}
-              <span className="tnum text-ink-2">{ADMIN_SUBMISSIONS.length}</span> recent runs
+          <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-3">
+            <span className="text-xs text-muted-foreground">
+              Showing <span className="tabular-nums text-muted-foreground">{rows.length}</span> of{' '}
+              <span className="tabular-nums text-muted-foreground">{ADMIN_SUBMISSIONS.length}</span> recent runs
             </span>
-            <span className="t-caption flex items-center gap-1.5 text-ink-3">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
+            <span className="text-xs flex items-center gap-1.5 text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
               gVisor sandbox fleet healthy
             </span>
           </div>

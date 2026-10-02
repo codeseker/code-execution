@@ -3,11 +3,11 @@ import { AuthLayout, AuthShowcase } from './AuthLayout'
 import { Icon } from '../../components/icons'
 import { LOGIN_SHOWCASE } from '../../data'
 import { CodeWindow } from '../../components/Code'
-import CustomButton from '../../components/ui/CustomButton'
-import CustomLink from '../../components/ui/CustomLink'
+import CustomButton from '../../components/CustomButton'
+import CustomLink from '../../components/CustomLink'
 import { useAppForm } from '../../hooks/useAppForm'
 import useLogin, { loginSchema, type LoginFormSchema } from '../../hooks/auth/login/useLogin'
-import CustomInput from '../../components/ui/CustomInput';
+import CustomInput from '../../components/CustomInput';
 
 
 const showcase = (
@@ -38,8 +38,8 @@ export default function Login() {
       try {
         await login(data);
         reset();
-      } catch (error: unknown) {
-
+      } catch {
+        // form state is already handled by the auth hook
       }
     }
   });
@@ -48,18 +48,18 @@ export default function Login() {
     <AuthLayout showcase={showcase}>
       <div className="flex flex-col gap-8">
         <div className="flex flex-col gap-2">
-          <h1 className="t-page-title text-ink">Log in</h1>
-          <p className="t-reading text-ink-2">Enter your details to access your account.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Log in</h1>
+          <p className="text-sm leading-7 text-muted-foreground">Enter your details to access your account.</p>
         </div>
 
         <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
           <div className="flex flex-col gap-2">
-            <label className="t-ui-med text-ink" htmlFor="login-email">
+            <label className="text-sm font-medium text-foreground" htmlFor="login-email">
               Email
             </label>
             <CustomInput
               id="login-email"
-              className="input h-10"
+              className="h-10"
               type="email"
               autoComplete="email"
               placeholder="name@example.com"
@@ -70,17 +70,17 @@ export default function Login() {
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <label className="t-ui-med text-ink" htmlFor="login-password">
+              <label className="text-sm font-medium text-foreground" htmlFor="login-password">
                 Password
               </label>
-              <CustomLink to="/forgot-password" className="link t-caption">
+              <CustomLink to="/forgot-password" className="link text-xs">
                 Forgot password?
               </CustomLink>
             </div>
             <div className="relative">
               <CustomInput
                 id="login-password"
-                className="input h-10 pr-11"
+                className="h-10 pr-11"
                 type={reveal ? 'text' : 'password'}
                 autoComplete="current-password"
                 placeholder="Enter your password"
@@ -103,9 +103,9 @@ export default function Login() {
           </CustomButton>
         </form>
 
-        <p className="t-ui text-center text-ink-2">
+        <p className="text-sm text-center text-muted-foreground">
           New to CodeForge?{' '}
-          <CustomLink to="/register" className="link t-ui-med">
+          <CustomLink to="/register" className="link text-sm font-medium">
             Create an account
           </CustomLink>
         </p>

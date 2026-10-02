@@ -3,16 +3,16 @@ import { useEffect, useMemo, useState } from 'react'
 import AdminLayout from './AdminLayout'
 import { Icon } from '../../components/icons'
 import { AreaChart, Donut } from '../../components/charts'
-import { Segmented, cx } from '../../components/ui'
+import { Progress, Segmented, cx } from '../../components/ui'
 import { ADMIN_SUBMISSIONS, DIFFICULTY_MATRIX, VOLUME_SERIES } from '../../data'
 import type { SubmissionStatus } from '../../data'
-import CustomButton from '../../components/ui/CustomButton'
-import CustomLink from '../../components/ui/CustomLink'
+import CustomLink from '../../components/CustomLink'
+import { Button } from '../../components/ui/button'
 
 function statusTone(status: SubmissionStatus) {
-  if (status === 'Accepted') return 'pill-success'
-  if (status === 'Time Limit Exceeded') return 'pill-warning'
-  return 'pill-error'
+  if (status === 'Accepted') return 'bg-primary/10 text-primary'
+  if (status === 'Time Limit Exceeded') return 'bg-muted text-muted-foreground'
+  return 'bg-destructive/10 text-destructive'
 }
 
 function StatCard({
@@ -33,38 +33,38 @@ function StatCard({
   footer: Array<{ k?: string; v: string }>
 }) {
   return (
-    <section className="card stack gap-2.5 p-5">
+    <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col gap-2.5 p-5">
       <div className="flex items-start justify-between gap-3">
-        <p className="t-overline text-ink-3">{label}</p>
+        <p className="text-sm font-semibold text-muted-foreground">{label}</p>
         <span className="flex items-center gap-2">
           {chip && (
-            <span className="pill pill-warning t-code-tag h-6">
-              <span className="h-1.5 w-1.5 rounded-full bg-warning" aria-hidden />
+            <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-muted text-muted-foreground font-mono text-xs h-6">
+              <span className="h-1.5 w-1.5 rounded-full bg-muted" aria-hidden />
               {chip}
             </span>
           )}
-          <span className="center h-8 w-8 rounded-md bg-wash text-ink-2">
+          <span className="center h-8 w-8 rounded-md bg-muted/40 text-muted-foreground">
             <Icon name={icon} size={16} />
           </span>
         </span>
       </div>
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="tnum font-bold text-ink" style={{ fontSize: 34, lineHeight: '40px', letterSpacing: '-0.02em' }}>
+        <span className="text-2xl font-semibold leading-10 tracking-tight tabular-nums text-foreground">
           {value}
         </span>
         {delta && (
           <span
-            className={cx('t-caption tnum flex items-center gap-1', deltaTone === 'success' ? 'text-success' : 'text-ink-3')}
+            className={cx('text-xs tabular-nums flex items-center gap-1', deltaTone === 'success' ? 'text-primary' : 'text-muted-foreground')}
           >
             <Icon name="arrowUpRight" size={12} />
             {delta}
           </span>
         )}
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-hair pt-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5">
         {footer.map((f) => (
-          <span key={f.v} className="t-caption text-ink-2">
-            {f.k && <span className="text-ink-3">{f.k} </span>}
+          <span key={f.v} className="text-xs text-muted-foreground">
+            {f.k && <span className="text-muted-foreground">{f.k} </span>}
             {f.v}
           </span>
         ))}
@@ -77,8 +77,7 @@ function StatCard({
 function build90() {
   const earlier: Array<{ label: string; value: number }> = []
   for (let i = 0; i < 36; i++) {
-    const wave = Math.sin(i / 3.1) * 900 + Math.cos(i / 1.7) * 500
-    // earlier.push({ label: `Feb ${String((i % 27) + 1).padStart(2, '0')}`, value: Math.round(5200 + i * 95 + wave) })
+    // earlier.push({ label: `Feb ${String((i % 27) + 1).padStart(2, '0')}`, value: Math.round(5200 + i * 95 + Math.sin(i / 3.1) * 900 + Math.cos(i / 1.7) * 500) })
   }
   return [...earlier, ...VOLUME_SERIES]
 }
@@ -112,23 +111,22 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout>
-      <div className="mx-auto w-full max-w-[1440px] stack gap-5 px-4 py-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1440px] flex flex-col gap-5 px-4 py-6 lg:px-8">
         {/* Breadcrumb + title */}
-        <div className="stack gap-1">
-          <p className="t-code-tag flex items-center gap-2 text-ink-3">
+        <div className="flex flex-col gap-1">
+          <p className="font-mono text-xs flex items-center gap-2 text-muted-foreground">
             ADMIN / DASHBOARD
-            <span className="h-1 w-1 rounded-full bg-accent" aria-hidden />
+            <span className="h-1 w-1 rounded-full bg-primary" aria-hidden />
             TELEMETRY LIVE
           </p>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <h1 className="t-page-title text-ink">System Overview &amp; Telemetry</h1>
-              <span className="tag tag-gray t-code-tag">v2.14.0-edge</span>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">System Overview &amp; Telemetry</h1>
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground font-mono text-xs">v2.14.0-edge</span>
             </div>
             <div className="flex items-center gap-2.5">
-              <CustomButton variant="unstyled"
+              <Button variant="outline"
                 type="button"
-                className="btn btn-secondary"
                 onClick={() => {
                   setSyncSeconds(0)
                   // push({ title: 'Telemetry refreshed', description: 'All panels pulled fresh cluster metrics.', tone: 'success' })
@@ -136,19 +134,18 @@ export default function AdminDashboard() {
               >
                 <Icon name="refresh" size={14} />
                 Refresh Data
-                <span className="t-code-tag text-ink-3">{syncSeconds}s ago</span>
-              </CustomButton>
-              <CustomButton variant="unstyled"
+                <span className="font-mono text-xs text-muted-foreground">{syncSeconds}s ago</span>
+              </Button>
+              <Button
                 type="button"
-                className="btn btn-primary"
                 // onClick={() => push({ title: 'Report exported', description: 'codeforge-telemetry.csv · 24 KB', tone: 'success' })}
               >
                 <Icon name="download" size={14} />
                 Export Report
-                <span className="tag" style={{ background: 'rgba(255,255,255,0.18)', color: 'inherit' }}>
+                <span className="rounded-sm bg-primary-foreground/15 px-1.5 py-0.5 text-xs text-primary-foreground">
                   CSV
                 </span>
-              </CustomButton>
+              </Button>
             </div>
           </div>
         </div>
@@ -195,19 +192,19 @@ export default function AdminDashboard() {
 
         {/* Chart + matrix */}
         <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.9fr)_minmax(0,1fr)]">
-          <section className="card stack gap-4 p-5">
+          <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col gap-4 p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="t-h3 flex items-center gap-2 text-ink">
-                  <Icon name="activity" size={17} className="text-accent" />
+                <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground">
+                  <Icon name="activity" size={17} className="text-primary" />
                   Submissions Volume
                 </h2>
-                <p className="t-caption mt-0.5 text-ink-2">
+                <p className="text-xs mt-0.5 text-muted-foreground">
                   Execution throughput across all sandboxed test runners
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2.5">
-                <span className="tag tag-gray t-code-tag">
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground font-mono text-xs">
                   Peak: {Math.max(...series.map((p) => p.value)).toLocaleString()} on May 12
                 </span>
                 <Segmented
@@ -223,83 +220,81 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="rounded-md border border-hair bg-code p-3">
+            <div className="rounded-md border border-border bg-muted/50 p-3">
               <AreaChart data={series} yMax={25000} yStep={5000} peakLabel="22,410 submissions" />
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-4">
                 {[
-                  { c: 'var(--accent)', l: 'Python (41.2%)' },
-                  { c: 'var(--success)', l: 'C++ (28.4%)' },
-                  { c: 'var(--warning)', l: 'Rust/TS (30.4%)' },
+                  { color: 'bg-chart-1', l: 'Python (41.2%)' },
+                  { color: 'bg-chart-2', l: 'C++ (28.4%)' },
+                  { color: 'bg-chart-3', l: 'Rust/TS (30.4%)' },
                 ].map((x) => (
-                  <span key={x.l} className="t-caption flex items-center gap-2 text-ink-2">
-                    <span className="h-2 w-2 rounded-full" style={{ background: x.c }} aria-hidden />
+                  <span key={x.l} className="text-xs flex items-center gap-2 text-muted-foreground">
+                    <span className={cx('size-2 rounded-full', x.color)} aria-hidden />
                     {x.l}
                   </span>
                 ))}
               </div>
-              <span className="t-code-tag text-ink-3">Avg Execution: 28.4ms</span>
+              <span className="font-mono text-xs text-muted-foreground">Avg Execution: 28.4ms</span>
             </div>
           </section>
 
-          <section className="card stack gap-4 p-5">
+          <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col gap-4 p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="t-h3 text-ink">Difficulty Matrix</h2>
-                <p className="t-caption mt-0.5 text-ink-2">Library composition</p>
+                <h2 className="text-lg font-semibold text-foreground">Difficulty Matrix</h2>
+                <p className="text-xs mt-0.5 text-muted-foreground">Library composition</p>
               </div>
-              <span className="pill pill-accent tnum">524 Active</span>
+              <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-primary/10 text-primary tabular-nums">524 Active</span>
             </div>
 
             <div className="center py-1">
               <Donut
                 size={168}
                 thickness={16}
-                segments={DIFFICULTY_MATRIX.map((d) => ({ value: d.percent, color: d.color }))}
+                segments={DIFFICULTY_MATRIX.map((d) => ({ value: d.percent }))}
               >
-                <span className="t-page-title tnum text-ink">524</span>
-                <span className="t-overline text-ink-3">Problems</span>
+                <span className="text-2xl font-semibold tracking-tight tabular-nums text-foreground">524</span>
+                <span className="text-sm font-semibold text-muted-foreground">Problems</span>
               </Donut>
             </div>
 
-            <div className="stack gap-3">
-              {DIFFICULTY_MATRIX.map((d) => (
-                <div key={d.label} className="stack gap-1.5">
+            <div className="flex flex-col gap-3">
+              {DIFFICULTY_MATRIX.map((d, index) => (
+                <div key={d.label} className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="t-ui-med flex items-center gap-2 text-ink">
-                      <span className="h-2.5 w-2.5 rounded-sm" style={{ background: d.color }} aria-hidden />
+                    <span className="text-sm font-medium flex items-center gap-2 text-foreground">
+                      <span className={cx('size-2.5 rounded-sm', ['bg-chart-1', 'bg-chart-2', 'bg-chart-3'][index])} aria-hidden />
                       {d.label}
                     </span>
-                    <span className="t-caption tnum text-ink-2">
-                      <span className="font-medium text-ink">{d.count}</span> ({d.percent}%)
+                    <span className="text-xs tabular-nums text-muted-foreground">
+                      <span className="font-medium text-foreground">{d.count}</span> ({d.percent}%)
                     </span>
                   </div>
-                  <div className="progress h-1.5">
-                    <i style={{ width: `${d.percent}%`, background: d.color }} />
-                  </div>
-                  <div className="flex justify-between t-code-tag text-ink-3">
+                  <Progress value={d.percent} className="h-1.5" barClassName={['bg-chart-1', 'bg-chart-2', 'bg-chart-3'][index]} />
+                  <div className="flex justify-between font-mono text-xs text-muted-foreground">
                     <span>{d.submits} submits</span>
                     <span>{d.accuracy} Acc.</span>
                   </div>
                 </div>
               ))}
             </div>
-            <p className="t-caption border-t border-hair pt-3 text-ink-3">
+            <p className="text-xs border-t border-border pt-3 text-muted-foreground">
               Pool Balance: Optimal for L4/L6 Interview Prep
             </p>
           </section>
         </div>
 
         {/* Recent submissions */}
-        <section className="card overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-hair p-5 pb-4">
+        <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5 pb-4">
             <div className="flex items-center gap-3">
-              <span className="h-2.5 w-2.5 rounded-full bg-accent" aria-hidden />
-              <h2 className="t-h3 text-ink">Recent Submissions</h2>
-              <span className="pill pill-success h-6">
-                <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
+              <span className="h-2.5 w-2.5 rounded-full bg-primary" aria-hidden />
+              <h2 className="text-lg font-semibold text-foreground">Recent Submissions</h2>
+              <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-primary/10 text-primary h-6">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
                 Live Stream
               </span>
             </div>
@@ -308,7 +303,7 @@ export default function AdminDashboard() {
                 <Icon
                   name="filter"
                   size={13}
-                  className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-3"
+                  className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"
                 />
                 <input
                   className="input h-8 w-[220px] pl-8 text-[13px]"
@@ -328,7 +323,7 @@ export default function AdminDashboard() {
                   <option key={o}>{o}</option>
                 ))}
               </select>
-              <CustomLink to="/admin/submissions" className="link t-ui-med inline-flex items-center gap-1.5 px-1">
+              <CustomLink to="/admin/submissions" className="link text-sm font-medium inline-flex items-center gap-1.5 px-1">
                 View all
                 <Icon name="arrowRight" size={13} />
               </CustomLink>
@@ -353,48 +348,48 @@ export default function AdminDashboard() {
               <tbody>
                 {rows.map((s) => (
                   <tr key={s.id}>
-                    <td className="t-code-tag pl-5 text-ink-3">{s.id}</td>
+                    <td className="font-mono text-xs pl-5 text-muted-foreground">#{s.id}</td>
                     <td>
                       <span className="flex items-center gap-2.5">
-                        <span className="center h-6 w-6 flex-none rounded-full bg-accent-soft text-[10px] font-semibold text-accent">
+                        <span className="center h-6 w-6 flex-none rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
                           {s.initials}
                         </span>
-                        <span className="t-ui-med text-ink">{s.developer}</span>
+                        <span className="text-sm font-medium text-foreground">{s.developer}</span>
                       </span>
                     </td>
                     <td>
-                      <CustomLink to={`/problems/${s.problemNum === 1 ? 'two-sum' : 'two-sum'}/submissions`} className="flex items-center gap-2 hover:text-accent">
-                        <span className="t-code-tag tnum text-ink-3">{s.problemNum}.</span>
-                        <span className="t-ui-med text-ink">{s.problemTitle}</span>
+                      <CustomLink to={`/problems/${s.problemNum === 1 ? 'two-sum' : 'two-sum'}/submissions`} className="flex items-center gap-2 hover:text-primary">
+                        <span className="font-mono text-xs tabular-nums text-muted-foreground">{s.problemNum}.</span>
+                        <span className="text-sm font-medium text-foreground">{s.problemTitle}</span>
                       </CustomLink>
                     </td>
                     <td className="hidden lg:table-cell">
-                      <span className="tag tag-gray t-code-tag">{s.language}</span>
+                      <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground font-mono text-xs">{s.language}</span>
                     </td>
                     <td>
-                      <span className={cx('pill', statusTone(s.status))}>{s.status}</span>
+                      <span className={cx('inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium', statusTone(s.status))}>{s.status}</span>
                     </td>
-                    <td className="t-ui tnum hidden text-ink-2 md:table-cell">{s.runtime}</td>
-                    <td className="t-ui tnum hidden text-ink-2 xl:table-cell">{s.memory}</td>
-                    <td className="t-caption hidden text-ink-3 md:table-cell">{s.timestamp}</td>
+                    <td className="text-sm tabular-nums hidden text-muted-foreground md:table-cell">{s.runtime}</td>
+                    <td className="text-sm tabular-nums hidden text-muted-foreground xl:table-cell">{s.memory}</td>
+                    <td className="text-xs hidden text-muted-foreground md:table-cell">{s.timestamp}</td>
                     <td className="pr-5 text-right">
-                      <CustomButton variant="unstyled"
+                      <Button variant="ghost" size="icon"
                         type="button"
-                        className="icon-btn reveal inline-flex"
+                        className="reveal inline-flex h-8 w-8"
                         aria-label={`Inspect submission ${s.id}`}
                         // onClick={() =>
                         //   // push({ title: `Inspecting ${s.id}`, description: `${s.developer} · ${s.problemTitle}`, tone: 'neutral' })
                         // }
                       >
                         <Icon name="terminalSquare" size={16} />
-                      </CustomButton>
+                      </Button>
                     </td>
                   </tr>
                 ))}
                 {rows.length === 0 && (
                   <tr>
                     <td colSpan={9} className="py-10 text-center">
-                      <span className="t-ui text-ink-3">No submissions match this filter.</span>
+                      <span className="text-sm text-muted-foreground">No submissions match this filter.</span>
                     </td>
                   </tr>
                 )}
@@ -402,17 +397,17 @@ export default function AdminDashboard() {
             </table>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-hair px-5 py-3">
-            <span className="t-caption text-ink-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3">
+            <span className="text-xs text-muted-foreground">
               Showing latest {rows.length} of{' '}
-              <span className="tnum font-medium text-ink-2">14,382</span> submissions recorded today
+              <span className="tabular-nums font-medium text-muted-foreground">14,382</span> submissions recorded today
             </span>
-            <span className="t-caption flex items-center gap-4 text-ink-3">
+            <span className="text-xs flex items-center gap-4 text-muted-foreground">
               <span className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
                 MicroVM Sandboxes: Healthy
               </span>
-              <span className="tnum">Page 1 of 2,397</span>
+              <span className="tabular-nums">Page 1 of 2,397</span>
             </span>
           </div>
         </section>

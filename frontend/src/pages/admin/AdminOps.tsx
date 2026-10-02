@@ -4,7 +4,10 @@ import { Icon } from '../../components/icons'
 import { EmptyState, Progress, cx } from '../../components/ui'
 import { useTheme } from '../../theme'
 import type { ThemeMode } from '../../theme'
-import CustomButton from '../../components/ui/CustomButton'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
+import { Switch } from '../../components/ui/switch'
 
 /* ================================================================== */
 /* Admin · System Health                                               */
@@ -29,25 +32,24 @@ export function AdminHealth() {
 
   return (
     <AdminLayout>
-      <div className="mx-auto w-full max-w-[1440px] stack gap-5 px-4 py-6 lg:px-8">
-        <div className="stack gap-1">
-          <p className="t-code-tag text-ink-3">ADMIN / SYSTEM HEALTH</p>
+      <div className="mx-auto w-full max-w-[1440px] flex flex-col gap-5 px-4 py-6 lg:px-8">
+        <div className="flex flex-col gap-1">
+          <p className="font-mono text-xs text-muted-foreground">ADMIN / SYSTEM HEALTH</p>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <h1 className="t-page-title text-ink">System Health</h1>
-              <span className="pill pill-success">
-                <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">System Health</h1>
+              <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-primary/10 text-primary">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
                 All systems operational
               </span>
             </div>
-            <CustomButton variant="unstyled"
+            <Button variant="outline"
               type="button"
-              className="btn btn-secondary"
               // onClick={() => push({ title: 'Health checks re-run', description: '6/6 probes answered.', tone: 'success' })}
             >
               <Icon name="refresh" size={14} />
               Run probes
-            </CustomButton>
+            </Button>
           </div>
         </div>
 
@@ -58,24 +60,24 @@ export function AdminHealth() {
             { label: 'Queue depth', value: '0 jobs', meta: 'drain rate 420/m', pct: 4 },
             { label: 'Error rate', value: '0.02%', meta: 'SLO 0.10%', pct: 20 },
           ].map((k) => (
-            <section key={k.label} className="card stack gap-2.5 p-5">
-              <p className="t-overline text-ink-3">{k.label}</p>
-              <p className="tnum font-bold text-ink" style={{ fontSize: 30, lineHeight: '36px', letterSpacing: '-0.02em' }}>
+            <section key={k.label} className="rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col gap-2.5 p-5">
+              <p className="text-sm font-semibold text-muted-foreground">{k.label}</p>
+              <p className="text-2xl font-semibold leading-9 tracking-tight tabular-nums text-foreground">
                 {k.value}
               </p>
-              <div className="stack gap-1.5">
-                <Progress value={k.pct} className={k.pct > 92 ? 'h-1.5 [&>i]:bg-warning' : 'h-1.5'} />
-                <span className="t-caption text-ink-3">{k.meta}</span>
+              <div className="flex flex-col gap-1.5">
+                <Progress value={k.pct} className={k.pct > 92 ? 'h-1.5 [&>i]:bg-muted' : 'h-1.5'} />
+                <span className="text-xs text-muted-foreground">{k.meta}</span>
               </div>
             </section>
           ))}
         </div>
 
         <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-          <section className="card overflow-hidden">
-            <div className="border-b border-hair px-5 py-4">
-              <h2 className="t-h3 text-ink">Services</h2>
-              <p className="t-caption text-ink-2">Rolling 30-day uptime per dependency</p>
+          <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">
+            <div className="border-b border-border px-5 py-4">
+              <h2 className="text-lg font-semibold text-foreground">Services</h2>
+              <p className="text-xs text-muted-foreground">Rolling 30-day uptime per dependency</p>
             </div>
             <div className="overflow-x-auto">
               <table className="ntable">
@@ -92,16 +94,16 @@ export function AdminHealth() {
                   {SERVICES.map((s) => (
                     <tr key={s.name}>
                       <td className="pl-5">
-                        <span className="t-ui-med flex items-center gap-2.5 text-ink">
-                          <Icon name="database" size={15} className="text-ink-3" />
+                        <span className="text-sm font-medium flex items-center gap-2.5 text-foreground">
+                          <Icon name="database" size={15} className="text-muted-foreground" />
                           {s.name}
                         </span>
                       </td>
-                      <td className="t-code-tag hidden text-ink-3 md:table-cell">{s.region}</td>
-                      <td className="tnum t-ui text-ink-2">{s.uptime.toFixed(2)}%</td>
-                      <td className="t-ui tnum hidden text-ink-2 md:table-cell">{s.latency}</td>
+                      <td className="font-mono text-xs hidden text-muted-foreground md:table-cell">{s.region}</td>
+                      <td className="tabular-nums text-sm text-muted-foreground">{s.uptime.toFixed(2)}%</td>
+                      <td className="text-sm tabular-nums hidden text-muted-foreground md:table-cell">{s.latency}</td>
                       <td className="pr-5 text-right">
-                        <span className={cx('pill', s.status === 'Operational' ? 'pill-success' : 'pill-warning')}>
+                        <span className={cx('inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium', s.status === 'Operational' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground')}>
                           <Icon name={s.status === 'Operational' ? 'checkCircle' : 'alert'} size={12} />
                           {s.status}
                         </span>
@@ -113,28 +115,28 @@ export function AdminHealth() {
             </div>
           </section>
 
-          <div className="stack gap-4">
-            <section className="card stack gap-4 p-5">
+          <div className="flex flex-col gap-4">
+            <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col gap-4 p-5">
               <div>
-                <h2 className="t-h3 text-ink">Region load</h2>
-                <p className="t-caption text-ink-2">Runner utilization right now</p>
+                <h2 className="text-lg font-semibold text-foreground">Region load</h2>
+                <p className="text-xs text-muted-foreground">Runner utilization right now</p>
               </div>
               {REGIONS.map((r) => (
-                <div key={r.name} className="stack gap-1.5">
+                <div key={r.name} className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="t-ui truncate text-ink">{r.name}</span>
-                    <span className="t-code-tag tnum text-ink-3">{r.runners}</span>
+                    <span className="text-sm truncate text-foreground">{r.name}</span>
+                    <span className="font-mono text-xs tabular-nums text-muted-foreground">{r.runners}</span>
                   </div>
                   <Progress
                     value={r.load}
                     className="h-1.5"
-                    barClassName={r.load > 94 ? '[&]:bg-warning' : undefined}
+                    barClassName={r.load > 94 ? '[&]:bg-muted' : undefined}
                   />
                 </div>
               ))}
             </section>
 
-            <section className="card">
+            <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
               <EmptyState
                 icon="shield"
                 title="No incidents in 30 days"
@@ -163,29 +165,29 @@ export function AdminSettings() {
 
   return (
     <AdminLayout>
-      <div className="mx-auto w-full max-w-[880px] stack gap-5 px-4 py-6 lg:px-8">
-        <div className="stack gap-1">
-          <p className="t-code-tag text-ink-3">ADMIN / SETTINGS</p>
-          <h1 className="t-page-title text-ink">Settings</h1>
+      <div className="mx-auto w-full max-w-[880px] flex flex-col gap-5 px-4 py-6 lg:px-8">
+        <div className="flex flex-col gap-1">
+          <p className="font-mono text-xs text-muted-foreground">ADMIN / SETTINGS</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Settings</h1>
         </div>
 
         {/* General */}
-        <section className="card">
-          <div className="border-b border-hair px-5 py-4">
-            <h2 className="t-h3 text-ink">General</h2>
-            <p className="t-caption text-ink-2">Workspace identity and defaults for new candidates</p>
+        <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">General</h2>
+            <p className="text-xs text-muted-foreground">Workspace identity and defaults for new candidates</p>
           </div>
-          <div className="stack gap-4 p-5">
+          <div className="flex flex-col gap-4 p-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="field-label" htmlFor="s-name">Site name</label>
-                <input id="s-name" className="input h-9" value={siteName} onChange={(e) => setSiteName(e.target.value)} />
+                <Input id="s-name" className="h-9" value={siteName} onChange={(e) => setSiteName(e.target.value)} />
               </div>
               <div>
                 <label className="field-label" htmlFor="s-email">Support email</label>
-                <input
+                <Input
                   id="s-email"
-                  className="input h-9"
+                  className="h-9"
                   type="email"
                   value={supportEmail}
                   onChange={(e) => setSupportEmail(e.target.value)}
@@ -194,62 +196,65 @@ export function AdminSettings() {
             </div>
             <div>
               <label className="field-label" htmlFor="s-lang">Default editor language</label>
-              <select
-                id="s-lang"
-                className="input select h-9 w-full sm:w-[220px]"
-                value={defaultLang}
-                onChange={(e) => setDefaultLang(e.target.value)}
-              >
-                {['Python3', 'TypeScript', 'Java', 'C++', 'Rust', 'Go'].map((l) => (
-                  <option key={l}>{l}</option>
-                ))}
-              </select>
+              <Select value={defaultLang} onValueChange={(value) => {
+                if (value !== null) setDefaultLang(value)
+              }}>
+                <SelectTrigger id="s-lang" className="h-9 w-full sm:w-[220px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {['Python3', 'TypeScript', 'Java', 'C++', 'Rust', 'Go'].map((language) => (
+                    <SelectItem key={language} value={language}>{language}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </section>
 
         {/* Appearance */}
-        <section className="card">
-          <div className="border-b border-hair px-5 py-4">
-            <h2 className="t-h3 text-ink">Appearance</h2>
-            <p className="t-caption text-ink-2">Applies to every admin session on this device</p>
+        <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">Appearance</h2>
+            <p className="text-xs text-muted-foreground">Applies to every admin session on this device</p>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-4 p-5">
             <div>
-              <p className="t-ui-med text-ink">Theme</p>
-              <p className="t-caption text-ink-2">Light, dark, or follow the operating system.</p>
+              <p className="text-sm font-medium text-foreground">Theme</p>
+              <p className="text-xs text-muted-foreground">Light, dark, or follow the operating system.</p>
             </div>
             <div className="seg" role="radiogroup" aria-label="Theme">
               {(['light', 'dark', 'system'] as ThemeMode[]).map((m) => (
-                <CustomButton variant="unstyled"
+                <Button
                   key={m}
                   type="button"
+                  variant={mode === m ? 'default' : 'outline'}
+                  size="sm"
                   role="radio"
                   aria-checked={mode === m}
-                  className={cx('seg-btn capitalize', mode === m && 'is-active')}
                   onClick={() => setMode(m)}
                 >
                   <span className="flex items-center gap-1.5">
                     <Icon name={m === 'light' ? 'sun' : m === 'dark' ? 'moon' : 'grid'} size={13} />
                     {m}
                   </span>
-                </CustomButton>
+                </Button>
               ))}
             </div>
           </div>
         </section>
 
         {/* Execution */}
-        <section className="card">
-          <div className="border-b border-hair px-5 py-4">
-            <h2 className="t-h3 text-ink">Execution policy</h2>
-            <p className="t-caption text-ink-2">Sandbox limits applied to every submission</p>
+        <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">Execution policy</h2>
+            <p className="text-xs text-muted-foreground">Sandbox limits applied to every submission</p>
           </div>
-          <div className="stack gap-5 p-5">
+          <div className="flex flex-col gap-5 p-5">
             <div>
               <div className="flex items-baseline justify-between">
                 <label className="field-label" htmlFor="s-timeout">Run timeout</label>
-                <span className="t-code-tag -mt-4 mb-1.5 tnum text-ink-3">{timeout}s</span>
+                <span className="font-mono text-xs -mt-4 mb-1.5 tabular-nums text-muted-foreground">{timeout}s</span>
               </div>
               <input
                 id="s-timeout"
@@ -257,16 +262,16 @@ export function AdminSettings() {
                 min={2}
                 max={30}
                 value={timeout}
-                className="w-full accent-[var(--accent)]"
+                className="w-full accent-primary"
                 onChange={(e) => setTimeoutSec(Number(e.target.value))}
               />
-              <div className="flex justify-between t-caption text-ink-3">
+              <div className="flex justify-between text-xs text-muted-foreground">
                 <span>2s</span>
                 <span>30s</span>
               </div>
             </div>
 
-            <div className="stack gap-3 border-t border-hair pt-4">
+            <div className="flex flex-col gap-3 border-t border-border pt-4">
               {(
                 [
                   { key: 'registrations', label: 'Allow public registrations', hint: 'Visitors can self-serve sign up.' },
@@ -275,17 +280,16 @@ export function AdminSettings() {
                 ] as const
               ).map((f) => (
                 <label key={f.key} className="flex cursor-pointer items-center justify-between gap-4">
-                  <span className="stack">
-                    <span className={cx('t-ui-med', f.key === 'maintenance' && flags[f.key] ? 'text-error' : 'text-ink')}>
+                  <span className="flex flex-col">
+                    <span className={cx('text-sm font-medium', f.key === 'maintenance' && flags[f.key] ? 'text-destructive' : 'text-foreground')}>
                       {f.label}
                     </span>
-                    <span className="t-caption text-ink-2">{f.hint}</span>
+                    <span className="text-xs text-muted-foreground">{f.hint}</span>
                   </span>
-                  <input
-                    type="checkbox"
-                    className="switch"
+                  <Switch
                     checked={flags[f.key]}
-                    onChange={(e) => setFlags((s) => ({ ...s, [f.key]: e.target.checked }))}
+                    aria-label={f.label}
+                    onCheckedChange={(checked) => setFlags((s) => ({ ...s, [f.key]: checked }))}
                   />
                 </label>
               ))}
@@ -294,38 +298,36 @@ export function AdminSettings() {
         </section>
 
         {/* Danger zone */}
-        <section className="card border-[var(--error)]">
-          <div className="border-b border-hair px-5 py-4">
-            <h2 className="t-h3 flex items-center gap-2 text-error">
+        <section className="rounded-xl border border-destructive bg-card text-card-foreground shadow-sm">
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2 text-destructive">
               <Icon name="alert" size={17} />
               Danger zone
             </h2>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-4 p-5">
             <div>
-              <p className="t-ui-med text-ink">Reset demo data</p>
-              <p className="t-caption text-ink-2">Restores seeds for problems, users and submission history.</p>
+              <p className="text-sm font-medium text-foreground">Reset demo data</p>
+              <p className="text-xs text-muted-foreground">Restores seeds for problems, users and submission history.</p>
             </div>
-            <CustomButton variant="unstyled"
+            <Button variant="destructive"
               type="button"
-              className="btn btn-destructive-solid"
               // onClick={() => push({ title: 'Demo data reset', description: 'Seeds restored to factory state.', tone: 'error' })}
             >
               Reset data
-            </CustomButton>
+            </Button>
           </div>
         </section>
 
         {/* Save bar */}
         <div className="flex justify-end gap-2.5 pb-6">
-          <CustomButton variant="unstyled" type="button" className="btn btn-secondary"
+          <Button variant="outline" type="button"
             // onClick={() => push({ title: 'Changes discarded', tone: 'neutral' })}
             >
             Discard
-          </CustomButton>
-          <CustomButton variant="unstyled"
+          </Button>
+          <Button
             type="button"
-            className="btn btn-primary"
           // onClick={() =>
           //   push({
           //     title: 'Settings saved',
@@ -335,7 +337,7 @@ export function AdminSettings() {
           // }
           >
             Save changes
-          </CustomButton>
+          </Button>
         </div>
       </div>
     </AdminLayout>

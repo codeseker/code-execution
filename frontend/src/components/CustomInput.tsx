@@ -1,7 +1,8 @@
 import { useId } from 'react'
-import type { InputHTMLAttributes, ReactNode } from 'react'
+import type { ChangeEvent, FocusEvent, InputHTMLAttributes, ReactNode } from 'react'
 import type { UseFormRegisterReturn } from 'react-hook-form'
-import { cx } from '../ui'
+import { cx } from './ui'
+import { Input } from '@/components/ui/input'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 	icon?: ReactNode
@@ -32,38 +33,49 @@ export default function CustomInput({
 	const generatedId = useId()
 	const inputId = props.id ?? register?.name ?? generatedId
 	const describedBy = cx(props['aria-describedby'], error && inputId ? `${inputId}-error` : undefined)
+	const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+		void register?.onChange(event)
+		props.onChange?.(event)
+	}
+	const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
+		void register?.onBlur(event)
+		props.onBlur?.(event)
+	}
 
 	return (
 		<div className={cx('flex flex-col gap-2', outerClassName)}>
 			{label && (
-				<label className="t-ui-med text-ink" htmlFor={inputId}>
-					{label}{required && <span className="ml-1 text-error">*</span>}
+				<label className="text-sm font-medium text-foreground" htmlFor={inputId}>
+					{label}{required && <span className="ml-1 text-destructive">*</span>}
 				</label>
 			)}
 
 			<div className="relative">
 				{icon && (
-					<span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3">
+					<span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
 						{icon}
 					</span>
 				)}
 
-				<input
+				<Input
 					type={type}
 					placeholder={placeholder}
 					className={cx(
-						'input h-10 w-full',
+						'h-10 w-full',
 						Boolean(icon) && 'pl-10',
 						Boolean(rightIcon) && 'pr-11',
-						error && 'border-error',
+						error && 'border-destructive',
 						className,
 					)}
-					{...register}
 					{...props}
+					{...register}
 					id={inputId}
+					name={register?.name ?? props.name}
 					required={required}
 					aria-invalid={error ? true : props['aria-invalid']}
 					aria-describedby={describedBy || undefined}
+					onChange={handleChange}
+					onBlur={handleBlur}
 				/>
 
 				{rightIcon && (
@@ -74,7 +86,7 @@ export default function CustomInput({
 			</div>
 
 			{error && (
-				<span id={inputId ? `${inputId}-error` : undefined} className={cx('t-caption text-error', errorClassName)} role="alert">
+				<span id={inputId ? `${inputId}-error` : undefined} className={cx('text-xs text-destructive', errorClassName)} role="alert">
 					{error}
 				</span>
 			)}

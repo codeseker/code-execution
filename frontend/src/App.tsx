@@ -16,7 +16,7 @@ import AdminDashboard from './pages/admin/Dashboard'
 import { AdminProblems, AdminSubmissions, AdminUsers } from './pages/admin/AdminPages'
 import { AdminHealth, AdminSettings } from './pages/admin/AdminOps'
 import AddProblem from './pages/admin/AddProblem'
-import CustomLink from './components/ui/CustomLink'
+import CustomLink from './components/CustomLink'
 import AuthGuard, { GuestGuard } from './components/AuthGuard'
 import AppNavbar from './components/AppNavbar'
 
@@ -32,13 +32,13 @@ function ScrollToTop() {
 
 function NotFound() {
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col bg-canvas">
+    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col bg-background">
       <div className="empty-state grow">
         <span className="empty-icon">
           <Icon name="search" size={48} strokeWidth={1.2} />
         </span>
-        <p className="t-h2 text-ink">Page not found</p>
-        <p className="t-ui max-w-[420px] text-ink-2">
+        <p className="text-xl font-semibold text-foreground">Page not found</p>
+        <p className="text-sm max-w-[420px] text-muted-foreground">
           The route you followed does not exist — it may have been renamed or archived.
         </p>
         <div className="mt-3 flex gap-2.5">
@@ -57,9 +57,12 @@ function NotFound() {
 /* ---------------- route table ---------------- */
 
 function AppRoutes() {
+  const { pathname } = useLocation()
+  const isProblemWorkspace = /^\/problems\/[^/]+\/?$/.test(pathname)
+
   return (
     <>
-      <AppNavbar />
+      {!isProblemWorkspace && <AppNavbar />}
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<Landing />} />

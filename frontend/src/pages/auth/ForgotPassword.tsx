@@ -3,8 +3,9 @@ import type { FormEvent } from 'react'
 
 import { AuthLayout, AuthShowcase } from './AuthLayout'
 import { Icon } from '../../components/icons'
-import CustomButton from '../../components/ui/CustomButton'
-import CustomLink from '../../components/ui/CustomLink'
+import CustomLink from '../../components/CustomLink'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
@@ -26,32 +27,32 @@ export default function ForgotPassword() {
       headline="Recover your account."
       sub="Request a password reset for your account."
     >
-      <div className="flex flex-col rounded-md border border-hair bg-canvas px-5">
-        <div className="flex items-center gap-4 border-b border-hair py-4">
-          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-md bg-panel text-ink-2">
+      <div className="flex flex-col rounded-md border border-border bg-background px-5">
+        <div className="flex items-center gap-4 border-b border-border py-4">
+          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-md bg-card text-muted-foreground">
             <Icon name="mail" size={17} />
           </span>
           <div className="flex flex-col gap-1">
-            <p className="t-ui-med text-ink">Enter your account email</p>
-            <p className="t-caption text-ink-2">Use the address associated with your account.</p>
+            <p className="text-sm font-medium text-foreground">Enter your account email</p>
+            <p className="text-xs text-muted-foreground">Use the address associated with your account.</p>
           </div>
         </div>
-        <div className="flex items-center gap-4 border-b border-hair py-4">
-          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-md bg-panel text-ink-2">
+        <div className="flex items-center gap-4 border-b border-border py-4">
+          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-md bg-card text-muted-foreground">
             <Icon name="key" size={17} />
           </span>
           <div className="flex flex-col gap-1">
-            <p className="t-ui-med text-ink">Check for reset instructions</p>
-            <p className="t-caption text-ink-2">Look in your inbox for the next step.</p>
+            <p className="text-sm font-medium text-foreground">Check for reset instructions</p>
+            <p className="text-xs text-muted-foreground">Look in your inbox for the next step.</p>
           </div>
         </div>
         <div className="flex items-center gap-4 py-4">
-          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-md bg-panel text-ink-2">
+          <span className="flex h-9 w-9 flex-none items-center justify-center rounded-md bg-card text-muted-foreground">
             <Icon name="lock" size={17} />
           </span>
           <div className="flex flex-col gap-1">
-            <p className="t-ui-med text-ink">Choose a new password</p>
-            <p className="t-caption text-ink-2">Return to your account with updated credentials.</p>
+            <p className="text-sm font-medium text-foreground">Choose a new password</p>
+            <p className="text-xs text-muted-foreground">Return to your account with updated credentials.</p>
           </div>
         </div>
       </div>
@@ -62,28 +63,28 @@ export default function ForgotPassword() {
     <AuthLayout showcase={showcase}>
       <div className="flex flex-col gap-8">
         <div className="flex flex-col gap-2">
-          <h1 className="t-page-title text-ink">Forgot password?</h1>
-          <p className="t-reading text-ink-2">Enter your email to request a password reset.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Forgot password?</h1>
+          <p className="text-sm leading-7 text-muted-foreground">Enter your email to request a password reset.</p>
         </div>
 
         {sent ? (
           <div className="flex flex-col items-center gap-4 text-center">
-            <Icon name="checkCircle" size={32} className="text-success" />
+            <Icon name="checkCircle" size={32} className="text-primary" />
             <div className="flex flex-col gap-2">
-              <h2 className="t-h2 text-ink">Check your email</h2>
-              <p className="t-reading text-ink-2">If an account uses {email}, reset instructions will be sent there.</p>
+              <h2 className="text-xl font-semibold text-foreground">Check your email</h2>
+              <p className="text-sm leading-7 text-muted-foreground">If an account uses {email}, reset instructions will be sent there.</p>
             </div>
-            <CustomLink to="/login" className="link t-ui-med">Back to log in</CustomLink>
+            <CustomLink to="/login" className="link text-sm font-medium">Back to log in</CustomLink>
           </div>
         ) : (
           <form className="flex flex-col gap-5" onSubmit={submit} noValidate>
             <div className="flex flex-col gap-2">
-              <label className="t-ui-med text-ink" htmlFor="forgot-email">
+              <label className="text-sm font-medium text-foreground" htmlFor="forgot-email">
                 Email
               </label>
-              <input
+              <Input
                 id="forgot-email"
-                className="input h-10"
+                className="h-10"
                 type="email"
                 autoComplete="email"
                 placeholder="name@example.com"
@@ -97,21 +98,21 @@ export default function ForgotPassword() {
             </div>
 
             {error && (
-              <p className="pill pill-error h-auto w-full items-start gap-2 py-2 text-left" role="alert">
+              <p className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-destructive/10 text-destructive h-auto w-full items-start gap-2 py-2 text-left" role="alert">
                 <Icon name="alert" size={14} className="mt-0.5 flex-none" />
                 {error}
               </p>
             )}
 
-            <CustomButton variant="unstyled" type="submit" className="btn btn-primary btn-block h-10">
+            <Button type="submit" className="h-10 w-full">
               Send reset link
-            </CustomButton>
+            </Button>
           </form>
         )}
 
-        {!sent && <p className="t-ui text-center text-ink-2">
+        {!sent && <p className="text-sm text-center text-muted-foreground">
           Remembered it?{' '}
-          <CustomLink to="/login" className="link t-ui-med">
+          <CustomLink to="/login" className="link text-sm font-medium">
             Back to log in
           </CustomLink>
         </p>}

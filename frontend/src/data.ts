@@ -313,12 +313,13 @@ export type AdminSubmission = {
 }
 
 export const ADMIN_SUBMISSIONS: AdminSubmission[] = [
-  { id: '#984210', developer: '@alex_dev', initials: 'AV', problemNum: 146, problemTitle: 'LRU Cache', language: 'Rust 1.76', status: 'Accepted', runtime: '12ms', memory: '2.4MB', timestamp: 'Just now' },
-  { id: '#984209', developer: '@chen_w', initials: 'CW', problemNum: 1, problemTitle: 'Two Sum', language: 'Python 3.11', status: 'Accepted', runtime: '38ms', memory: '17.2MB', timestamp: '2m ago' },
-  { id: '#984208', developer: '@sarah_k', initials: 'SK', problemNum: 42, problemTitle: 'Trapping Rain Water', language: 'C++ 20', status: 'Time Limit Exceeded', runtime: '>2000ms', memory: '11.4MB', timestamp: '5m ago' },
-  { id: '#984207', developer: '@dev_marcus', initials: 'DM', problemNum: 206, problemTitle: 'Reverse Linked List', language: 'Go 1.22', status: 'Accepted', runtime: '4ms', memory: '2.1MB', timestamp: '12m ago' },
-  { id: '#984206', developer: '@elena_r', initials: 'ER', problemNum: 56, problemTitle: 'Merge Intervals', language: 'TypeScript', status: 'Wrong Answer', runtime: '54ms', memory: '51.3MB', timestamp: '18m ago' },
-  { id: '#984205', developer: '@vikram_p', initials: 'VP', problemNum: 3, problemTitle: 'Longest Substring Without Repeating Characters', language: 'Python 3.11', status: 'Memory Limit Exceeded', runtime: '112ms', memory: '256.4MB', timestamp: '24m ago' },
+  { id: '984210', developer: '@alex_dev', initials: 'AV', problemNum: 146, problemTitle: 'LRU Cache', language: 'Rust 1.76', status: 'Accepted', runtime: '12ms', memory: '2.4MB', timestamp: 'Just now' },
+  { id: '984210', developer: '@alex_dev', initials: 'AV', problemNum: 146, problemTitle: 'LRU Cache', language: 'Rust 1.76', status: 'Accepted', runtime: '12ms', memory: '2.4MB', timestamp: 'Just now' },
+  { id: '984209', developer: '@chen_w', initials: 'CW', problemNum: 1, problemTitle: 'Two Sum', language: 'Python 3.11', status: 'Accepted', runtime: '38ms', memory: '17.2MB', timestamp: '2m ago' },
+  { id: '984208', developer: '@sarah_k', initials: 'SK', problemNum: 42, problemTitle: 'Trapping Rain Water', language: 'C++ 20', status: 'Time Limit Exceeded', runtime: '>2000ms', memory: '11.4MB', timestamp: '5m ago' },
+  { id: '984207', developer: '@dev_marcus', initials: 'DM', problemNum: 206, problemTitle: 'Reverse Linked List', language: 'Go 1.22', status: 'Accepted', runtime: '4ms', memory: '2.1MB', timestamp: '12m ago' },
+  { id: '984206', developer: '@elena_r', initials: 'ER', problemNum: 56, problemTitle: 'Merge Intervals', language: 'TypeScript', status: 'Wrong Answer', runtime: '54ms', memory: '51.3MB', timestamp: '18m ago' },
+  { id: '984205', developer: '@vikram_p', initials: 'VP', problemNum: 3, problemTitle: 'Longest Substring Without Repeating Characters', language: 'Python 3.11', status: 'Memory Limit Exceeded', runtime: '112ms', memory: '256.4MB', timestamp: '24m ago' },
 ]
 
 export type AdminUser = {
@@ -366,9 +367,9 @@ export const VOLUME_SERIES: Array<{ label: string; value: number }> = [
 ]
 
 export const DIFFICULTY_MATRIX = [
-  { label: 'Medium', count: 274, percent: 52.3, submits: '745,120', accuracy: '58.4%', color: 'var(--accent)' },
-  { label: 'Easy', count: 148, percent: 28.2, submits: '812,490', accuracy: '78.1%', color: 'var(--success)' },
-  { label: 'Hard', count: 102, percent: 19.5, submits: '285,300', accuracy: '34.8%', color: 'var(--warning)' },
+  { label: 'Medium', count: 274, percent: 52.3, submits: '745,120', accuracy: '58.4%' },
+  { label: 'Easy', count: 148, percent: 28.2, submits: '812,490', accuracy: '78.1%' },
+  { label: 'Hard', count: 102, percent: 19.5, submits: '285,300', accuracy: '34.8%' },
 ]
 
 /* ============================================================

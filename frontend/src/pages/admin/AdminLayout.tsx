@@ -4,8 +4,10 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { Icon } from '../../components/icons'
 import { Avatar, Logo, ThemeToggle, cx } from '../../components/ui'
 import type { IconName } from '../../components/icons'
-import CustomButton from '../../components/ui/CustomButton'
-import CustomLink from '../../components/ui/CustomLink'
+import CustomButton from '../../components/CustomButton'
+import CustomLink from '../../components/CustomLink'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
 
 const NAV: Array<{ to: string; label: string; icon: IconName; end?: boolean }> = [
   { to: '/admin', label: 'Dashboard', icon: 'grid', end: true },
@@ -30,8 +32,10 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         to={item.to}
         end={item.end}
         onClick={onNavigate}
-        className={cx('side-row h-9', active && 'is-active')}
-        style={active ? { background: 'var(--accent-soft)', color: 'var(--accent)' } : undefined}
+        className={cx(
+          'flex h-9 items-center gap-2 rounded-md px-2 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+          active ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground',
+        )}
       >
         <Icon name={item.icon} size={17} />
         {item.label}
@@ -43,20 +47,20 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     <div className="flex h-full flex-col gap-1 p-3">
       <CustomLink variant="unstyled" to="/" className="mb-3 flex items-center justify-between px-1" aria-label="CodeForge home">
         <Logo size={24} />
-        <span className="t-code-tag text-ink-4">v2.14</span>
+        <span className="font-mono text-xs text-muted-foreground">v2.14</span>
       </CustomLink>
-      <p className="t-overline px-2 pb-1 text-ink-3">Admin</p>
+      <p className="text-sm font-semibold px-2 pb-1 text-muted-foreground">Admin</p>
       {NAV.map(row)}
       <span className="grow" />
-      <p className="t-overline px-2 pb-1 text-ink-3">Operations</p>
+      <p className="text-sm font-semibold px-2 pb-1 text-muted-foreground">Operations</p>
       {FOOTER_NAV.map(row)}
-      <div className="mt-2 flex items-center gap-2.5 rounded-md border border-hair bg-wash px-3 py-2.5">
-        <span className="center h-7 w-7 flex-none rounded-full bg-success-soft text-success">
+      <div className="mt-2 flex items-center gap-2.5 rounded-md border border-border bg-muted/40 px-3 py-2.5">
+        <span className="center h-7 w-7 flex-none rounded-full bg-primary/10 text-primary">
           <Icon name="check" size={14} strokeWidth={2.6} />
         </span>
-        <span className="min-w-0 stack">
-          <span className="t-caption font-medium text-ink">All systems green</span>
-          <span className="t-code-tag truncate text-ink-3">48 / 48 runners online</span>
+        <span className="min-w-0 flex flex-col">
+          <span className="text-xs font-medium text-foreground">All systems green</span>
+          <span className="font-mono text-xs truncate text-muted-foreground">48 / 48 runners online</span>
         </span>
       </div>
     </div>
@@ -70,9 +74,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [query, setQuery] = useState('')
 
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] bg-canvas">
+    <div className="flex min-h-[calc(100vh-3.5rem)] bg-background">
       {/* Desktop sidebar */}
-      <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-[240px] flex-none border-r border-hair bg-sidebar lg:block">
+      <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-[240px] flex-none border-r border-border bg-sidebar lg:block">
         <Sidebar />
       </aside>
 
@@ -81,7 +85,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <div className="fixed inset-0 z-[60] lg:hidden">
           <CustomButton variant="unstyled"
             type="button"
-            className="absolute inset-0 bg-[var(--scrim)]"
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
             aria-label="Close navigation"
             onClick={() => setDrawer(false)}
           />
@@ -93,7 +97,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 grow flex-col">
         {/* Header */}
-        <header className="sticky top-14 z-30 flex h-14 items-center gap-3 border-b border-hair bg-canvas px-4">
+        <header className="sticky top-14 z-30 flex h-14 items-center gap-3 border-b border-border bg-background px-4">
           <CustomButton variant="unstyled"
             type="button"
             className="icon-btn lg:hidden"
@@ -105,18 +109,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <CustomLink to="/admin" className="flex items-center gap-2.5">
             <Logo size={24} />
             <span className="hidden h-4 w-px bg-hair sm:block" aria-hidden />
-            <span className="t-ui-med hidden text-ink-2 sm:block">Admin Console</span>
+            <span className="text-sm font-medium hidden text-muted-foreground sm:block">Admin Console</span>
           </CustomLink>
 
           <div className="relative mx-auto hidden w-full max-w-[440px] md:block">
             <Icon
               name="search"
               size={14}
-              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-3"
+              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
             />
-            <input
-              className="input h-9 pl-8.5"
-              style={{ paddingLeft: 34 }}
+            <Input
+              className="h-9 pl-9"
               placeholder="Search problems, users, or logs…"
               aria-label="Admin search"
               value={query}
@@ -131,30 +134,30 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
           <span className="grow" />
           <ThemeToggle />
-          <CustomButton variant="unstyled"
+          <Button variant="ghost" size="icon"
             type="button"
-            className="icon-btn relative"
+            className="relative"
             aria-label="Notifications"
             // onClick={() => push({ title: '3 new admin alerts', description: 'Runner capacity at 98% — review System Health.', tone: 'neutral' })}
           >
             <Icon name="bell" size={16} />
-            <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-warning" aria-hidden />
-          </CustomButton>
+            <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-muted" aria-hidden />
+          </Button>
 
           <div className="relative">
-            <CustomButton variant="unstyled"
+            <Button variant="ghost"
               type="button"
-              className="flex items-center gap-2.5 rounded px-1.5 py-1 hover:bg-wash"
+              className="h-auto gap-2.5 rounded px-1.5 py-1"
               aria-haspopup="menu"
               aria-expanded={menu}
               onClick={() => setMenu((v) => !v)}
             >
               <span className="hidden text-right sm:block">
-                <span className="block t-ui-med leading-4 text-ink">Admin</span>
-                <span className="block t-caption leading-4 text-ink-3">Public access</span>
+                <span className="block text-sm font-medium leading-4 text-foreground">Admin</span>
+                <span className="block text-xs leading-4 text-muted-foreground">Public access</span>
               </span>
               <Avatar initials="AD" size={28} />
-            </CustomButton>
+            </Button>
             {menu && (
               <>
                 <CustomButton variant="unstyled"
@@ -165,11 +168,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 />
                 <div className="absolute right-0 z-50 mt-2 w-[230px] popover anim-fade-up" role="menu">
                   <CustomLink variant="unstyled" to="/profile" className="menu-item" role="menuitem" onClick={() => setMenu(false)}>
-                    <Icon name="user" size={15} className="text-ink-3" />
+                    <Icon name="user" size={15} className="text-muted-foreground" />
                     User portal
                   </CustomLink>
                   <CustomLink variant="unstyled" to="/problems" className="menu-item" role="menuitem" onClick={() => setMenu(false)}>
-                    <Icon name="file" size={15} className="text-ink-3" />
+                    <Icon name="file" size={15} className="text-muted-foreground" />
                     Problem bank
                   </CustomLink>
                 </div>

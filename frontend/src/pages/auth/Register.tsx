@@ -6,8 +6,10 @@ import { Icon } from '../../components/icons'
 import { cx } from '../../components/ui'
 import { CodeWindow } from '../../components/Code'
 import { REGISTER_SHOWCASE } from '../../data'
-import CustomButton from '../../components/ui/CustomButton'
-import CustomLink from '../../components/ui/CustomLink'
+import CustomLink from '../../components/CustomLink'
+import { Button } from '../../components/ui/button'
+import { Checkbox } from '../../components/ui/checkbox'
+import { Input } from '../../components/ui/input'
 
 
 export function passwordScore(pw: string): number {
@@ -23,7 +25,7 @@ const STRENGTH_LABEL = ['Weak', 'Weak', 'Fair', 'Good', 'Strong']
 
 
 export function StrengthMeter({ value }: { value: number }) {
-  const tone = value >= 4 ? 'bg-success' : value >= 3 ? 'bg-accent' : value >= 2 ? 'bg-warning' : 'bg-error'
+  const tone = value >= 4 ? 'bg-primary' : value >= 3 ? 'bg-primary' : value >= 2 ? 'bg-muted' : 'bg-destructive'
   return (
     <div className="flex gap-2" aria-hidden>
       {[1, 2, 3, 4].map((i) => (
@@ -70,10 +72,10 @@ export default function Register() {
         activeLine={8}
         headerRight={
           <span className="flex items-center gap-2">
-            <span className="tag tag-gray">
-              Python <span className="t-code-tag opacity-70">3.11</span>
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+              Python <span className="font-mono text-xs opacity-70">3.11</span>
             </span>
-            <span className="pill pill-success">
+            <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-primary/10 text-primary">
               <Icon name="check" size={12} />
               All Tests Passed · 14ms
             </span>
@@ -87,18 +89,18 @@ export default function Register() {
     <AuthLayout showcase={showcase}>
       <div className="flex flex-col gap-8">
         <div className="flex flex-col gap-2">
-          <h1 className="t-page-title text-ink">Create account</h1>
-          <p className="t-reading text-ink-2">Create an account to save your progress.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Create account</h1>
+          <p className="text-sm leading-7 text-muted-foreground">Create an account to save your progress.</p>
         </div>
 
         <form className="flex flex-col gap-5" onSubmit={submit} noValidate>
           <div className="flex flex-col gap-2">
-            <label className="t-ui-med text-ink" htmlFor="reg-name">
+            <label className="text-sm font-medium text-foreground" htmlFor="reg-name">
               Name
             </label>
-            <input
+            <Input
               id="reg-name"
-              className="input h-10"
+              className="h-10"
               placeholder="Your name"
               autoComplete="name"
               value={name}
@@ -111,12 +113,12 @@ export default function Register() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="t-ui-med text-ink" htmlFor="reg-email">
+            <label className="text-sm font-medium text-foreground" htmlFor="reg-email">
               Email
             </label>
-            <input
+            <Input
               id="reg-email"
-              className="input h-10"
+              className="h-10"
               type="email"
               autoComplete="email"
               placeholder="name@example.com"
@@ -131,15 +133,15 @@ export default function Register() {
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <label className="t-ui-med text-ink" htmlFor="reg-password">
+              <label className="text-sm font-medium text-foreground" htmlFor="reg-password">
                 Password
               </label>
-              <span className="t-caption text-ink-3">At least 8 characters</span>
+              <span className="text-xs text-muted-foreground">At least 8 characters</span>
             </div>
             <div className="relative">
-              <input
+              <Input
                 id="reg-password"
-                className="input h-10 pr-11"
+                className="h-10 pr-11"
                 type={reveal ? 'text' : 'password'}
                 autoComplete="new-password"
                 placeholder="Create a password"
@@ -150,20 +152,22 @@ export default function Register() {
                   setError('')
                 }}
               />
-              <CustomButton variant="unstyled"
+              <Button
+                variant="ghost"
+                size="icon"
                 type="button"
-                className="icon-btn absolute top-1/2 right-1.5 h-7 w-7 -translate-y-1/2"
+                className="absolute top-1/2 right-1.5 h-7 w-7 -translate-y-1/2"
                 aria-label={reveal ? 'Hide password' : 'Show password'}
                 onClick={() => setReveal((v) => !v)}
               >
                 <Icon name={reveal ? 'eyeOff' : 'eye'} size={15} />
-              </CustomButton>
+              </Button>
             </div>
             <div className="mt-2 flex flex-col gap-2">
               <StrengthMeter value={score} />
-              <div className="flex justify-between t-caption">
-                <span className="text-ink-3">Entropy: {score >= 4 ? 'High' : score >= 3 ? 'Medium' : 'Low'}</span>
-                <span className={cx('flex items-center gap-1.5', score >= 3 ? 'text-success' : 'text-warning')}>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Entropy: {score >= 4 ? 'High' : score >= 3 ? 'Medium' : 'Low'}</span>
+                <span className={cx('flex items-center gap-1.5', score >= 3 ? 'text-primary' : 'text-muted-foreground')}>
                   <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
                   {STRENGTH_LABEL[score]}
                 </span>
@@ -172,33 +176,31 @@ export default function Register() {
           </div>
 
           {error && (
-            <p className="pill pill-error h-auto w-full items-start gap-2 py-2 text-left" role="alert">
+            <p className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-destructive/10 text-destructive h-auto w-full items-start gap-2 py-2 text-left" role="alert">
               <Icon name="alert" size={14} className="mt-0.5 flex-none" />
               {error}
             </p>
           )}
 
-          <label className="flex cursor-pointer items-start gap-2 t-ui text-ink-2">
-            <input
-              type="checkbox"
-              className="checkbox mt-0.5"
+          <label className="flex cursor-pointer items-start gap-2 text-sm text-muted-foreground">
+            <Checkbox
               checked={agreed}
-              onChange={(e) => {
-                setAgreed(e.target.checked)
+              onCheckedChange={(checked) => {
+                setAgreed(checked === true)
                 setError('')
               }}
             />
             <span>I confirm that I want to create an account.</span>
           </label>
 
-          <CustomButton variant="unstyled" type="submit" className="btn btn-primary btn-block h-10">
+          <Button type="submit" className="h-10 w-full">
             Create account
-          </CustomButton>
+          </Button>
         </form>
 
-        <p className="t-ui text-center text-ink-2">
+        <p className="text-sm text-center text-muted-foreground">
           Already have an account?{' '}
-          <CustomLink to="/login" className="link t-ui-med">
+          <CustomLink to="/login" className="link text-sm font-medium">
             Log in
           </CustomLink>
         </p>

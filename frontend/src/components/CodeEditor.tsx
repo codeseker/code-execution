@@ -44,6 +44,9 @@ type CodeEditorProps = {
   /** ⌘/Ctrl + Shift + Enter while the editor is focused. */
   onSubmit?: () => void
   fontSize?: number
+  tabSize?: number
+  autoComplete?: boolean
+  onCursorPositionChange?: (position: { lineNumber: number; column: number }) => void
   readOnly?: boolean
 }
 
@@ -56,16 +59,22 @@ export function CodeEditor({
   onRun,
   onSubmit,
   fontSize = 13,
+  tabSize = 4,
+  autoComplete = true,
+  onCursorPositionChange,
   readOnly = false,
 }: CodeEditorProps) {
   const isDark = useIsDark()
   const monacoRef = useRef<Monaco | null>(null)
+  const cursorListenerRef = useRef<{ dispose: () => void } | null>(null)
 
   // Keep the latest callbacks without re-registering Monaco commands.
   const runRef = useRef(onRun)
   const submitRef = useRef(onSubmit)
+  const cursorRef = useRef(onCursorPositionChange)
   runRef.current = onRun
   submitRef.current = onSubmit
+  cursorRef.current = onCursorPositionChange
 
   useEffect(() => {
     const monaco = monacoRef.current
@@ -73,6 +82,8 @@ export function CodeEditor({
     monaco.editor.defineTheme(THEME, buildTheme(isDark))
     monaco.editor.setTheme(THEME)
   }, [isDark])
+
+  useEffect(() => () => cursorListenerRef.current?.dispose(), [])
 
   const beforeMount = (monaco: Monaco) => {
     monacoRef.current = monaco
@@ -90,6 +101,12 @@ export function CodeEditor({
   const onMount: OnMount = (editor, monaco) => {
     monacoRef.current = monaco
     monaco.editor.setTheme(THEME)
+    cursorListenerRef.current?.dispose()
+    cursorListenerRef.current = editor.onDidChangeCursorPosition(({ position }) => {
+      cursorRef.current?.({ lineNumber: position.lineNumber, column: position.column })
+    })
+    const position = editor.getPosition()
+    if (position) cursorRef.current?.({ lineNumber: position.lineNumber, column: position.column })
 
     // Monaco swallows ⌘↵ (insert line below), so the window-level listener never sees it.
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => runRef.current?.())
@@ -99,8 +116,10 @@ export function CodeEditor({
     )
   }
 
+  const fontFamily = getComputedStyle(document.documentElement).getPropertyValue('--font-mono').trim()
+
   return (
-    <div className={cx('relative min-h-0 overflow-hidden bg-code', className)}>
+    <div className={cx('relative min-h-0 overflow-hidden bg-card', className)}>
       <Editor
         height="100%"
         width="100%"
@@ -110,18 +129,18 @@ export function CodeEditor({
         beforeMount={beforeMount}
         onMount={onMount}
         onChange={(v) => onChange(v ?? '')}
-        loading={<div className="h-full w-full" />}
+        loading={<div className="h-full w-full animate-pulse bg-muted" />}
         options={{
           readOnly,
           ariaLabel: 'Code editor',
           automaticLayout: true,
 
-          fontFamily: 'ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace',
+          fontFamily,
           fontSize,
           lineHeight: 22,
           fontLigatures: false,
           padding: { top: 12, bottom: 12 },
-          tabSize: 4,
+          tabSize,
           insertSpaces: true,
           detectIndentation: false,
 
@@ -139,15 +158,16 @@ export function CodeEditor({
           overviewRulerBorder: false,
           hideCursorInOverviewRuler: true,
 
-          renderLineHighlight: 'none',
+          renderLineHighlight: 'line',
           matchBrackets: 'always',
           bracketPairColorization: { enabled: true },
           guides: { indentation: true },
           autoClosingBrackets: 'always',
           autoClosingQuotes: 'always',
           formatOnPaste: false,
-          quickSuggestions: { other: true, comments: false, strings: false },
-          suggestOnTriggerCharacters: true,
+          quickSuggestions: { other: autoComplete, comments: false, strings: false },
+          suggestOnTriggerCharacters: autoComplete,
+          parameterHints: { enabled: autoComplete },
           stickyScroll: { enabled: false },
           contextmenu: true,
           smoothScrolling: true,

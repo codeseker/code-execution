@@ -5,8 +5,9 @@ import { Icon } from './icons'
 import { Avatar, Logo, ThemeToggle, cx } from './ui'
 import { PROBLEMS } from '../data'
 import type { IconName } from './icons'
-import CustomButton from './ui/CustomButton'
-import CustomLink from './ui/CustomLink'
+import CustomButton from './CustomButton'
+import CustomLink from './CustomLink'
+import { Separator } from './ui/separator'
 
 const PORTAL_NAV: Array<{ label: string; to: string }> = [
   { label: 'Problems', to: '/problems' },
@@ -94,23 +95,23 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-start justify-center bg-[var(--scrim)] pt-[14vh] anim-fade"
+      className="fixed inset-0 z-[70] flex items-start justify-center bg-background/80 pt-[14vh]"
       role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
       <div
-        className="w-full max-w-[600px] overflow-hidden rounded-xl border border-hair bg-raised shadow-e3 anim-scale-in"
+        className="w-full max-w-[600px] overflow-hidden rounded-xl border border-border bg-popover shadow-e3 anim-scale-in"
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
       >
-        <div className="flex items-center gap-3 border-b border-hair px-4">
-          <Icon name="search" size={16} className="text-ink-3" />
+        <div className="flex items-center gap-3 border-b border-border px-4">
+          <Icon name="search" size={16} className="text-muted-foreground" />
           <input
             ref={inputRef}
-            className="h-12 w-full bg-transparent text-[15px] outline-none placeholder:text-ink-4"
+            className="h-12 w-full bg-transparent text-[15px] outline-none placeholder:text-muted-foreground"
             placeholder="Search problems, pages and actions…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -120,7 +121,7 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
         <div className="scroll-y max-h-[380px] p-2">
           {Object.entries(groups).map(([group, items]) => (
             <div key={group} className="mb-1.5 last:mb-0">
-              <p className="t-overline px-2 pt-2 pb-1 text-ink-3">{group}</p>
+              <p className="text-sm font-semibold px-2 pt-2 pb-1 text-muted-foreground">{group}</p>
               {items.map((a) => (
                 <CustomButton variant="unstyled"
                   key={group + a.label}
@@ -131,15 +132,15 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
                     onClose()
                   }}
                 >
-                  <Icon name={a.icon} size={15} className="text-ink-3" />
+                  <Icon name={a.icon} size={15} className="text-muted-foreground" />
                   <span className="grow truncate text-left">{a.label}</span>
-                  {a.hint && <span className="tag tag-gray">{a.hint}</span>}
+                  {a.hint && <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">{a.hint}</span>}
                 </CustomButton>
               ))}
             </div>
           ))}
           {actions.length === 0 && (
-            <p className="t-ui px-2 py-6 text-center text-ink-3">
+            <p className="text-sm px-2 py-6 text-center text-muted-foreground">
               No matches for “{query}”
             </p>
           )}
@@ -177,7 +178,7 @@ export function PortalTopbar({ active }: { active?: string }) {
   }, [location.pathname])
 
   return (
-    <header className="sticky top-0 z-40 border-b border-hair bg-canvas">
+    <header className="sticky top-0 z-40 border-b border-border bg-background">
       <div className="flex h-11 items-center gap-3 px-4">
         <CustomButton variant="unstyled"
           type="button"
@@ -197,8 +198,8 @@ export function PortalTopbar({ active }: { active?: string }) {
               key={n.to}
               to={n.to}
               className={cx(
-                'rounded px-2.5 py-1 text-[14px] transition-colors hover:bg-wash',
-                active === n.label ? 'bg-wash font-medium text-ink' : 'text-ink-2',
+                'rounded px-2.5 py-1 text-[14px] transition-colors hover:bg-muted/40',
+                active === n.label ? 'bg-muted/40 font-medium text-foreground' : 'text-muted-foreground',
               )}
             >
               {n.label}
@@ -211,7 +212,7 @@ export function PortalTopbar({ active }: { active?: string }) {
         {/* Search trigger (opens ⌘K palette) */}
         <CustomButton variant="unstyled"
           type="button"
-          className="input hidden h-7 w-[240px] cursor-pointer items-center gap-2 border-hair text-left text-ink-4 lg:flex"
+          className="input hidden h-7 w-[240px] cursor-pointer items-center gap-2 border-border text-left text-muted-foreground lg:flex"
           onClick={() => setPalette(true)}
           aria-label="Search problems (Command K)"
         >
@@ -239,7 +240,7 @@ export function PortalTopbar({ active }: { active?: string }) {
             onClick={() => setPanel(panel === 'bell' ? 'none' : 'bell')}
           >
             <Icon name="bell" size={16} />
-            <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
+            <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
           </CustomButton>
           {panel === 'bell' && (
             <>
@@ -250,16 +251,16 @@ export function PortalTopbar({ active }: { active?: string }) {
                 onClick={() => setPanel('none')}
               />
               <div className="absolute right-0 z-50 mt-2 w-[320px] popover anim-fade-up">
-                <p className="t-overline px-2 pt-1.5 pb-1 text-ink-3">Notifications</p>
+                <p className="text-sm font-semibold px-2 pt-1.5 pb-1 text-muted-foreground">Notifications</p>
                 {NOTIFICATIONS.map((n) => (
                   <div key={n.title} className="menu-item h-auto items-start gap-2.5 px-2 py-2">
                     <span
-                      className={cx('mt-1.5 h-1.5 w-1.5 flex-none rounded-full', n.unread ? 'bg-accent' : 'bg-hair')}
+                      className={cx('mt-1.5 h-1.5 w-1.5 flex-none rounded-full', n.unread ? 'bg-primary' : 'bg-hair')}
                       aria-hidden
                     />
-                    <span className="stack">
-                      <span className="t-ui-med text-ink">{n.title}</span>
-                      <span className="t-caption text-ink-2">{n.body}</span>
+                    <span className="flex flex-col">
+                      <span className="text-sm font-medium text-foreground">{n.title}</span>
+                      <span className="text-xs text-muted-foreground">{n.body}</span>
                     </span>
                   </div>
                 ))}
@@ -271,14 +272,14 @@ export function PortalTopbar({ active }: { active?: string }) {
         <div className="relative">
           <CustomButton variant="unstyled"
             type="button"
-            className="flex items-center gap-2 rounded px-1.5 py-1 transition-colors hover:bg-wash"
+            className="flex items-center gap-2 rounded px-1.5 py-1 transition-colors hover:bg-muted/40"
             aria-haspopup="menu"
             aria-expanded={panel === 'user'}
             onClick={() => setPanel(panel === 'user' ? 'none' : 'user')}
           >
             <Avatar initials="GU" size={24} />
-            <span className="t-ui-med hidden text-ink sm:block">Guest</span>
-            <Icon name="chevronDown" size={13} className="text-ink-3" />
+            <span className="text-sm font-medium hidden text-foreground sm:block">Guest</span>
+            <Icon name="chevronDown" size={13} className="text-muted-foreground" />
           </CustomButton>
           {panel === 'user' && (
             <>
@@ -289,21 +290,21 @@ export function PortalTopbar({ active }: { active?: string }) {
                 onClick={() => setPanel('none')}
               />
               <div className="absolute right-0 z-50 mt-2 w-[240px] popover anim-fade-up" role="menu">
-                <div className="border-b border-hair px-2 pt-1.5 pb-2">
-                  <p className="t-ui-med truncate text-ink">Guest</p>
-                  <p className="t-caption truncate text-ink-2">Public access</p>
+                <div className="border-b border-border px-2 pt-1.5 pb-2">
+                  <p className="text-sm font-medium truncate text-foreground">Guest</p>
+                  <p className="text-xs truncate text-muted-foreground">Public access</p>
                 </div>
                 <div className="pt-1">
                   <CustomButton variant="unstyled" type="button" className="menu-item" role="menuitem" onClick={() => navigate('/profile')}>
-                    <Icon name="user" size={15} className="text-ink-3" />
+                    <Icon name="user" size={15} className="text-muted-foreground" />
                     Profile
                   </CustomButton>
                   <CustomButton variant="unstyled" type="button" className="menu-item" role="menuitem" onClick={() => navigate('/admin')}>
-                    <Icon name="grid" size={15} className="text-ink-3" />
+                    <Icon name="grid" size={15} className="text-muted-foreground" />
                     Admin console
                   </CustomButton>
                   <CustomLink variant="unstyled" to="/login" className="menu-item" role="menuitem" onClick={() => setPanel('none')}>
-                    <Icon name="user" size={15} className="text-ink-3" />
+                    <Icon name="user" size={15} className="text-muted-foreground" />
                     Log in
                   </CustomLink>
                 </div>
@@ -315,7 +316,7 @@ export function PortalTopbar({ active }: { active?: string }) {
 
       {/* Mobile nav dropdown */}
       {panel === 'mobile' && (
-        <nav className="border-t border-hair px-3 py-2 md:hidden" aria-label="Mobile">
+        <nav className="border-t border-border px-3 py-2 md:hidden" aria-label="Mobile">
           {PORTAL_NAV.map((n) => (
             <CustomLink variant="unstyled" key={n.to} to={n.to} className="side-row">
               {n.label}
@@ -336,38 +337,45 @@ export function PortalTopbar({ active }: { active?: string }) {
 /* Status bars                                                         */
 /* ------------------------------------------------------------------ */
 
-/** Workspace bottom bar: engine + runtime telemetry. */
-export function EngineStatusBar() {
+/** Workspace bottom bar: editor state without fabricated runner telemetry. */
+export function EngineStatusBar({
+  cursorPosition = { lineNumber: 1, column: 1 },
+  tabSize = 4,
+}: {
+  cursorPosition?: { lineNumber: number; column: number }
+  tabSize?: number
+}) {
+  const version = import.meta.env.VITE_APP_VERSION
   return (
-    <div className="flex h-7 items-center justify-between border-t border-hair bg-canvas px-4 text-ink-3">
-      <div className="flex items-center gap-4">
-        <span className="t-code-tag">CodeForge v2.4.0</span>
-        <span className="t-code-tag flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
-          Engine Ready (v8-isolate)
-        </span>
+    <footer className="flex h-8 flex-none items-center justify-between gap-3 border-t border-border bg-card px-3 text-xs text-muted-foreground">
+      <div className="flex items-center gap-3">
+        <span>{version ? `CodeForge v${version}` : 'CodeForge'}</span>
+        <Separator orientation="vertical" className="h-4" />
+        <span>Editor ready</span>
       </div>
-      <div className="flex items-center gap-4">
-        <span className="t-code-tag tnum hidden sm:inline">Lat: 34ms</span>
-        <span className="t-code-tag tnum hidden sm:inline">Mem: 42.1MB</span>
-        <span className="t-code-tag">UTF-8</span>
+      <div className="flex items-center gap-3">
+        <span className="hidden tabular-nums sm:inline">Ln {cursorPosition.lineNumber}, Col {cursorPosition.column}</span>
+        <Separator orientation="vertical" className="hidden h-4 sm:block" />
+        <span className="hidden sm:inline">Spaces: {tabSize}</span>
+        <Separator orientation="vertical" className="h-4" />
+        <span>UTF-8</span>
       </div>
-    </div>
+    </footer>
   )
 }
 
 /** Portal bottom bar: system status + quick links. */
 export function SystemStatusBar() {
   return (
-    <div className="flex h-9 flex-wrap items-center justify-between gap-3 border-t border-hair bg-canvas px-4">
-      <span className="t-code-tag flex items-center gap-2 text-ink-3">
+    <div className="flex h-9 flex-wrap items-center justify-between gap-3 border-t border-border bg-background px-4">
+      <span className="font-mono text-xs flex items-center gap-2 text-muted-foreground">
         CODEFORGE SYSTEM STATUS
-        <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
+        <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
         ONLINE // CLUSTER-US-EAST
       </span>
-      <nav className="flex gap-5 text-ink-3" aria-label="Footer">
+      <nav className="flex gap-5 text-muted-foreground" aria-label="Footer">
         {['API', 'Documentation', 'Privacy', 'Terms'].map((l) => (
-          <a key={l} href={`#${l.toLowerCase()}`} className="t-caption hover:text-ink-2">
+          <a key={l} href={`#${l.toLowerCase()}`} className="text-xs hover:text-muted-foreground">
             {l}
           </a>
         ))}

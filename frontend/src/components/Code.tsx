@@ -4,7 +4,7 @@ import Editor from '@monaco-editor/react'
 import type { Monaco, OnMount } from '@monaco-editor/react'
 import { cx } from './ui'
 import { Icon } from './icons'
-import CustomButton from './ui/CustomButton'
+import CustomButton from './CustomButton'
 
 export type CodeLang = 'python' | 'js' | 'rust' | 'generic'
 
@@ -26,94 +26,54 @@ function langFor(code: string, lang?: CodeLang): CodeLang {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Theme: read colours from your CSS variables, fall back to sane defaults   */
+/*  Theme                                                                      */
 /* -------------------------------------------------------------------------- */
 
 export const THEME = 'app-code'
 
-type Palette = Record<
-  'bg' | 'fg' | 'keyword' | 'string' | 'number' | 'comment' | 'type' | 'operator' | 'gutter' | 'selection',
-  string
->
-
-const FALLBACK_LIGHT: Palette = {
-  bg: '#F7F7F8', fg: '#24292F', keyword: '#CF222E', string: '#0A3069', number: '#0550AE',
-  comment: '#6E7781', type: '#8250DF', operator: '#57606A', gutter: '#8C959F', selection: '#B6D6FD',
-}
-const FALLBACK_DARK: Palette = {
-  bg: '#0F1115', fg: '#E6EDF3', keyword: '#FF7B72', string: '#A5D6FF', number: '#79C0FF',
-  comment: '#8B949E', type: '#D2A8FF', operator: '#8B949E', gutter: '#6E7681', selection: '#264F78',
-}
-
-/**
- * Tries each CSS variable name in turn (Tailwind v4 uses --color-*), converts the
- * value to #RRGGBB via a canvas, and returns `fallback` when nothing usable is found.
- */
-function readColor(names: string[], fallback: string): string {
-  if (typeof document === 'undefined') return fallback
-  const style = getComputedStyle(document.documentElement)
-  const ctx = document.createElement('canvas').getContext('2d')
-  if (!ctx) return fallback
-  for (const name of names) {
-    let raw = style.getPropertyValue(name).trim()
-    if (!raw) continue
-    if (/^\d+\s+\d+\s+\d+$/.test(raw)) raw = `rgb(${raw.replace(/\s+/g, ',')})` // "12 34 56"
-    ctx.fillStyle = '#000000'
-    ctx.fillStyle = raw
-    const out = ctx.fillStyle
-    if (/^#[0-9a-f]{6}$/i.test(out)) return out
-  }
-  return fallback
-}
-
-function readPalette(dark: boolean): Palette {
-  const fb = dark ? FALLBACK_DARK : FALLBACK_LIGHT
-  const v = (key: string, fallback: string) => readColor([`--color-${key}`, `--${key}`], fallback)
-  return {
-    bg: v('code', fb.bg),
-    fg: v('ink', fb.fg),
-    keyword: v('syn-keyword', fb.keyword),
-    string: v('syn-string', fb.string),
-    number: v('syn-number', fb.number),
-    comment: v('syn-comment', fb.comment),
-    type: v('syn-type', fb.type),
-    operator: v('syn-operator', fb.operator),
-    gutter: v('ink-3', fb.gutter),
-    selection: fb.selection,
-  }
-}
-
 export function buildTheme(dark: boolean): Parameters<Monaco['editor']['defineTheme']>[1] {
-  const p = readPalette(dark)
-  const c = (hex: string) => hex.replace('#', '')
+  if (!dark) {
+    return { base: 'vs', inherit: true, rules: [], colors: {} }
+  }
+
   return {
-    base: dark ? 'vs-dark' : 'vs',
+    base: 'vs-dark',
     inherit: true,
     rules: [
-      { token: '', foreground: c(p.fg) },
-      { token: 'keyword', foreground: c(p.keyword) },
-      { token: 'keyword.control', foreground: c(p.keyword) },
-      { token: 'string', foreground: c(p.string) },
-      { token: 'string.escape', foreground: c(p.string) },
-      { token: 'number', foreground: c(p.number) },
-      { token: 'number.float', foreground: c(p.number) },
-      { token: 'number.hex', foreground: c(p.number) },
-      { token: 'comment', foreground: c(p.comment), fontStyle: 'italic' },
-      { token: 'type', foreground: c(p.type) },
-      { token: 'type.identifier', foreground: c(p.type) },
-      { token: 'delimiter', foreground: c(p.operator) },
-      { token: 'operator', foreground: c(p.operator) },
+      { token: '', foreground: 'f8f8f2' },
+      { token: 'keyword', foreground: 'ff79c6' },
+      { token: 'keyword.control', foreground: 'ff79c6' },
+      { token: 'keyword.operator', foreground: 'ff79c6' },
+      { token: 'storage', foreground: 'ff79c6' },
+      { token: 'storage.type', foreground: '8be9fd' },
+      { token: 'string', foreground: 'f1fa8c' },
+      { token: 'string.escape', foreground: 'ffb86c' },
+      { token: 'number', foreground: 'bd93f9' },
+      { token: 'number.float', foreground: 'bd93f9' },
+      { token: 'number.hex', foreground: 'bd93f9' },
+      { token: 'constant', foreground: 'bd93f9' },
+      { token: 'comment', foreground: '6272a4', fontStyle: 'italic' },
+      { token: 'type', foreground: '8be9fd' },
+      { token: 'type.identifier', foreground: '8be9fd' },
+      { token: 'entity.name.type', foreground: '8be9fd' },
+      { token: 'support.type', foreground: '8be9fd' },
+      { token: 'entity.name.function', foreground: '50fa7b' },
+      { token: 'support.function', foreground: '50fa7b' },
+      { token: 'delimiter', foreground: 'f8f8f2' },
+      { token: 'operator', foreground: 'ff79c6' },
     ],
     colors: {
-      'editor.background': p.bg,
-      'editor.foreground': p.fg,
-      'editorLineNumber.foreground': p.gutter,
-      'editorLineNumber.activeForeground': p.gutter,
-      'editor.lineHighlightBackground': '#00000000',
-      'editor.selectionBackground': p.selection,
-      'editorGutter.background': p.bg,
-      'scrollbarSlider.background': '#8884',
-      'scrollbarSlider.hoverBackground': '#8886',
+      'editor.background': '#282a36',
+      'editor.foreground': '#f8f8f2',
+      'editorLineNumber.foreground': '#6272a4',
+      'editorLineNumber.activeForeground': '#f8f8f2',
+      'editor.lineHighlightBackground': '#44475a66',
+      'editor.selectionBackground': '#44475a',
+      'editor.inactiveSelectionBackground': '#44475a88',
+      'editorCursor.foreground': '#f8f8f0',
+      'editorGutter.background': '#282a36',
+      'scrollbarSlider.background': '#6272a466',
+      'scrollbarSlider.hoverBackground': '#6272a4aa',
     },
   }
 }
@@ -207,7 +167,7 @@ export function CodeView({
   }, [isDark])
 
   return (
-    <div className={cx('overflow-hidden bg-code', className)} style={{ height }}>
+    <div className={cx('overflow-hidden bg-muted/50', className)} style={{ height }}>
       <Editor
         height={height}
         width="100%"
@@ -311,14 +271,14 @@ export function CodeWindow({
   }
   return (
     <div className={cx('code-window', className)}>
-      <div className="flex h-9 items-center gap-3 border-b border-hair px-3">
+      <div className="flex h-9 items-center gap-3 border-b border-border px-3">
         <span className="flex gap-1.5" aria-hidden>
-          <span className="traffic bg-[#FF5F57]" />
-          <span className="traffic bg-[#FEBC2E]" />
-          <span className="traffic bg-[#28C840]" />
+          <span className="size-2.5 rounded-full bg-destructive" />
+          <span className="size-2.5 rounded-full bg-secondary" />
+          <span className="size-2.5 rounded-full bg-primary" />
         </span>
         {title && (
-          <span className="tag tag-gray font-mono text-[11px] font-medium tracking-[0.02em]">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground font-mono text-[11px] font-medium tracking-[0.02em]">
             {title}
           </span>
         )}
@@ -340,7 +300,7 @@ export function CodeWindow({
         <CodeView code={code} lang={lang} activeLine={activeLine} />
       </div>
       {footer && (
-        <div className="flex items-center justify-between gap-4 border-t border-hair px-4 py-2 text-ink-2">
+        <div className="flex items-center justify-between gap-4 border-t border-border px-4 py-2 text-muted-foreground">
           {footer}
         </div>
       )}

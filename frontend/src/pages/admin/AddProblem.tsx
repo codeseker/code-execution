@@ -3,7 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import AdminLayout from './AdminLayout'
 import { Icon } from '../../components/icons'
 import { Tag, cx } from '../../components/ui'
-import CustomButton from '../../components/ui/CustomButton'
+import CustomButton from '../../components/CustomButton'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
+import { Textarea } from '../../components/ui/textarea'
 
 const DEFAULT_TITLE = 'Lowest Common Ancestor of a Binary Search Tree'
 
@@ -103,38 +107,37 @@ export default function AddProblem() {
 
   return (
     <AdminLayout>
-      <div className="mx-auto w-full max-w-[1180px] stack gap-5 px-4 py-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1180px] flex flex-col gap-5 px-4 py-6 lg:px-8">
         {/* Breadcrumb + title */}
-        <div className="stack gap-1">
-          <p className="t-code-tag text-ink-3">ADMIN / PROBLEMS / NEW PROBLEM</p>
+        <div className="flex flex-col gap-1">
+          <p className="font-mono text-xs text-muted-foreground">ADMIN / PROBLEMS / NEW PROBLEM</p>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="t-page-title text-ink">Create New Problem</h1>
-              <span className="pill pill-neutral t-code-tag">
-                <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Create New Problem</h1>
+              <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-muted text-muted-foreground font-mono text-xs">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
                 Draft auto-saved {savedAgo}
               </span>
             </div>
-            <CustomButton variant="unstyled"
+            <Button variant="outline"
               type="button"
-              className="btn btn-secondary"
               // onClick={() => push({ title: 'Opening playground preview', description: 'Renders the candidate-facing view.', tone: 'neutral' })}
             >
               <Icon name="eye" size={14} />
               Preview in Playground
               <Icon name="arrowUpRight" size={13} />
-            </CustomButton>
+            </Button>
           </div>
         </div>
 
         {/* ---- 01 Basic information ---- */}
-        <section className="card">
-          <div className="flex items-center justify-between gap-4 border-b border-hair px-5 py-4">
+        <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+          <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4">
             <div className="flex items-center gap-3.5">
-              <span className="center t-code-tag h-7 w-7 rounded-md bg-accent-soft text-accent">01</span>
+              <span className="center font-mono text-xs h-7 w-7 rounded-md bg-primary/10 text-primary">01</span>
               <div>
-                <h2 className="t-h3 text-ink">Basic Information</h2>
-                <p className="t-caption text-ink-2">Core metadata, slug identifier, and algorithmic taxonomy</p>
+                <h2 className="text-lg font-semibold text-foreground">Basic Information</h2>
+                <p className="text-xs text-muted-foreground">Core metadata, slug identifier, and algorithmic taxonomy</p>
               </div>
             </div>
             <CustomButton variant="unstyled"
@@ -147,19 +150,19 @@ export default function AddProblem() {
             </CustomButton>
           </div>
 
-          <div className="stack gap-5 p-5">
+          <div className="flex flex-col gap-5 p-5">
             {/* Title + slug */}
             <div className="grid gap-4 lg:grid-cols-2">
               <div>
                 <div className="flex items-baseline justify-between">
                   <label className="field-label" htmlFor="p-title">
-                    Problem Title <span className="text-error">*</span>
+                    Problem Title <span className="text-destructive">*</span>
                   </label>
-                  <span className="t-code-tag -mt-4 mb-1.5 text-ink-3">{title.length} / 64 chars max</span>
+                  <span className="font-mono text-xs -mt-4 mb-1.5 text-muted-foreground">{title.length} / 64 chars max</span>
                 </div>
-                <input
+                <Input
                   id="p-title"
-                  className="input h-9"
+                  className="h-9"
                   maxLength={64}
                   value={title}
                   onChange={(e) => {
@@ -172,11 +175,11 @@ export default function AddProblem() {
               <div>
                 <label className="field-label flex items-center gap-1.5" htmlFor="p-slug">
                   Canonical Slug
-                  <Icon name="info" size={13} className="text-ink-3" />
+                  <Icon name="info" size={13} className="text-muted-foreground" />
                 </label>
                 <div className="input flex h-9 items-center gap-0 overflow-hidden">
-                  <span className="t-code text-ink-3">codeforge.io/p/</span>
-                  <span id="p-slug" className="t-code min-w-0 grow truncate text-ink">
+                  <span className="font-mono text-sm text-muted-foreground">codeforge.io/p/</span>
+                  <span id="p-slug" className="font-mono text-sm min-w-0 grow truncate text-foreground">
                     {slug || '…'}
                   </span>
                   <CustomButton variant="unstyled"
@@ -198,7 +201,7 @@ export default function AddProblem() {
             <div className="grid gap-4 lg:grid-cols-2">
               <div>
                 <p className="field-label">Difficulty Tier</p>
-                <div className="grid grid-cols-3 overflow-hidden rounded-md border border-hair" role="radiogroup" aria-label="Difficulty tier">
+                <div className="grid grid-cols-3 overflow-hidden rounded-md border border-border" role="radiogroup" aria-label="Difficulty tier">
                   {TIER_WEIGHTS.map((t) => (
                     <CustomButton variant="unstyled"
                       key={t.tier}
@@ -206,16 +209,16 @@ export default function AddProblem() {
                       role="radio"
                       aria-checked={tier === t.tier}
                       className={cx(
-                        'stack items-center gap-0.5 px-3 py-2.5 transition-colors',
-                        tier === t.tier ? 'bg-accent text-on-accent' : 'text-ink-2 hover:bg-wash',
+                        'flex flex-col items-center gap-0.5 px-3 py-2.5 transition-colors',
+                        tier === t.tier ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/40',
                       )}
                       onClick={() => {
                         setTier(t.tier)
                         touch()
                       }}
                     >
-                      <span className="t-code-tag font-semibold">{t.tier.toUpperCase()}</span>
-                      <span className={cx('t-caption', tier === t.tier ? 'opacity-80' : 'text-ink-3')}>
+                      <span className="font-mono text-xs font-semibold">{t.tier.toUpperCase()}</span>
+                      <span className={cx('text-xs', tier === t.tier ? 'opacity-80' : 'text-muted-foreground')}>
                         Weight: {t.weight}
                       </span>
                     </CustomButton>
@@ -226,18 +229,18 @@ export default function AddProblem() {
               <div>
                 <div className="flex items-baseline justify-between">
                   <p className="field-label">Algorithmic Topics</p>
-                  <span className="t-caption -mt-4 mb-1.5 text-ink-3">Tags assist taxonomy routing</span>
+                  <span className="text-xs -mt-4 mb-1.5 text-muted-foreground">Tags assist taxonomy routing</span>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 rounded-md border border-hair px-2.5 py-2">
+                <div className="flex flex-wrap items-center gap-2 rounded-md border border-border px-2.5 py-2">
                   {topics.map((t) => (
                     <Tag key={t} tone="blue" onRemove={() => { setTopics((list) => list.filter((x) => x !== t)); touch() }}>
                       {t}
                     </Tag>
                   ))}
                   {topicDraft !== null ? (
-                    <input
+                    <Input
                       autoFocus
-                      className="input h-6 w-[130px] border-none px-1 text-[12px]"
+                      className="h-6 w-[130px] border-none px-1 text-xs shadow-none focus-visible:ring-0"
                       placeholder="Tag name…"
                       value={topicDraft}
                       onChange={(e) => setTopicDraft(e.target.value)}
@@ -271,8 +274,8 @@ export default function AddProblem() {
               <p className="field-label">Target Industry Companies</p>
               <div className="flex flex-wrap items-center gap-2.5">
                 {companies.map((c) => (
-                  <span key={c.name} className="tag tag-purple h-7 gap-2 px-2.5 text-[13px]">
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: 'currentColor' }} aria-hidden />
+                  <span key={c.name} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground h-7 gap-2 px-2.5 text-[13px]">
+                    <span className="size-1.5 rounded-full bg-current" aria-hidden />
                     {c.name} ({c.count} appearances)
                     <CustomButton variant="unstyled"
                       type="button"
@@ -315,9 +318,9 @@ export default function AddProblem() {
                               touch()
                             }}
                           >
-                            <Icon name="building" size={14} className="text-ink-3" />
+                            <Icon name="building" size={14} className="text-muted-foreground" />
                             <span className="grow">{c.name}</span>
-                            <span className="t-code-tag text-ink-3">{c.count}</span>
+                            <span className="font-mono text-xs text-muted-foreground">{c.count}</span>
                           </CustomButton>
                         ))}
                       </div>
@@ -331,16 +334,16 @@ export default function AddProblem() {
         </section>
 
         {/* ---- 02 Problem specification ---- */}
-        <section className="card">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-hair px-5 py-4">
+        <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-5 py-4">
             <div className="flex items-center gap-3.5">
-              <span className="center t-code-tag h-7 w-7 rounded-md bg-accent-soft text-accent">02</span>
+              <span className="center font-mono text-xs h-7 w-7 rounded-md bg-primary/10 text-primary">02</span>
               <div>
-                <h2 className="t-h3 text-ink">Problem Specification</h2>
-                <p className="t-caption text-ink-2">Markdown prompt, constraints, and test scenarios</p>
+                <h2 className="text-lg font-semibold text-foreground">Problem Specification</h2>
+                <p className="text-xs text-muted-foreground">Markdown prompt, constraints, and test scenarios</p>
               </div>
             </div>
-            <div className="flex items-center gap-0.5 rounded-md border border-hair p-1">
+            <div className="flex items-center gap-0.5 rounded-md border border-border p-1">
               {(
                 [
                   { icon: 'bold', label: 'Bold', snippet: '**bold**' },
@@ -383,20 +386,19 @@ export default function AddProblem() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-3 border-b border-hair bg-wash px-5 py-2">
-            <span className="t-code-tag flex items-center gap-2 text-ink-2">
+          <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/40 px-5 py-2">
+            <span className="font-mono text-xs flex items-center gap-2 text-muted-foreground">
               <Icon name="list" size={13} />
               MARKDOWN INPUT
             </span>
-            <span className="t-code-tag tnum text-ink-3">
+            <span className="font-mono text-xs tabular-nums text-muted-foreground">
               UTF-8 · Line {caret.line}, Col {caret.col}
             </span>
           </div>
 
-          <textarea
+          <Textarea
             ref={mdRef}
-            className="t-code block w-full resize-y bg-canvas px-5 py-4 outline-none"
-            style={{ minHeight: 320, lineHeight: '22px' }}
+            className="block min-h-[320px] w-full resize-y rounded-none border-0 bg-background px-5 py-4 font-mono text-sm leading-[22px] shadow-none focus-visible:ring-0"
             aria-label="Problem prompt in markdown"
             value={markdown}
             spellCheck={false}
@@ -411,36 +413,41 @@ export default function AddProblem() {
         </section>
 
         {/* ---- 03 Reference solution ---- */}
-        <section className="card">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-hair px-5 py-4">
+        <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-5 py-4">
             <div className="flex items-center gap-3.5">
-              <span className="center t-code-tag h-7 w-7 rounded-md bg-accent-soft text-accent">03</span>
+              <span className="center font-mono text-xs h-7 w-7 rounded-md bg-primary/10 text-primary">03</span>
               <div>
-                <h2 className="t-h3 text-ink">Reference Solution</h2>
-                <p className="t-caption text-ink-2">Validated against the hidden test suite before publishing</p>
+                <h2 className="text-lg font-semibold text-foreground">Reference Solution</h2>
+                <p className="text-xs text-muted-foreground">Validated against the hidden test suite before publishing</p>
               </div>
             </div>
-            <span className="pill pill-success">
+            <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-primary/10 text-primary">
               <Icon name="checkCircle" size={13} />
               Auto-verified · 214 / 214 cases
             </span>
           </div>
-          <div className="stack gap-3 p-5">
+          <div className="flex flex-col gap-3 p-5">
             <div className="flex flex-wrap items-center gap-2.5">
-              <select className="input select h-8 w-[144px] text-[13px]" aria-label="Solution language" defaultValue="Python3">
-                {['Python3', 'TypeScript', 'Java', 'C++', 'Rust'].map((l) => (
-                  <option key={l}>{l}</option>
-                ))}
-              </select>
-              <span className="tag tag-gray t-code-tag">lca_solution.py</span>
+              <Select defaultValue="Python3">
+                <SelectTrigger className="h-8 w-[144px] text-[13px]" aria-label="Solution language">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {['Python3', 'TypeScript', 'Java', 'C++', 'Rust'].map((language) => (
+                    <SelectItem key={language} value={language}>{language}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground font-mono text-xs">lca_solution.py</span>
               <span className="grow" />
-              <span className="t-code-tag flex gap-3 text-ink-3">
+              <span className="font-mono text-xs flex gap-3 text-muted-foreground">
                 <span>Time O(h)</span>
                 <span>Space O(n)</span>
               </span>
             </div>
-            <textarea
-              className="input t-code min-h-[170px] resize-y py-3"
+            <Textarea
+              className="min-h-[170px] resize-y py-3 font-mono"
               spellCheck={false}
               aria-label="Reference solution code"
               defaultValue={`class Solution:
@@ -460,27 +467,26 @@ export default function AddProblem() {
         <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
           <div className="min-w-0">
             {error && (
-              <p className="pill pill-error h-auto w-auto items-start gap-2 py-1.5 text-left" role="alert">
+              <p className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-destructive/10 text-destructive h-auto w-auto items-start gap-2 py-1.5 text-left" role="alert">
                 <Icon name="alert" size={13} className="mt-0.5 flex-none" />
                 {error}
               </p>
             )}
           </div>
           <div className="flex flex-wrap gap-2.5">
-            <CustomButton variant="unstyled"
+            <Button variant="outline"
               type="button"
-              className="btn btn-secondary"
               onClick={() => {
                 touch()
                 // push({ title: 'Draft saved', description: 'Everything is stored in this session.', tone: 'neutral' })
               }}
             >
               Save Draft
-            </CustomButton>
-            <CustomButton variant="unstyled" type="button" className="btn btn-primary" onClick={publish}>
+            </Button>
+            <Button type="button" onClick={publish}>
               Preview &amp; Publish
               <Icon name="arrowRight" size={14} />
-            </CustomButton>
+            </Button>
           </div>
         </div>
       </div>

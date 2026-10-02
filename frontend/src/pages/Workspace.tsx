@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '../components/icons'
 import { CodeEditor, monacoLanguageFor } from '../components/CodeEditor'
-import { DifficultyBadge, Spinner, cx } from '../components/ui'
+import { DifficultyBadge, Spinner, ThemeToggle } from '../components/ui'
 import { EngineStatusBar } from '../components/shell'
 import {
   LANGUAGES,
@@ -13,8 +13,32 @@ import {
   problemById,
 } from '../data'
 import type { Problem, Submission } from '../data'
-import CustomButton from '../components/ui/CustomButton'
-import CustomLink from '../components/ui/CustomLink'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table'
+import { BaseTabs, BaseTabsList, BaseTabsPanel, BaseTabsTrigger } from '../components/BaseTabs'
+import { BaseSelect } from '../components/BaseSelect'
+import { BaseTooltip } from '../components/BaseTooltip'
+import { PanelSurface } from '../components/PanelSurface'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '../components/Resizable'
+import { StatusBadge } from '../components/ui'
+import { Badge } from '../components/ui/badge'
+import { Separator } from '../components/ui/separator'
+import { ScrollArea } from '../components/ui/scroll-area'
+import { Switch } from '@base-ui/react/switch'
+import { Popover } from '@base-ui/react/popover'
+import { Collapsible } from '@base-ui/react/collapsible'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../components/ui/alert-dialog'
 
 const TABS = ['Description', 'Submissions', 'Solutions', 'Editorial'] as const
 type Tab = (typeof TABS)[number]
@@ -23,18 +47,13 @@ type RunResult = {
   mode: 'run' | 'submit'
   passed: number
   total: number
-  runtime: number
-  memory: number
 }
-
-const fmtTime = (s: number) =>
-  `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 
 export default function Workspace() {
   const { id } = useParams()
   const navigate = useNavigate()
   const problem = problemById(id ?? '') ?? PROBLEMS[0]
-  const index = PROBLEMS.findIndex((p) => p.id === problem.id)
+  const index = PROBLEMS.findIndex((item) => item.id === problem.id)
 
   const [tab, setTab] = useState<Tab>('Description')
   const [lang, setLang] = useState('Python3')
@@ -42,13 +61,11 @@ export default function Workspace() {
     problem.id === 'two-sum' ? TWO_SUM_PY : STARTER_CODES['Python3'],
   )
   const [pane, setPane] = useState<'problem' | 'code' | 'console'>('problem')
-  const [splitPct, setSplitPct] = useState(46)
-  const [leftOpen, setLeftOpen] = useState(true)
   const [consoleOpen, setConsoleOpen] = useState(true)
-  const [seconds, setSeconds] = useState(24 * 60 + 18)
-  const [paused, setPaused] = useState(false)
-  const mainRef = useRef<HTMLDivElement>(null)
-  const dragging = useRef(false)
+  const [autoComplete, setAutoComplete] = useState(true)
+  const [fontSize, setFontSize] = useState(13)
+  const [tabSize, setTabSize] = useState(4)
+  const [cursorPosition, setCursorPosition] = useState({ lineNumber: 1, column: 1 })
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState<RunResult | null>(null)
 
@@ -57,29 +74,21 @@ export default function Workspace() {
     [problem.id],
   )
 
-  // Session timer.
-  useEffect(() => {
-    if (paused) return
-    const t = window.setInterval(() => setSeconds((s) => s + 1), 1000)
-    return () => window.clearInterval(t)
-  }, [paused])
-
   // Reset pane state when switching problems.
   useEffect(() => {
     setTab('Description')
     setCode(problem.id === 'two-sum' ? TWO_SUM_PY : STARTER_CODES[lang] ?? STARTER_CODES['Python3'])
-    setSeconds(24 * 60 + 18)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [problem.id])
-
-  const goTo = (delta: number) => {
-    const next = PROBLEMS[(index + delta + PROBLEMS.length) % PROBLEMS.length]
-    navigate(`/problems/${next.id}`)
-  }
 
   const changeLanguage = (name: string) => {
     setLang(name)
     setCode(STARTER_CODES[name] ?? '')
+  }
+
+  const goTo = (delta: number) => {
+    const next = PROBLEMS[(index + delta + PROBLEMS.length) % PROBLEMS.length]
+    navigate(`/problems/${next.id}`)
   }
 
   // Simulated execution: run individual cases or submit the whole suite.
@@ -88,7 +97,7 @@ export default function Workspace() {
     setRunning(true)
     window.setTimeout(() => {
       setRunning(false)
-      setResult({ mode: 'run', passed: 3, total: 3, runtime: 12, memory: 8.4 })
+      setResult({ mode: 'run', passed: 3, total: 3 })
     }, 650)
   }
 
@@ -97,7 +106,7 @@ export default function Workspace() {
     setRunning(true)
     window.setTimeout(() => {
       setRunning(false)
-      setResult({ mode: 'submit', passed: 57, total: 57, runtime: 38, memory: 17.2 })
+      setResult({ mode: 'submit', passed: 57, total: 57 })
       // push({
       //   title: 'Accepted — 57 / 57 test cases',
       //   description: 'Runtime 38 ms · beats 94.2% · +25 XP',
@@ -122,214 +131,97 @@ export default function Workspace() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running])
 
-  const fullscreen = () => {
-    if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined)
-    // else document.documentElement.requestFullscreen().catch(() => push({ title: 'Fullscreen unavailable', tone: 'neutral' }))
-  }
-
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-canvas">
-      {/* ---------------- Workspace topbar ---------------- */}
-      <header className="flex h-11 flex-none items-center gap-3 border-b border-hair px-3">
-        <div className="flex items-center gap-0.5">
-          <CustomButton variant="unstyled" type="button" className="icon-btn h-7 w-7" aria-label="Previous problem" onClick={() => goTo(-1)}>
-            <Icon name="chevronLeft" size={15} />
-          </CustomButton>
-          <CustomButton variant="unstyled" type="button" className="icon-btn h-7 w-7" aria-label="Next problem" onClick={() => goTo(1)}>
-            <Icon name="chevronRight" size={15} />
-          </CustomButton>
+    <>
+      <header className="flex h-14 items-center gap-2 border-b border-border bg-background px-3 sm:gap-3 sm:px-4">
+        <Button variant="ghost" size="icon" className="size-8 shrink-0" type="button" aria-label="Back to problems" onClick={() => navigate('/problems')}>
+          <Icon name="codeXml" size={19} />
+        </Button>
+        <div className="hidden min-w-0 items-center gap-3 sm:flex">
+          <span className="text-sm font-semibold text-foreground">Daily Question</span>
+          <span className="max-w-56 truncate text-sm text-muted-foreground">{problem.num}. {problem.title}</span>
         </div>
-
-        <CustomLink variant="unstyled"
-          to="/problems"
-          className="group flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-wash"
-          title="All problems"
-        >
-          <span className="t-ui-med text-ink">
-            {problem.num}. {problem.title}
-          </span>
-          <Icon name="chevronDown" size={13} className="text-ink-3" />
-        </CustomLink>
-        <DifficultyBadge difficulty={problem.difficulty} className="hidden sm:inline-flex" />
-
-        <nav className="ml-2 hidden items-center gap-1 lg:flex" aria-label="Problem views">
-          <CustomLink variant="unstyled" to={`/problems/${problem.id}`} className="rounded px-2.5 py-1 text-[14px] text-ink-2 hover:bg-wash hover:text-ink">
-            Problems
-          </CustomLink>
-          <CustomLink variant="unstyled" to={`/problems/${problem.id}/submissions`} className="rounded px-2.5 py-1 text-[14px] text-ink-2 hover:bg-wash hover:text-ink">
-            Submissions
-          </CustomLink>
-        </nav>
-
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="size-8" type="button" aria-label="Previous problem" onClick={() => goTo(-1)}>
+            <Icon name="chevronLeft" size={17} />
+          </Button>
+          <Button variant="ghost" size="icon" className="size-8" type="button" aria-label="Next problem" onClick={() => goTo(1)}>
+            <Icon name="chevronRight" size={17} />
+          </Button>
+        </div>
         <span className="grow" />
-
-        <CustomButton variant="unstyled"
-          type="button"
-          className="pill pill-neutral tnum h-7"
-          onClick={() => setPaused((p) => !p)}
-          title={paused ? 'Resume timer' : 'Pause timer'}
-        >
-          <Icon name="timer" size={13} />
-          {fmtTime(seconds)}
-        </CustomButton>
-
-        <div className="hidden items-center gap-0.5 md:flex">
-          <CustomButton variant="unstyled"
-            type="button"
-            className={cx('icon-btn h-7 w-7', leftOpen && 'bg-wash text-ink')}
-            aria-label="Toggle problem pane"
-            aria-pressed={leftOpen}
-            onClick={() => setLeftOpen((v) => !v)}
-          >
-            <Icon name="layoutLeft" size={15} />
-          </CustomButton>
-          <CustomButton variant="unstyled"
-            type="button"
-            className={cx('icon-btn h-7 w-7', consoleOpen && 'bg-wash text-ink')}
-            aria-label="Toggle console pane"
-            aria-pressed={consoleOpen}
-            onClick={() => setConsoleOpen((v) => !v)}
-          >
-            <Icon name="layoutRight" size={15} />
-          </CustomButton>
-          <CustomButton variant="unstyled" type="button" className="icon-btn h-7 w-7" aria-label="Toggle fullscreen" onClick={fullscreen}>
-            <Icon name="maximize" size={15} />
-          </CustomButton>
+        <div className="flex items-center gap-1.5">
+          <Button variant="ghost" size="icon" className="size-8" type="button" aria-label="Run code" onClick={run}>
+            <Icon name="play" size={16} />
+          </Button>
+          <Button size="sm" type="button" className="h-8" onClick={submit}>
+            <Icon name="upload" size={15} />
+            <span className="hidden sm:inline">Submit</span>
+          </Button>
         </div>
-
-        <span className="hidden h-4 w-px bg-hair md:block" aria-hidden />
-        <div className="hidden items-center gap-2 md:flex">
-          <CustomButton variant="unstyled" type="button" className="btn btn-secondary btn-sm" onClick={run} disabled={running}>
-            <Icon name="play" size={12} />
-            Run
-            <span className="kbd">⌘↵</span>
-          </CustomButton>
-          <CustomButton variant="unstyled" type="button" className="btn btn-primary btn-sm" onClick={submit} disabled={running}>
-            <Icon name="upload" size={13} />
-            Submit
-            <span className="kbd" style={{ color: 'inherit', opacity: 0.75 }}>
-              ⌘⇧↵
-            </span>
-          </CustomButton>
-        </div>
+        <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
+        <ThemeToggle className="size-8" />
       </header>
-
-      {/* ---------------- Mobile segmented control ---------------- */}
-      <div className="flex-none border-b border-hair px-3 py-2 lg:hidden">
-        <div className="seg w-full" role="tablist" aria-label="Workspace panels">
-          {(['problem', 'code', 'console'] as const).map((p) => (
-            <CustomButton variant="unstyled"
-              key={p}
-              type="button"
-              role="tab"
-              aria-selected={pane === p}
-              className={cx('seg-btn grow', pane === p && 'is-active')}
-              onClick={() => setPane(p)}
-            >
-              {p === 'problem' ? 'Problem' : p === 'code' ? 'Code' : 'Console'}
-            </CustomButton>
-          ))}
-        </div>
-      </div>
-
-      {/* ---------------- Panes ---------------- */}
-      <div ref={mainRef} className="flex min-h-0 grow">
-        {/* Problem pane */}
-        <section
-          className={cx(
-            'min-w-0 grow flex-col overflow-hidden',
-            leftOpen
-              ? pane === 'problem'
-                ? 'flex'
-                : 'hidden lg:flex'
-              : 'hidden',
-          )}
-          style={{ flexBasis: `${splitPct}%` }}
-          aria-label="Problem description"
-        >
-          <ProblemPane problem={problem} tab={tab} setTab={setTab} submissions={submissions} />
-        </section>
-
-        {/* Splitter (desktop) */}
-        <div
-          className="group relative hidden w-2 cursor-col-resize lg:block"
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Resize panes"
-          onPointerDown={(e) => {
-            dragging.current = true
-            e.currentTarget.setPointerCapture(e.pointerId)
-          }}
-          onPointerMove={(e) => {
-            if (!dragging.current || !mainRef.current) return
-            const rect = mainRef.current.getBoundingClientRect()
-            const pct = ((e.clientX - rect.left) / rect.width) * 100
-            setSplitPct(Math.min(72, Math.max(28, pct)))
-          }}
-          onPointerUp={() => {
-            dragging.current = false
-          }}
-          onPointerCancel={() => {
-            dragging.current = false
-          }}
-        >
-          <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-hair transition-all group-hover:w-[3px] group-hover:bg-accent" />
+      <main className="flex h-[calc(100dvh-3.5rem)] min-h-0 flex-col overflow-hidden bg-background">
+        <div className="hidden min-h-0 grow p-2 lg:flex">
+          <ResizablePanelGroup orientation="horizontal" autoSaveId="codeforge-workspace-columns-v2" defaultLayout={{ problem: 36, right: 64 }} className="flex min-h-0 grow gap-2">
+            <ResizablePanel id="problem" defaultSize="36%" minSize="30%">
+              <PanelSurface className="h-full"><ProblemPane problem={problem} tab={tab} setTab={setTab} submissions={submissions} /></PanelSurface>
+            </ResizablePanel>
+            <ResizableHandle withHandle aria-label="Resize problem and editor panels" />
+            <ResizablePanel id="right" defaultSize="64%" minSize="35%">
+              <ResizablePanelGroup orientation="vertical" autoSaveId="codeforge-workspace-editor-console-v2" defaultLayout={{ editor: 54, console: 46 }} className="h-full min-h-0 gap-2">
+                <ResizablePanel id="editor" defaultSize="54%" minSize="34%">
+                  <PanelSurface className="h-full">
+                    <EditorPane lang={lang} code={code} onCode={setCode} onLanguage={changeLanguage} onRun={run} onSubmit={submit} autoComplete={autoComplete} onAutoComplete={setAutoComplete} fontSize={fontSize} onFontSize={setFontSize} tabSize={tabSize} onTabSize={setTabSize} onCursorPositionChange={setCursorPosition} />
+                  </PanelSurface>
+                </ResizablePanel>
+                <ResizableHandle withHandle aria-label="Resize editor and console panels" />
+                <ResizablePanel id="console" defaultSize="46%" minSize="18%" collapsible collapsedSize="8%">
+                  <PanelSurface className="h-full"><ConsolePane open={consoleOpen} onToggle={() => setConsoleOpen((value) => !value)} running={running} result={result} /></PanelSurface>
+                </ResizablePanel>
+              </ResizablePanelGroup>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </div>
 
-        {/* Editor + console */}
-        <section
-          className={cx(
-            'min-w-0 grow flex-col overflow-hidden',
-            pane === 'problem' ? 'hidden lg:flex' : 'flex',
-          )}
-          style={{ flexBasis: `${100 - splitPct}%` }}
-          aria-label="Code editor"
-        >
-          <EditorPane
-            lang={lang}
-            code={code}
-            onCode={setCode}
-            onLanguage={changeLanguage}
-            onRun={run}
-            onSubmit={submit}
-          />
-          <ConsolePane
-            open={consoleOpen || pane === 'console'}
-            onToggle={() => setConsoleOpen((v) => !v)}
-            running={running}
-            result={result}
-            onRun={run}
-            onSubmit={submit}
-          />
-        </section>
-      </div>
+        <div className="flex min-h-0 grow flex-col gap-2 p-2 lg:hidden">
+          <BaseTabs value={pane} onValueChange={(value) => setPane(value as typeof pane)} className="flex min-h-0 grow flex-col gap-2">
+            <BaseTabsList className="h-11 shrink-0 rounded-lg bg-muted/40 p-1">
+              <BaseTabsTrigger value="problem" className="h-9 flex-1">Problem</BaseTabsTrigger>
+              <BaseTabsTrigger value="code" className="h-9 flex-1">Code</BaseTabsTrigger>
+              <BaseTabsTrigger value="console" className="h-9 flex-1">Console</BaseTabsTrigger>
+            </BaseTabsList>
+            <BaseTabsPanel value="problem" className="min-h-0 grow"><PanelSurface className="h-full"><ProblemPane problem={problem} tab={tab} setTab={setTab} submissions={submissions} /></PanelSurface></BaseTabsPanel>
+            <BaseTabsPanel value="code" className="min-h-0 grow">
+              <div className="flex h-full min-h-0 flex-col gap-2">
+                <PanelSurface className="min-h-0 grow"><EditorPane lang={lang} code={code} onCode={setCode} onLanguage={changeLanguage} onRun={run} onSubmit={submit} autoComplete={autoComplete} onAutoComplete={setAutoComplete} fontSize={fontSize} onFontSize={setFontSize} tabSize={tabSize} onTabSize={setTabSize} onCursorPositionChange={setCursorPosition} /></PanelSurface>
+                <PanelSurface className="h-[40%] min-h-48 shrink-0"><ConsolePane open={consoleOpen} onToggle={() => setConsoleOpen((value) => !value)} running={running} result={result} /></PanelSurface>
+              </div>
+            </BaseTabsPanel>
+            <BaseTabsPanel value="console" className="min-h-0 grow"><PanelSurface className="h-full"><ConsolePane open onToggle={() => setPane('code')} running={running} result={result} /></PanelSurface></BaseTabsPanel>
+          </BaseTabs>
+        </div>
 
-      <EngineStatusBar />
-    </div>
+        <EngineStatusBar cursorPosition={cursorPosition} tabSize={tabSize} />
+      </main>
+    </>
   )
 }
-
-/* ------------------------------------------------------------------ */
-/* Problem pane: tabs + statement / submissions / solutions / editorial */
-/* ------------------------------------------------------------------ */
 
 /** Renders the light markdown used in statements: **bold** and `code`. */
 function RichText({ text }: { text: string }) {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
   return (
     <>
-      {parts.map((p, i) => {
-        if (p.startsWith('**') && p.endsWith('**')) {
-          return (
-            <strong key={i} className="font-semibold text-ink">
-              {p.slice(2, -2)}
-            </strong>
-          )
+      {parts.map((part, index) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={index} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>
         }
-        if (p.startsWith('`') && p.endsWith('`') && p.length > 2) {
-          return <code key={i}>{p.slice(1, -1)}</code>
+        if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+          return <code key={index} className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">{part.slice(1, -1)}</code>
         }
-        return <span key={i}>{p}</span>
+        return <span key={index}>{part}</span>
       })}
     </>
   )
@@ -355,136 +247,119 @@ function ProblemPane({
     Editorial: 'book',
   }
 
-  return (
-    <div className="flex min-h-0 flex-col">
-      <div className="flex h-11 flex-none items-center gap-1 overflow-x-auto border-b border-hair px-3">
-        {TABS.map((t) => (
-          <CustomButton variant="unstyled"
-            key={t}
-            type="button"
-            className={cx('tab flex-none', tab === t && 'is-active')}
-            aria-current={tab === t}
-            onClick={() => setTab(t)}
-          >
-            <Icon name={tabIcon[t]} size={14} />
-            {t}
-            {t === 'Submissions' && submissions.length > 0 && (
-              <span className="tag tag-gray tnum">{submissions.length}</span>
-            )}
-            {t === 'Solutions' && <span className="tag tag-gray tnum">4.2k</span>}
-          </CustomButton>
-        ))}
-        <span className="grow" />
-        <CustomButton variant="unstyled"
-          type="button"
-          className={cx('icon-btn flex-none', saved && 'text-accent')}
-          aria-label={saved ? 'Remove bookmark' : 'Bookmark problem'}
-          aria-pressed={saved}
-          onClick={() => {
-            setSaved((v) => !v)
-            // push({ title: saved ? 'Removed from bookmarks' : 'Bookmarked', tone: 'neutral' })
-          }}
-        >
-          <Icon name="bookmark" size={15} />
-        </CustomButton>
-        <CustomButton variant="unstyled"
-          type="button"
-          className="icon-btn flex-none"
-          aria-label="Share problem"
-          // onClick={() => push({ title: 'Link copied to clipboard', description: `codeforge.io/p/${problem.id}`, tone: 'success' })}
-        >
-          <Icon name="share" size={15} />
-        </CustomButton>
-      </div>
+  const compactCount = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 })
 
-      <div className="scroll-y grow px-5 py-6 lg:px-9">
-        {tab === 'Description' && <Description problem={problem} />}
-        {tab === 'Submissions' && <SubmissionsTab problem={problem} submissions={submissions} />}
-        {tab === 'Solutions' && <SolutionsTab />}
-        {tab === 'Editorial' && <EditorialTab problem={problem} />}
+  return (
+    <BaseTabs value={tab} onValueChange={(value) => setTab(value as Tab)} className="flex h-full min-h-0 flex-col">
+      <div className="flex h-11 flex-none items-center gap-2 border-b border-border bg-muted/40 px-3">
+        <BaseTabsList className="h-full min-w-0 flex-1 justify-start gap-1 overflow-x-auto">
+          {TABS.map((item) => (
+            <BaseTabsTrigger key={item} value={item} className="h-full flex-none px-2.5">
+              <Icon name={tabIcon[item]} size={16} />
+              {item}
+              {item === 'Submissions' && submissions.length > 0 && (
+                <Badge variant="secondary" className="px-1.5 py-0 text-xs">{compactCount.format(submissions.length)}</Badge>
+              )}
+            </BaseTabsTrigger>
+          ))}
+        </BaseTabsList>
+        <Separator orientation="vertical" className="h-5" />
+        <div className="flex shrink-0 items-center gap-1">
+          <BaseTooltip content={saved ? 'Remove bookmark' : 'Bookmark problem'}>
+            <Button variant="ghost" size="icon" className="size-8" aria-label={saved ? 'Remove bookmark' : 'Bookmark problem'} aria-pressed={saved} onClick={() => setSaved((value) => !value)}>
+              <Icon name="bookmark" size={16} />
+            </Button>
+          </BaseTooltip>
+          <BaseTooltip content="Copy problem link">
+            <Button variant="ghost" size="icon" className="size-8" aria-label="Copy problem link" onClick={() => void navigator.clipboard?.writeText(window.location.href)}>
+              <Icon name="share" size={16} />
+            </Button>
+          </BaseTooltip>
+        </div>
       </div>
-    </div>
+      <ScrollArea className="min-h-0 grow">
+        <div className="px-4 pb-8 pt-5 sm:px-6">
+          {tab === 'Description' && <Description problem={problem} />}
+          {tab === 'Submissions' && <SubmissionsTab problem={problem} submissions={submissions} />}
+          {tab === 'Solutions' && <SolutionsTab />}
+          {tab === 'Editorial' && <EditorialTab problem={problem} />}
+        </div>
+      </ScrollArea>
+    </BaseTabs>
   )
 }
 
 function Description({ problem }: { problem: Problem }) {
   const d = problem.detail!
+  const similar = PROBLEMS.filter((candidate) => candidate.id !== problem.id && candidate.tags.some((tag) => problem.tags.includes(tag))).slice(0, 3)
   return (
-    <article className="stack max-w-[720px] gap-5">
-      <header className="stack gap-3">
-        <h1 className="t-h1 text-ink">
+    <article className="mx-auto flex max-w-[760px] flex-col gap-6">
+      <header className="space-y-3">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
           {problem.num}. {problem.title}
         </h1>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="flex flex-wrap items-center gap-2">
           <DifficultyBadge difficulty={problem.difficulty} />
-          <span className="flex flex-wrap items-center gap-1.5 t-ui text-ink-2">
-            {problem.tags.map((t, i) => (
-              <span key={t} className="flex items-center gap-1.5">
-                {i > 0 && <span className="text-ink-4">•</span>}
-                {t}
-              </span>
-            ))}
+          {problem.tags.map((tag) => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+          <BaseTooltip content={<span className="block max-w-56">{problem.companies.join(', ')}</span>}>
+            <Button variant="outline" size="sm" className="h-7 gap-2 text-xs" aria-label={`Companies: ${problem.companies.join(', ')}`}>
+              <Icon name="building" size={16} />
+              {problem.companies.length} companies
+            </Button>
+          </BaseTooltip>
+          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Icon name="activity" size={16} />
+            Acceptance {problem.acceptance}%
           </span>
-          <span className="t-ui flex items-center gap-1.5 text-ink-2">
-            <Icon name="building" size={14} className="text-ink-3" />
-            {problem.companies.join(', ')}
-          </span>
-          <span className="t-ui tnum text-ink-3">Acceptance {problem.acceptance}%</span>
         </div>
       </header>
 
-      <hr className="border-hair" />
+      <Separator />
 
-      <div className="stack gap-3">
-        {d.paragraphs.map((p, i) => (
-          <p key={i} className="t-reading text-ink-2">
-            <RichText text={p} />
+      <div className="space-y-4">
+        {d.paragraphs.map((paragraph, i) => (
+          <p key={i} className="text-sm leading-7 text-muted-foreground">
+            <RichText text={paragraph} />
           </p>
         ))}
       </div>
 
-      {d.examples.map((ex, i) => (
-        <div key={i} className="stack gap-2">
-          <p className="t-overline text-ink-3">Example {i + 1}</p>
-          <div className="stack gap-1.5 rounded-md border border-hair bg-code p-3.5">
-            <div className="t-code">
-              <span className="text-ink-3">Input: </span>
-              <span className="text-ink">{ex.input}</span>
+      <section className="space-y-3" aria-labelledby="examples-heading">
+        <h2 id="examples-heading" className="text-sm font-semibold text-foreground">Examples</h2>
+        {d.examples.map((example, i) => (
+          <div key={i} className="space-y-2">
+            <p className="text-sm font-semibold text-foreground">Example {i + 1}</p>
+            <div className="space-y-2 rounded-lg border border-border bg-muted/50 p-3 font-mono text-sm">
+              <p><span className="text-muted-foreground">Input</span><span className="text-foreground">: {example.input}</span></p>
+              <p><span className="text-muted-foreground">Output</span><span className="text-foreground">: {example.output}</span></p>
+              {example.notes && <p><span className="text-muted-foreground">Explanation</span><span className="font-sans text-foreground">: {example.notes}</span></p>}
             </div>
-            <div className="t-code">
-              <span className="text-ink-3">Output: </span>
-              <span className="text-ink">{ex.output}</span>
-            </div>
-            {ex.notes && (
-              <div className="t-code">
-                <span className="text-ink-3">Notes: </span>
-                <span className="text-ink-2">{ex.notes}</span>
-              </div>
-            )}
           </div>
-        </div>
-      ))}
+        ))}
+      </section>
 
-      <div className="stack gap-2">
-        <p className="t-overline text-ink-3">Constraints</p>
-        <ul className="stack list-disc gap-1.5 pl-5">
-          {d.constraints.map((c) => (
-            <li key={c} className="t-code text-ink-2">
-              {c}
-            </li>
+      <section className="space-y-3" aria-labelledby="constraints-heading">
+        <h2 id="constraints-heading" className="text-sm font-semibold text-foreground">Constraints</h2>
+        <ul className="list-disc space-y-2 pl-5 text-sm leading-6 text-muted-foreground">
+          {d.constraints.map((constraint) => (
+            <li key={constraint}><code className="font-mono text-foreground">{constraint}</code></li>
           ))}
         </ul>
-      </div>
+      </section>
 
       {d.followUp && (
-        <div className="callout">
-          <Icon name="bulb" size={20} className="mt-0.5 flex-none text-warning" />
-          <p className="t-reading text-ink-2">
-            <strong className="font-semibold text-ink">Follow-up: </strong>
+        <Collapsible.Root className="rounded-lg border border-border bg-card">
+          <Collapsible.Trigger className="flex w-full items-center justify-between gap-3 p-4 text-left text-sm font-medium text-foreground">
+            <span className="flex items-center gap-2"><Icon name="bulb" size={16} /> Hint</span>
+            <Icon name="chevronDown" size={16} className="text-muted-foreground" />
+          </Collapsible.Trigger>
+          <Collapsible.Panel className="border-t border-border px-4 py-3 text-sm leading-6 text-muted-foreground">
             <RichText text={d.followUp} />
-          </p>
-        </div>
+          </Collapsible.Panel>
+        </Collapsible.Root>
       )}
+
+      {similar.length > 0 && <p className="text-xs text-muted-foreground">Related topics: {similar.map((item) => item.title).join(', ')}</p>}
     </article>
   )
 }
@@ -501,89 +376,82 @@ function SubmissionsTab({ problem, submissions }: { problem: Problem; submission
     )
   }
   return (
-    <div className="stack max-w-[720px] gap-4">
+    <div className="mx-auto flex max-w-[760px] flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="t-h3 text-ink">Your submissions</h2>
-        <CustomButton variant="unstyled"
+        <h2 className="text-xl font-semibold text-foreground">Your submissions</h2>
+        <Button variant="ghost"
           type="button"
-          className="link t-ui-med inline-flex items-center gap-1.5"
+          className="h-8"
           onClick={() => navigate(`/problems/${problem.id}/submissions`)}
         >
           View all
-          <Icon name="arrowRight" size={13} />
-        </CustomButton>
+          <Icon name="arrowRight" size={16} />
+        </Button>
       </div>
-      <div className="overflow-hidden rounded-lg border border-hair">
-        <table className="ntable">
-          <thead>
+      <PanelSurface>
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-card">
             <tr>
-              <th className="pl-4">Status</th>
-              <th>Language</th>
-              <th>Runtime</th>
-              <th className="pr-4 text-right">Submitted</th>
+              <TableHead>Status</TableHead>
+              <TableHead>Language</TableHead>
+              <TableHead className="text-right">Runtime</TableHead>
+              <TableHead className="text-right">Submitted</TableHead>
             </tr>
-          </thead>
-          <tbody>
+          </TableHeader>
+          <TableBody>
             {submissions.slice(0, 6).map((s) => (
-              <tr
-                key={s.id}
-                className="cursor-pointer"
-                onClick={() => navigate(`/problems/${problem.id}/submissions`)}
-              >
-                <td className="pl-4">
-                  <StatusPill status={s.status} />
-                </td>
-                <td className="t-ui text-ink-2">{s.language}</td>
-                <td className="tnum t-ui text-ink-2">
+              <TableRow key={s.id}>
+                <TableCell><StatusPill status={s.status} /></TableCell>
+                <TableCell className="text-sm text-muted-foreground">{s.language}</TableCell>
+                <TableCell className="text-right font-mono text-sm tabular-nums text-muted-foreground">
                   {s.runtimeMs === null ? '—' : `${s.runtimeMs} ms`}
-                </td>
-                <td className="t-caption pr-4 text-right text-ink-3">{s.submitted}</td>
-              </tr>
+                </TableCell>
+                <TableCell className="text-right text-xs text-muted-foreground">{s.submitted}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </PanelSurface>
     </div>
   )
 }
 
 function SolutionsTab() {
-  
+
   const solutions = [
     { author: '@chen_w', initials: 'CW', lang: 'Python3', votes: 412, text: 'One-pass hash map: store every value you have seen, and look up the complement before inserting.' },
     { author: '@sarah_k', initials: 'SK', lang: 'Rust', votes: 268, text: 'Same idea with an array-index iterator — no heap allocation beyond the output vector.' },
     { author: '@dev_marcus', initials: 'DM', lang: 'C++', votes: 151, text: 'Sort with index tracking, then walk both ends. O(n log n) but cache friendly.' },
   ]
   return (
-    <div className="stack max-w-[720px] gap-3">
-      <h2 className="t-h3 text-ink">Top community solutions</h2>
+    <div className="mx-auto flex max-w-[760px] flex-col gap-4">
+      <h2 className="text-xl font-semibold text-foreground">Top community solutions</h2>
       {solutions.map((s) => (
-        <article key={s.author} className="card stack gap-2.5 p-4">
-          <div className="flex flex-wrap items-center gap-2.5">
+        <PanelSurface key={s.author} className="space-y-4 p-4">
+          <div className="flex flex-wrap items-center gap-2">
             <AvatarMini initials={s.initials} />
-            <span className="t-ui-med text-ink">{s.author}</span>
-            <span className="tag tag-gray">{s.lang}</span>
+            <span className="text-sm font-medium text-foreground">{s.author}</span>
+            <Badge variant="secondary">{s.lang}</Badge>
             <span className="grow" />
-            <span className="pill pill-accent tnum">
+            <Badge variant="outline" className="tabular-nums">
               <Icon name="arrowUpRight" size={12} />
               {s.votes}
-            </span>
+            </Badge>
           </div>
-          <p className="t-ui text-ink-2">{s.text}</p>
+          <p className="text-sm leading-6 text-muted-foreground">{s.text}</p>
           <div className="flex items-center justify-between gap-3">
-            <span className="t-code-tag flex gap-3 text-ink-3">
+            <span className="flex gap-3 font-mono text-xs text-muted-foreground">
               <span>Time O(n)</span>
               <span>Space O(n)</span>
             </span>
-            <CustomButton variant="unstyled"
+            <Button variant="outline"
               type="button"
-              className="btn btn-secondary btn-sm"
-              // onClick={() => push({ title: 'Solution opened', description: 'Full editorials are demo-only in this build.', tone: 'neutral' })}
+            // onClick={() => push({ title: 'Solution opened', description: 'Full editorials are demo-only in this build.', tone: 'neutral' })}
             >
               View solution
-            </CustomButton>
+            </Button>
           </div>
-        </article>
+        </PanelSurface>
       ))}
     </div>
   )
@@ -591,32 +459,32 @@ function SolutionsTab() {
 
 function EditorialTab({ problem }: { problem: Problem }) {
   return (
-    <article className="stack max-w-[720px] gap-4">
-      <p className="t-overline text-accent">Editorial · verified engineer</p>
-      <h2 className="t-h2 text-ink">Approach: one-pass hash map</h2>
-      <p className="t-reading text-ink-2">
+    <article className="mx-auto flex max-w-[760px] flex-col gap-4">
+      <p className="text-sm font-semibold text-primary">Editorial · verified engineer</p>
+      <h2 className="text-xl font-semibold text-foreground">Approach: one-pass hash map</h2>
+      <p className="text-sm leading-7 text-muted-foreground">
         The naive solution compares every pair, which costs O(n²). Instead, while scanning{' '}
         <code>nums</code> left to right, keep a map from each value to its index. For every element,
         check whether <code>target - num</code> is already in the map — if it is, you have your two
         indices; if not, record the current element and continue.
       </p>
-      <blockquote className="border-l-[3px] border-ink pl-3.5 text-[16px] leading-[26px] text-ink-2">
+      <blockquote className="border-l-2 border-primary pl-4 text-sm leading-6 text-muted-foreground">
         The map guarantees each element is inserted at most once and probed at most once, so the
         total work is linear in the number of elements — regardless of input order.
       </blockquote>
       <div className="grid grid-cols-2 gap-3">
-        <div className="card p-4">
-          <p className="t-overline text-ink-3">Time complexity</p>
-          <p className="t-code mt-1 text-ink">O(n)</p>
-          <p className="t-caption mt-1 text-ink-2">Single scan with O(1) average lookups.</p>
-        </div>
-        <div className="card p-4">
-          <p className="t-overline text-ink-3">Space complexity</p>
-          <p className="t-code mt-1 text-ink">O(n)</p>
-          <p className="t-caption mt-1 text-ink-2">The map holds at most every element once.</p>
-        </div>
+        <PanelSurface className="space-y-2 p-4">
+          <p className="text-sm font-semibold text-foreground">Time complexity</p>
+          <p className="font-mono text-sm text-foreground">O(n)</p>
+          <p className="text-xs text-muted-foreground">Single scan with O(1) average lookups.</p>
+        </PanelSurface>
+        <PanelSurface className="space-y-2 p-4">
+          <p className="text-sm font-semibold text-foreground">Space complexity</p>
+          <p className="font-mono text-sm text-foreground">O(n)</p>
+          <p className="text-xs text-muted-foreground">The map holds at most every element once.</p>
+        </PanelSurface>
       </div>
-      <p className="t-caption text-ink-3">
+      <p className="text-xs text-muted-foreground">
         Written for {problem.num}. {problem.title} · reviewed by the CodeForge editorial team.
       </p>
     </article>
@@ -633,36 +501,26 @@ function EmptyStatePane({
   hint: string
 }) {
   return (
-    <div className="empty-state">
-      <span className="empty-icon">
-        <Icon name={icon} size={48} strokeWidth={1.2} />
+    <div className="flex min-h-48 flex-col items-center justify-center gap-3 p-6 text-center">
+      <span className="text-muted-foreground">
+        <Icon name={icon} size={32} strokeWidth={1.5} />
       </span>
-      <p className="text-[16px] font-semibold text-ink">{title}</p>
-      <p className="t-ui max-w-[380px] text-ink-2">{hint}</p>
+      <p className="text-base font-semibold text-foreground">{title}</p>
+      <p className="max-w-[380px] text-sm leading-6 text-muted-foreground">{hint}</p>
     </div>
   )
 }
 
 function AvatarMini({ initials }: { initials: string }) {
   return (
-    <span
-      className="center h-6 w-6 flex-none rounded-full bg-accent-soft text-[10px] font-semibold text-accent"
-      aria-hidden
-    >
+    <span className="inline-flex size-8 flex-none items-center justify-center rounded-full bg-secondary text-xs font-medium text-secondary-foreground" aria-hidden>
       {initials}
     </span>
   )
 }
 
 function StatusPill({ status }: { status: Submission['status'] }) {
-  const tone = status === 'Accepted' ? 'pill-success' : status === 'Time Limit Exceeded' ? 'pill-warning' : 'pill-error'
-  const icon = status === 'Accepted' ? 'checkCircle' : status === 'Time Limit Exceeded' ? 'timer' : 'xCircle'
-  return (
-    <span className={cx('pill', tone)}>
-      <Icon name={icon} size={12} />
-      {status}
-    </span>
-  )
+  return <StatusBadge status={status} />
 }
 
 /* ------------------------------------------------------------------ */
@@ -676,6 +534,13 @@ function EditorPane({
   onLanguage,
   onRun,
   onSubmit,
+  autoComplete,
+  onAutoComplete,
+  fontSize,
+  onFontSize,
+  tabSize,
+  onTabSize,
+  onCursorPositionChange,
 }: {
   lang: string
   code: string
@@ -683,59 +548,88 @@ function EditorPane({
   onLanguage: (v: string) => void
   onRun: () => void
   onSubmit: () => void
+  autoComplete: boolean
+  onAutoComplete: (enabled: boolean) => void
+  fontSize: number
+  onFontSize: (size: number) => void
+  tabSize: number
+  onTabSize: (size: number) => void
+  onCursorPositionChange: (position: { lineNumber: number; column: number }) => void
 }) {
-  
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [resetOpen, setResetOpen] = useState(false)
 
   return (
-    <div className="flex min-h-0 grow flex-col border-b border-hair">
-      {/* Editor header (36px) */}
-      <div className="flex h-9 flex-none items-center gap-3 border-b border-hair px-3">
-        <span className="relative">
-          <span className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2">
-            <span className="block h-2 w-2 rounded-full bg-accent" aria-hidden />
-          </span>
-          <select
-            className="input select h-7 w-[136px] appearance-none pl-7 text-[13px] font-medium"
-            value={lang}
-            aria-label="Language"
-            onChange={(e) => onLanguage(e.target.value)}
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-11 flex-none items-center gap-2 overflow-x-auto border-b border-border bg-muted/40 px-3">
+        <BaseSelect
+          value={lang}
+          onValueChange={onLanguage}
+          ariaLabel="Editor language"
+          className="h-8 min-w-32"
+          options={LANGUAGES.map((language) => ({ value: language.name, label: language.name }))}
+        />
+        <Separator orientation="vertical" className="h-5" />
+        <label className="inline-flex shrink-0 items-center gap-2 text-sm text-muted-foreground" htmlFor="editor-autocomplete">
+          <Switch.Root
+            id="editor-autocomplete"
+            checked={autoComplete}
+            onCheckedChange={onAutoComplete}
+            className="relative inline-flex h-5 w-9 items-center rounded-full bg-input transition-colors data-[checked]:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {LANGUAGES.map((l) => (
-              <option key={l.name} value={l.name}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </span>
-        <span className="t-caption hidden items-center gap-1.5 text-ink-3 sm:flex">
-          <Icon name="check" size={12} className="text-success" />
-          Auto-complete on
-        </span>
+            <Switch.Thumb className="block size-4 translate-x-0.5 rounded-full bg-background shadow-sm transition-transform data-[checked]:translate-x-4" />
+          </Switch.Root>
+          Auto-complete
+        </label>
         <span className="grow" />
-        <CustomButton variant="unstyled"
-          type="button"
-          className="icon-btn tip h-7 w-7"
-          data-tip="Restore starter code"
-          aria-label="Restore starter code"
-          onClick={() => {
-            onCode(STARTER_CODES[lang] ?? '')
-            // push({ title: 'Starter code restored', tone: 'neutral' })
-          }}
-        >
-          <Icon name="refresh" size={14} />
-        </CustomButton>
-        <CustomButton variant="unstyled"
-          type="button"
-          className="icon-btn tip h-7 w-7"
-          data-tip="Editor settings"
-          aria-label="Editor settings"
-          // onClick={() => push({ title: 'Editor settings', description: 'Font size, ligatures and theme follow your design preferences.', tone: 'neutral' })}
-        >
-          <Icon name="settings" size={14} />
-        </CustomButton>
+        <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
+          <BaseTooltip content="Restore starter code">
+            <AlertDialogTrigger >
+              <Button variant="ghost" size="icon" className="size-8" aria-label="Restore starter code">
+                <Icon name="refresh" size={16} />
+              </Button>
+            </AlertDialogTrigger>
+          </BaseTooltip>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Restore starter code?</AlertDialogTitle>
+              <AlertDialogDescription>This replaces the code currently in the editor.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => onCode(STARTER_CODES[lang] ?? '')}>Restore code</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <Popover.Root open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <BaseTooltip content="Editor settings">
+            <Popover.Trigger render={<Button variant="ghost" size="icon" className="size-8" aria-label="Editor settings" />}>
+              <Icon name="settings" size={16} />
+            </Popover.Trigger>
+          </BaseTooltip>
+          <Popover.Portal>
+            <Popover.Positioner side="bottom" align="end" sideOffset={6} className="z-50">
+              <Popover.Popup className="w-64 rounded-lg border border-border bg-popover p-4 text-popover-foreground shadow-md">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium" htmlFor="editor-font-size">Font size</label>
+                    <input id="editor-font-size" type="range" min={11} max={18} value={fontSize} onChange={(event) => onFontSize(Number(event.target.value))} className="w-full accent-primary" />
+                    <p className="text-xs text-muted-foreground">{fontSize}px</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Indent size</label>
+                    <div className="flex gap-2">
+                      {[2, 4, 8].map((size) => <Button key={size} type="button" size="sm" variant={tabSize === size ? 'default' : 'outline'} aria-pressed={tabSize === size} onClick={() => onTabSize(size)}>{size} spaces</Button>)}
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Theme and key bindings follow your app preferences.</p>
+                </div>
+              </Popover.Popup>
+            </Popover.Positioner>
+          </Popover.Portal>
+        </Popover.Root>
       </div>
 
-      {/* Monaco editor: real syntax highlighting, fills the remaining height */}
       <CodeEditor
         className="grow"
         value={code}
@@ -743,6 +637,10 @@ function EditorPane({
         language={monacoLanguageFor(lang)}
         onRun={onRun}
         onSubmit={onSubmit}
+        autoComplete={autoComplete}
+        fontSize={fontSize}
+        tabSize={tabSize}
+        onCursorPositionChange={onCursorPositionChange}
       />
     </div>
   )
@@ -765,214 +663,105 @@ function ConsolePane({
   onToggle,
   running,
   result,
-  onRun,
-  onSubmit,
 }: {
   open: boolean
   onToggle: () => void
   running: boolean
   result: RunResult | null
-  onRun: () => void
-  onSubmit: () => void
 }) {
-  
   const [view, setView] = useState<'testcases' | 'result'>('testcases')
   const [cases, setCases] = useState<TestCase[]>(DEFAULT_CASES)
   const [active, setActive] = useState(0)
 
-  // Jump to the result view whenever a run finishes (or starts).
   useEffect(() => {
     if (running || result) setView('result')
   }, [running, result])
 
   const current = cases[active] ?? cases[0]
-  const update = (patch: Partial<TestCase>) =>
-    setCases((list) => list.map((c, i) => (i === active ? { ...c, ...patch } : c)))
+  const update = (patch: Partial<TestCase>) => setCases((list) => list.map((item, index) => index === active ? { ...item, ...patch } : item))
+  const addCase = () => {
+    setCases((list) => [...list, { nums: '', target: '', expected: '' }])
+    setActive(cases.length)
+    setView('testcases')
+  }
 
   return (
-    <div className={cx('flex flex-none flex-col', open ? 'h-[44%] min-h-[236px]' : 'h-9')}>
+    <div className="flex h-full min-h-0 flex-col">
       {open && (
-        <>
-          {/* Case/result tabs */}
-          <div className="flex h-9 flex-none items-center gap-1 border-b border-hair px-3">
-            <CustomButton variant="unstyled"
-              type="button"
-              className={cx('tab h-8', view === 'testcases' && 'is-active')}
-              onClick={() => setView('testcases')}
-            >
-              <Icon name="list" size={14} />
-              Testcases
-            </CustomButton>
-            <CustomButton variant="unstyled"
-              type="button"
-              className={cx('tab h-8', view === 'result' && 'is-active')}
-              onClick={() => setView('result')}
-            >
-              <Icon name="terminal" size={14} />
-              Result
-              {running ? (
-                <Spinner size={11} className="text-accent" />
-              ) : (
-                result && <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
-              )}
-            </CustomButton>
+        <BaseTabs value={view} onValueChange={(value) => setView(value as typeof view)} className="flex min-h-0 grow flex-col">
+          <div className="flex h-11 flex-none items-center gap-2 border-b border-border bg-muted/40 px-3">
+            <BaseTabsList className="h-full gap-1">
+              <BaseTabsTrigger value="testcases" className="h-full px-2.5"><Icon name="list" size={16} /> Test cases</BaseTabsTrigger>
+              <BaseTabsTrigger value="result" className="h-full px-2.5"><Icon name="terminal" size={16} /> Result {running && <Spinner size={12} className="text-muted-foreground" />}</BaseTabsTrigger>
+            </BaseTabsList>
             <span className="grow" />
-            <CustomButton variant="unstyled"
-              type="button"
-              className="btn btn-ghost btn-sm h-6 text-[12px]"
-              // onClick={() => push({ title: 'Custom testcases', description: 'Add a case with the + button in the testcases tab.', tone: 'neutral' })}
-            >
-              <Icon name="sliders" size={12} />
-              Custom Testcase
-            </CustomButton>
+            <Button variant="ghost" size="sm" className="h-8" type="button" onClick={addCase}><Icon name="plus" size={16} /> Add test case</Button>
           </div>
-
-          <div className="scroll-y grow px-4 py-3.5">
-            {view === 'testcases' ? (
-              <div className="stack gap-3.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  {cases.map((_, i) => (
-                    <CustomButton variant="unstyled"
-                      key={i}
-                      type="button"
-                      className={cx(
-                        'h-7 rounded-md border px-3 text-[13px] transition-colors',
-                        i === active
-                          ? 'border-transparent bg-wash-strong font-medium text-ink'
-                          : 'border-hair text-ink-2 hover:bg-wash',
-                      )}
-                      aria-pressed={i === active}
-                      onClick={() => setActive(i)}
-                    >
-                      Case {i + 1}
-                    </CustomButton>
-                  ))}
-                  <CustomButton variant="unstyled"
-                    type="button"
-                    className="icon-btn h-7 w-7 rounded-md border border-dashed border-line"
-                    aria-label="Add test case"
-                    onClick={() => {
-                      setCases((list) => [...list, { nums: '', target: '', expected: '' }])
-                      setActive(cases.length)
-                    }}
-                  >
-                    <Icon name="plus" size={14} />
-                  </CustomButton>
+          <ScrollArea className="min-h-0 grow">
+            <div className="space-y-4 p-4 pb-8">
+              {view === 'testcases' ? (
+                <div className="space-y-4">
+                  <BaseTabs value={String(active)} onValueChange={(value) => setActive(Number(value))}>
+                    <BaseTabsList className="h-auto flex-wrap rounded-none bg-transparent p-0">
+                      {cases.map((_, index) => (
+                        <BaseTabsTrigger key={index} value={String(index)} className="h-8 rounded-md border px-3 text-xs data-[active]:border-primary">
+                          <Icon name="checkCircle" size={16} /> Case {index + 1}
+                        </BaseTabsTrigger>
+                      ))}
+                    </BaseTabsList>
+                  </BaseTabs>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <label className="space-y-2">
+                      <span className="text-xs text-muted-foreground">Input · nums</span>
+                      <Input className="h-9 font-mono text-sm" value={current.nums} onChange={(event) => update({ nums: event.target.value })} aria-label={`nums for case ${active + 1}`} />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-xs text-muted-foreground">Input · target</span>
+                      <Input className="h-9 font-mono text-sm" value={current.target} onChange={(event) => update({ target: event.target.value })} aria-label={`target for case ${active + 1}`} />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-xs text-muted-foreground">Expected output</span>
+                      <Input className="h-9 font-mono text-sm" value={current.expected} onChange={(event) => update({ expected: event.target.value })} aria-label={`expected output for case ${active + 1}`} />
+                    </label>
+                  </div>
                 </div>
-
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <label className="stack gap-1.5">
-                    <span className="t-code-tag text-ink-2">nums =</span>
-                    <input
-                      className="input t-code h-8"
-                      value={current.nums}
-                      onChange={(e) => update({ nums: e.target.value })}
-                      aria-label={`nums for case ${active + 1}`}
-                    />
-                  </label>
-                  <label className="stack gap-1.5">
-                    <span className="t-code-tag text-ink-2">target =</span>
-                    <input
-                      className="input t-code h-8"
-                      value={current.target}
-                      onChange={(e) => update({ target: e.target.value })}
-                      aria-label={`target for case ${active + 1}`}
-                    />
-                  </label>
-                  <label className="stack gap-1.5">
-                    <span className="t-code-tag text-ink-2">Expected Output =</span>
-                    <input
-                      className="input t-code h-8"
-                      value={current.expected}
-                      onChange={(e) => update({ expected: e.target.value })}
-                      aria-label={`expected output for case ${active + 1}`}
-                    />
-                  </label>
+              ) : running ? (
+                <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+                  <Spinner size={20} />
+                  <p className="text-sm">Running your code…</p>
                 </div>
-              </div>
-            ) : running ? (
-              <div className="center h-full flex-col gap-3 text-ink-2">
-                <Spinner size={20} className="text-accent" />
-                <p className="t-ui">Executing on v8-isolate…</p>
-              </div>
-            ) : result ? (
-              <div className="stack gap-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="center h-7 w-7 rounded-full bg-success-soft text-success">
-                    <Icon name="check" size={16} strokeWidth={2.6} />
-                  </span>
-                  <span className="text-[20px] leading-7 font-semibold text-success">Accepted</span>
-                  <span className="t-code-tag text-ink-2">
-                    {result.passed} / {result.total} Test Cases Passed
-                  </span>
-                  <span className="grow" />
-                  <span className="t-code-tag rounded-sm bg-wash px-2 py-1 text-ink-2">
-                    {result.runtime} ms
-                  </span>
-                  <span className="t-code-tag rounded-sm bg-wash px-2 py-1 text-ink-2">
-                    {result.memory} MB
-                  </span>
+              ) : result ? (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <StatusBadge status="Accepted" />
+                    <Badge variant="secondary">Sample preview · {result.passed} / {result.total} cases</Badge>
+                  </div>
+                  <div className="space-y-3">
+                    {cases.slice(0, result.mode === 'run' ? cases.length : 3).map((testCase, index) => (
+                      <article key={index} className="grid gap-3 rounded-lg border border-border bg-muted/50 p-3 sm:grid-cols-2">
+                        <div className="flex items-center gap-2 sm:col-span-2"><Icon name="checkCircle" size={16} className="text-primary" /><span className="text-sm font-medium">Case {index + 1}</span></div>
+                        <div className="space-y-1"><p className="text-xs text-muted-foreground">Input</p><code className="break-all font-mono text-sm text-foreground">nums = {testCase.nums}, target = {testCase.target}</code></div>
+                        <div className="space-y-1"><p className="text-xs text-muted-foreground">Expected</p><code className="break-all font-mono text-sm text-foreground">{testCase.expected}</code></div>
+                      </article>
+                    ))}
+                  </div>
                 </div>
-
-                <div className="stack gap-1.5">
-                  {cases.slice(0, result.mode === 'run' ? cases.length : 3).map((c, i) => (
-                    <div
-                      key={i}
-                      className="flex flex-wrap items-center gap-3 rounded-md border border-hair bg-code px-3 py-2"
-                    >
-                      <Icon name="checkCircle" size={14} className="text-success" />
-                      <span className="t-code-tag text-ink-2">Case {i + 1}</span>
-                      <span className="t-code min-w-0 grow truncate text-ink-3">
-                        {c.nums} → {c.expected}
-                      </span>
-                      <span className="t-code-tag tnum text-ink-3">{4 + i * 3} ms</span>
-                    </div>
-                  ))}
-                  {result.mode === 'submit' && (
-                    <p className="t-caption text-ink-3">
-                      + {result.total - 3} more hidden test cases passed.
-                    </p>
-                  )}
+              ) : (
+                <div className="flex min-h-40 flex-col items-center justify-center gap-3 text-center">
+                  <Icon name="play" size={24} className="text-muted-foreground" />
+                  <p className="text-sm font-medium text-foreground">No result yet</p>
+                  <p className="text-sm text-muted-foreground">Run the sample preview to review these cases.</p>
                 </div>
-
-                <div className="rounded-md border border-hair bg-code p-3 font-mono text-[13px] leading-5">
-                  <p className="text-ink-2">
-                    <span className="text-ink-3">stdout: </span>
-                    All target pairs resolved in a single pass — O(n) time, O(n) space.
-                  </p>
-                  <p className="text-success">Process finished with exit code 0</p>
-                </div>
-              </div>
-            ) : (
-              <div className="empty-state py-8">
-                <span className="empty-icon">
-                  <Icon name="play" size={40} strokeWidth={1.2} />
-                </span>
-                <p className="text-[15px] font-semibold text-ink">No results yet</p>
-                <p className="t-ui text-ink-2">Run your code to see per-case output here.</p>
-              </div>
-            )}
-          </div>
-        </>
+              )}
+            </div>
+          </ScrollArea>
+        </BaseTabs>
       )}
-
-      {/* Console footer */}
-      <div className="flex h-9 flex-none items-center justify-between gap-3 border-t border-hair px-3">
-        <CustomButton variant="unstyled" type="button" className="btn btn-ghost btn-sm h-6 px-1.5" onClick={onToggle} aria-expanded={open}>
-          <Icon name={open ? 'chevronDown' : 'chevronUp'} size={13} />
-          Console
-        </CustomButton>
-        <div className="flex items-center gap-2.5">
-          <span className="t-code-tag hidden text-ink-3 sm:inline">⌘↵ to submit</span>
-          <CustomButton variant="unstyled" type="button" className="btn btn-secondary btn-sm" onClick={onRun} disabled={running}>
-            <Icon name="play" size={11} />
-            Run
-          </CustomButton>
-          <CustomButton variant="unstyled" type="button" className="btn btn-primary btn-sm" onClick={onSubmit} disabled={running}>
-            <Icon name="upload" size={13} />
-            Submit
-          </CustomButton>
-        </div>
+      <div className="flex h-10 flex-none items-center justify-between gap-3 border-t border-border px-3">
+        <Button variant="ghost" size="sm" className="h-8 px-2" type="button" onClick={onToggle} aria-expanded={open}>
+          <Icon name={open ? 'chevronDown' : 'chevronUp'} size={16} /> Console
+        </Button>
+        <span className="text-xs text-muted-foreground">Sample runner</span>
       </div>
     </div>
   )

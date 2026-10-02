@@ -43,9 +43,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const resolved: 'light' | 'dark' =
     mode === 'system' ? (systemDark ? 'dark' : 'light') : mode
 
-  // Apply to <html data-theme="…"> — index.html does the same before first paint.
+  // Keep the app theme attribute and shadcn's .dark selector in sync.
   useEffect(() => {
     document.documentElement.dataset.theme = resolved
+    document.documentElement.classList.toggle('dark', resolved === 'dark')
   }, [resolved])
 
   const setMode = useCallback((next: ThemeMode) => {
