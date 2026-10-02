@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AuthLayout, AuthShowcase } from './AuthLayout'
 import { Icon } from '../../components/icons'
 import { LOGIN_SHOWCASE } from '../../data'
@@ -7,6 +8,7 @@ import CustomButton from '../../components/CustomButton'
 import CustomLink from '../../components/CustomLink'
 import { useAppForm } from '../../hooks/useAppForm'
 import useLogin, { loginSchema, type LoginFormSchema } from '../../hooks/auth/login/useLogin'
+import { isUnverifiedAccount } from '../../utils/api/errors'
 import CustomInput from '../../components/CustomInput';
 
 
@@ -25,10 +27,16 @@ const showcase = (
 )
 
 export default function Login() {
+  const navigate = useNavigate();
   const [reveal, setReveal] = useState(false);
-  const { login, loading } = useLogin();
+  const { login, loading, error } = useLogin();
 
-  const { register, handleSubmit, errors, reset } = useAppForm<LoginFormSchema>({
+  // `LoginAccountNotVerifiedException` is the one handler that answers with a
+  // bare map carrying `isVerified: false` - offer the OTP screen instead of a
+  // dead-end credential error.
+  const needsVerification = isUnverifiedAccount(error);
+
+  const { register, handleSubmit, errors, reset, watch } = useAppForm<LoginFormSchema>({
     defaultValues: {
       email: "",
       password: "",
@@ -38,11 +46,14 @@ export default function Login() {
       try {
         await login(data);
         reset();
+        navigate('/problems', { replace: true });
       } catch {
         // form state is already handled by the auth hook
       }
     }
   });
+
+  const email = watch('email') ?? '';
 
   return (
     <AuthLayout showcase={showcase}>
@@ -101,6 +112,18 @@ export default function Login() {
           <CustomButton loading={loading} variant="unstyled" type="submit" className="btn btn-primary btn-block h-10">
             Log in
           </CustomButton>
+
+          {needsVerification && email && (
+            <p className="inline-flex items-start gap-2 rounded-md bg-destructive/10 px-2 py-2 text-left text-xs font-medium text-destructive" role="alert">
+              <Icon name="alert" size={14} className="mt-0.5 flex-none" />
+              <span>
+                Your account is not verified.{' '}
+                <CustomLink to={`/verify-otp?email=${encodeURIComponent(email)}`} className="link font-semibold">
+                  Enter the code we emailed you
+                </CustomLink>
+              </span>
+            </p>
+          )}
         </form>
 
         <p className="text-sm text-center text-muted-foreground">

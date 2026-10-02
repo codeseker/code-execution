@@ -8,16 +8,18 @@ import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
+import VerifyOtp from './pages/auth/VerifyOtp'
 import Problems from './pages/Problems'
 import Workspace from './pages/Workspace'
 import Submissions from './pages/Submissions'
 import Profile from './pages/Profile'
+import Lists from './pages/Lists'
 import AdminDashboard from './pages/admin/Dashboard'
 import { AdminProblems, AdminSubmissions, AdminUsers } from './pages/admin/AdminPages'
 import { AdminHealth, AdminSettings } from './pages/admin/AdminOps'
 import AddProblem from './pages/admin/AddProblem'
 import CustomLink from './components/CustomLink'
-import AuthGuard, { GuestGuard } from './components/AuthGuard'
+import AuthGuard, { AdminGuard, GuestGuard } from './components/AuthGuard'
 import AppNavbar from './components/AppNavbar'
 
 /* ---------------- extras ---------------- */
@@ -70,19 +72,21 @@ function AppRoutes() {
         <Route path="/register" element={<GuestGuard><Register /></GuestGuard>} />
         <Route path="/forgot-password" element={<GuestGuard><ForgotPassword /></GuestGuard>} />
         <Route path="/reset-password" element={<GuestGuard><ResetPassword /></GuestGuard>} />
+        <Route path="/verify-otp" element={<GuestGuard><VerifyOtp /></GuestGuard>} />
 
         <Route path="/problems" element={<Problems />} />
         <Route path="/problems/:id" element={<Workspace />} />
         <Route path="/problems/:id/submissions" element={<Submissions />} />
         <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
+        <Route path="/lists" element={<AuthGuard><Lists /></AuthGuard>} />
 
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/problems" element={<AdminProblems />} />
-        <Route path="/admin/problems/new" element={<AddProblem />} />
-        <Route path="/admin/users" element={<AdminUsers />} />
-        <Route path="/admin/submissions" element={<AdminSubmissions />} />
-        <Route path="/admin/health" element={<AdminHealth />} />
-        <Route path="/admin/settings" element={<AdminSettings />} />
+        <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
+        <Route path="/admin/problems" element={<AdminGuard><AdminProblems /></AdminGuard>} />
+        <Route path="/admin/problems/new" element={<AdminGuard><AddProblem /></AdminGuard>} />
+        <Route path="/admin/users" element={<AdminGuard><AdminUsers /></AdminGuard>} />
+        <Route path="/admin/submissions" element={<AdminGuard><AdminSubmissions /></AdminGuard>} />
+        <Route path="/admin/health" element={<AdminGuard><AdminHealth /></AdminGuard>} />
+        <Route path="/admin/settings" element={<AdminGuard><AdminSettings /></AdminGuard>} />
 
         {/* Fallback */}
         <Route path="*" element={<NotFound />} />

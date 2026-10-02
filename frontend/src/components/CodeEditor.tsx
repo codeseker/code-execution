@@ -9,6 +9,8 @@ import { THEME, buildTheme, useIsDark } from './Code'
 const LANGUAGE_IDS: Record<string, string> = {
   python: 'python',
   javascript: 'javascript',
+  // `cpp` is the backend `Language` enum name; `c++` is the UI label.
+  cpp: 'cpp',
   typescript: 'typescript',
   rust: 'rust',
   'c++': 'cpp',

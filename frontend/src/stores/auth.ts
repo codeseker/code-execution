@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { UserRole } from "../hooks/auth/login/types";
+import type { UserRole } from "../types/domain";
 import { clearAuthTokens } from "../utils/cookieService";
 
 type State = {

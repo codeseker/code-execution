@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useState } from "react"
 import { useNavigate } from 'react-router-dom'
+
 import { AuthLayout, AuthShowcase } from './AuthLayout'
 import { Icon } from '../../components/icons'
 import { cx } from '../../components/ui'
@@ -10,7 +10,8 @@ import CustomLink from '../../components/CustomLink'
 import { Button } from '../../components/ui/button'
 import { Checkbox } from '../../components/ui/checkbox'
 import { Input } from '../../components/ui/input'
-
+import { useAppForm } from '../../hooks/useAppForm'
+import useRegister, { registerSchema, type RegisterFormSchema } from '../../hooks/auth/register/useRegister'
 
 export function passwordScore(pw: string): number {
   let s = 0
@@ -23,7 +24,7 @@ export function passwordScore(pw: string): number {
 
 const STRENGTH_LABEL = ['Weak', 'Weak', 'Fair', 'Good', 'Strong']
 
-
+/** Password strength bars - shared with the ResetPassword screen. */
 export function StrengthMeter({ value }: { value: number }) {
   const tone = value >= 4 ? 'bg-primary' : value >= 3 ? 'bg-primary' : value >= 2 ? 'bg-muted' : 'bg-destructive'
   return (
@@ -38,78 +39,84 @@ export function StrengthMeter({ value }: { value: number }) {
   )
 }
 
+const SHOWCASE = (
+  <AuthShowcase
+    overline="Accelerated Preparation"
+    headline="Built for engineers who take practice seriously."
+    sub="Real-time execution in isolated Linux microVMs. Zero mocking, zero fluff, instant feedback."
+  >
+    <CodeWindow
+      title="{} LRUCache.py"
+      code={REGISTER_SHOWCASE.code.join('\n')}
+      lang="python"
+      activeLine={8}
+      headerRight={
+        <span className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+            Python <span className="font-mono text-xs opacity-70">3.11</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-primary/10 text-primary">
+            <Icon name="check" size={12} />
+            All Tests Passed · 14ms
+          </span>
+        </span>
+      }
+    />
+  </AuthShowcase>
+)
+
 export default function Register() {
   const navigate = useNavigate()
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [reveal, setReveal] = useState(false)
   const [agreed, setAgreed] = useState(false)
-  const [error, setError] = useState('')
+  const [formError, setFormError] = useState('')
 
-  const score = useMemo(() => passwordScore(password), [password])
+  const { register, loading } = useRegister()
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault()
-    if (!name.trim()) return setError('Enter your name.')
-    if (!/^\S+@\S+\.\S+$/.test(email)) return setError('Enter a valid email address.')
-    if (password.length < 8) return setError('Password must be at least 8 characters long.')
-    if (!agreed) return setError('Confirm that you want to create an account.')
-    // push({ title: 'Account created', description: 'Your account is ready.', tone: 'success' })
-    navigate('/problems', { replace: true })
-  }
+  const { handleSubmit, register: bind, errors, watch, reset } = useAppForm<RegisterFormSchema>({
+    schema: registerSchema,
+    defaultValues: { username: '', email: '', password: '' },
+    onSubmit: async (values) => {
+      if (!agreed) {
+        setFormError('Confirm that you want to create an account.')
+        return
+      }
+      setFormError('')
+      try {
+        await register(values)
+        reset()
+        // Accounts start as PENDING, so the OTP screen is the only next step.
+        navigate(`/verify-otp?email=${encodeURIComponent(values.email)}`, { replace: true })
+      } catch {
+        // Toast + field errors are surfaced by the hook and the resolver.
+      }
+    },
+  })
 
-  const showcase = (
-    <AuthShowcase
-      overline="Accelerated Preparation"
-      headline="Built for engineers who take practice seriously."
-      sub="Real-time execution in isolated Linux microVMs. Zero mocking, zero fluff, instant feedback."
-    >
-      <CodeWindow
-        title="{} LRUCache.py"
-        code={REGISTER_SHOWCASE.code.join('\n')}
-        lang="python"
-        activeLine={8}
-        headerRight={
-          <span className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
-              Python <span className="font-mono text-xs opacity-70">3.11</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-primary/10 text-primary">
-              <Icon name="check" size={12} />
-              All Tests Passed · 14ms
-            </span>
-          </span>
-        }
-      />
-    </AuthShowcase>
-  )
+  const score = passwordScore(watch('password') ?? '')
 
   return (
-    <AuthLayout showcase={showcase}>
+    <AuthLayout showcase={SHOWCASE}>
       <div className="flex flex-col gap-8">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Create account</h1>
           <p className="text-sm leading-7 text-muted-foreground">Create an account to save your progress.</p>
         </div>
 
-        <form className="flex flex-col gap-5" onSubmit={submit} noValidate>
+        <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-foreground" htmlFor="reg-name">
-              Name
+              Username
             </label>
             <Input
               id="reg-name"
               className="h-10"
-              placeholder="Your name"
-              autoComplete="name"
-              value={name}
-              aria-invalid={!!error}
-              onChange={(e) => {
-                setName(e.target.value)
-                setError('')
-              }}
+              placeholder="Your username"
+              autoComplete="username"
+              aria-invalid={Boolean(errors.username)}
+              {...bind('username')}
             />
+            {errors.username && <span className="text-xs text-destructive">{errors.username.message}</span>}
           </div>
 
           <div className="flex flex-col gap-2">
@@ -122,13 +129,10 @@ export default function Register() {
               type="email"
               autoComplete="email"
               placeholder="name@example.com"
-              value={email}
-              aria-invalid={!!error}
-              onChange={(e) => {
-                setEmail(e.target.value)
-                setError('')
-              }}
+              aria-invalid={Boolean(errors.email)}
+              {...bind('email')}
             />
+            {errors.email && <span className="text-xs text-destructive">{errors.email.message}</span>}
           </div>
 
           <div className="flex flex-col gap-2">
@@ -145,12 +149,8 @@ export default function Register() {
                 type={reveal ? 'text' : 'password'}
                 autoComplete="new-password"
                 placeholder="Create a password"
-                value={password}
-                aria-invalid={!!error}
-                onChange={(e) => {
-                  setPassword(e.target.value)
-                  setError('')
-                }}
+                aria-invalid={Boolean(errors.password)}
+                {...bind('password')}
               />
               <Button
                 variant="ghost"
@@ -163,6 +163,7 @@ export default function Register() {
                 <Icon name={reveal ? 'eyeOff' : 'eye'} size={15} />
               </Button>
             </div>
+            {errors.password && <span className="text-xs text-destructive">{errors.password.message}</span>}
             <div className="mt-2 flex flex-col gap-2">
               <StrengthMeter value={score} />
               <div className="flex justify-between text-xs">
@@ -175,10 +176,10 @@ export default function Register() {
             </div>
           </div>
 
-          {error && (
-            <p className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-destructive/10 text-destructive h-auto w-full items-start gap-2 py-2 text-left" role="alert">
+          {formError && (
+            <p className="inline-flex items-start gap-2 rounded-md bg-destructive/10 px-2 py-2 text-left text-xs font-medium text-destructive" role="alert">
               <Icon name="alert" size={14} className="mt-0.5 flex-none" />
-              {error}
+              {formError}
             </p>
           )}
 
@@ -187,14 +188,14 @@ export default function Register() {
               checked={agreed}
               onCheckedChange={(checked) => {
                 setAgreed(checked === true)
-                setError('')
+                setFormError('')
               }}
             />
             <span>I confirm that I want to create an account.</span>
           </label>
 
-          <Button type="submit" className="h-10 w-full">
-            Create account
+          <Button type="submit" className="h-10 w-full" disabled={loading}>
+            {loading ? 'Creating account…' : 'Create account'}
           </Button>
         </form>
 

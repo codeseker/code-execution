@@ -1,61 +1,42 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 
 import AdminLayout from './AdminLayout'
 import { Icon } from '../../components/icons'
-import { DifficultyBadge, EmptyState, Tag, cx } from '../../components/ui'
-import { ADMIN_SUBMISSIONS, ADMIN_USERS, PROBLEMS } from '../../data'
-import type { AdminUser, SubmissionStatus } from '../../data'
-import CustomButton from '../../components/CustomButton'
-import CustomLink from '../../components/CustomLink'
+import { EmptyState } from '../../components/ui'
+import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
+import CustomLink from '../../components/CustomLink'
+import PaginationBar from '../../components/problems/PaginationBar'
+import { CatalogueHealth, ProblemTable } from '../../components/admin/ProblemTable'
+import ProblemEditorDialog from '../../components/admin/ProblemEditorDialog'
+import ConfirmDeleteDialog from '../../components/admin/ConfirmDeleteDialog'
+import { SubmissionStreamTable, UserTable } from '../../components/admin/AdminTables'
+import SubmissionFilters from '../../components/submissions/SubmissionFilters'
+import type { SubmissionFiltersValue } from '../../components/submissions/SubmissionFilters'
+import useAdminProblems from '../../hooks/problems/admin/useAdminProblems'
+import { useDeleteProblem } from '../../hooks/problems/admin/useTestCaseMutations'
+import { useAdminStats, useAdminUsers } from '../../hooks/admin/useAdminQueries'
+import { useMySubmissions } from '../../hooks/submissions/useSubmissions'
+import { DIFFICULTIES, type Difficulty, type Language, type SubmissionStatus, type UserStatus } from '../../types/domain'
+import { difficultyLabel, userStatusLabel } from '../../lib/format'
+import type { AdminProblem } from '../../hooks/problems/types'
 
-function FilterSelect({
-  label,
-  value,
-  onChange,
-  options,
-  className,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  options: string[]
-  className: string
-}) {
-  return (
-    <Select value={value} onValueChange={(nextValue) => {
-      if (nextValue !== null) onChange(nextValue)
-    }}>
-      <SelectTrigger className={className} aria-label={label}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
-      </SelectContent>
-    </Select>
-  )
-}
+/** `UserStatus` filter sent to `GET /admin/users`. */
+type UserStatusFilter = UserStatus | 'ALL';
 
-function PageHead({
-  crumbs,
-  title,
-  meta,
-  actions,
-}: {
-  crumbs: string
-  title: string
-  meta?: string
-  actions?: ReactNode
-}) {
+function PageHead({ crumbs, title, meta, actions }: { crumbs: string; title: string; meta?: string; actions?: ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
       <p className="font-mono text-xs text-muted-foreground">{crumbs}</p>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
-          {meta && <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground font-mono text-xs">{meta}</span>}
+          {meta && (
+            <span className="rounded-md border border-border bg-secondary px-2 py-0.5 font-mono text-xs text-secondary-foreground">
+              {meta}
+            </span>
+          )}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2.5">{actions}</div>}
       </div>
@@ -63,68 +44,54 @@ function PageHead({
   )
 }
 
-function statusTone(status: SubmissionStatus) {
-  if (status === 'Accepted') return 'bg-primary/10 text-primary'
-  if (status === 'Time Limit Exceeded') return 'bg-muted text-muted-foreground'
-  return 'bg-destructive/10 text-destructive'
-}
+const SEARCH_DEBOUNCE_MS = 300
 
 /* ================================================================== */
 /* Admin · Problems                                                    */
 /* ================================================================== */
 
-type CatalogStatus = 'Live' | 'Draft' | 'Archived'
-
+/** `/admin/problems` - the full catalogue, including unpublished drafts. */
 export function AdminProblems() {
-  
-  const [query, setQuery] = useState('')
-  const [difficulty, setDifficulty] = useState('All')
-  const [overrides, setOverrides] = useState<Record<string, CatalogStatus>>({})
+  const [searchDraft, setSearchDraft] = useState('')
+  const [search, setSearch] = useState('')
+  const [difficulty, setDifficulty] = useState<Difficulty | 'ALL'>('ALL')
+  const [page, setPage] = useState(1)
+  const [editing, setEditing] = useState<AdminProblem | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<AdminProblem | null>(null)
 
-  const statusOf = (id: string, index: number): CatalogStatus =>
-    overrides[id] ?? (index < 9 ? 'Live' : 'Draft')
-
-  const rows = useMemo(
-    () =>
-      PROBLEMS.filter(
-        (p) =>
-          (difficulty === 'All' || p.difficulty === difficulty) &&
-          (!query.trim() ||
-            p.title.toLowerCase().includes(query.toLowerCase()) ||
-            String(p.num).includes(query)),
-      ),
-    [query, difficulty],
+  const query = useMemo(
+    () => ({
+      search: search || undefined,
+      difficulty: difficulty === 'ALL' ? undefined : difficulty,
+      page,
+      limit: 10,
+    }),
+    [search, difficulty, page],
   )
 
-  const cycle = (id: string, current: CatalogStatus) => {
-    const order: CatalogStatus[] = ['Live', 'Draft', 'Archived']
-    const next = order[(order.indexOf(current) + 1) % order.length]
-    setOverrides((o) => ({ ...o, [id]: next }))
-    // push({ title: `Problem set to ${next}`, tone: next === 'Archived' ? 'neutral' : 'success' })
-  }
+  const { problems, pagination, loading, error, refetch } = useAdminProblems(query)
+  const { deleteProblem, loading: deleting } = useDeleteProblem()
+
+  const applySearch = useCallback((value: string) => {
+    setSearchDraft(value)
+    window.setTimeout(() => {
+      setSearch(value)
+      setPage(1)
+    }, SEARCH_DEBOUNCE_MS)
+  }, [])
 
   return (
     <AdminLayout>
-      <div className="mx-auto w-full max-w-[1440px] flex flex-col gap-5 px-4 py-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-5 px-4 py-6 lg:px-8">
         <PageHead
           crumbs="ADMIN / PROBLEMS"
           title="Problem Catalog"
-          meta={`${PROBLEMS.length} problems`}
+          meta={`${pagination?.totalElements ?? 0} problems`}
           actions={
-            <>
-              <CustomButton variant="unstyled"
-                type="button"
-                className="btn btn-secondary"
-                // onClick={() => push({ title: 'Import queued', description: 'CSV importer is demo-only in this build.', tone: 'neutral' })}
-              >
-                <Icon name="upload" size={14} />
-                Import CSV
-              </CustomButton>
-              <CustomLink variant="unstyled" to="/admin/problems/new" className="btn btn-primary">
-                <Icon name="plus" size={14} />
-                New Problem
-              </CustomLink>
-            </>
+            <CustomLink variant="unstyled" to="/admin/problems/new" className="btn btn-primary">
+              <Icon name="plus" size={14} />
+              New Problem
+            </CustomLink>
           }
         />
 
@@ -133,113 +100,84 @@ export function AdminProblems() {
             <Icon name="search" size={14} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="h-8 pl-8"
-              placeholder="Search title or number…"
+              placeholder="Search title, description or slug…"
               aria-label="Search catalog"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              value={searchDraft}
+              onChange={(event) => applySearch(event.target.value)}
             />
           </div>
-          <FilterSelect
-            label="Difficulty"
-            value={difficulty}
-            onChange={setDifficulty}
-            options={['All', 'Easy', 'Medium', 'Hard']}
-            className="h-8 w-[136px] text-[13px]"
-          />
+          <div className="flex items-center gap-1" role="group" aria-label="Filter by difficulty">
+            <Button
+              variant={difficulty === 'ALL' ? 'default' : 'ghost'}
+              size="sm"
+              type="button"
+              aria-pressed={difficulty === 'ALL'}
+              onClick={() => {
+                setDifficulty('ALL')
+                setPage(1)
+              }}
+            >
+              All
+            </Button>
+            {DIFFICULTIES.map((option) => (
+              <Button
+                key={option}
+                variant={difficulty === option ? 'default' : 'ghost'}
+                size="sm"
+                type="button"
+                aria-pressed={difficulty === option}
+                onClick={() => {
+                  setDifficulty(difficulty === option ? 'ALL' : option)
+                  setPage(1)
+                }}
+              >
+                {difficultyLabel(option)}
+              </Button>
+            ))}
+          </div>
         </div>
 
-        <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="ntable">
-              <thead>
-                <tr>
-                  <th className="pl-5">#</th>
-                  <th>Title</th>
-                  <th>Difficulty</th>
-                  <th className="hidden lg:table-cell">Topics</th>
-                  <th className="hidden md:table-cell">Acceptance</th>
-                  <th>Status</th>
-                  <th className="pr-5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((p) => {
-                  const idx = PROBLEMS.findIndex((x) => x.id === p.id)
-                  const status = statusOf(p.id, idx)
-                  return (
-                    <tr key={p.id}>
-                      <td className="font-mono text-xs pl-5 text-muted-foreground">{p.num}</td>
-                      <td>
-                        <CustomLink to={`/problems/${p.id}`} className="text-sm font-medium text-foreground hover:text-primary">
-                          {p.title}
-                        </CustomLink>
-                      </td>
-                      <td>
-                        <DifficultyBadge difficulty={p.difficulty} />
-                      </td>
-                      <td className="hidden lg:table-cell">
-                        <span className="flex flex-wrap gap-1.5">
-                          {p.tags.slice(0, 2).map((t) => (
-                            <Tag key={t} tone={p.topicTone[t] ?? 'gray'}>
-                              {t}
-                            </Tag>
-                          ))}
-                        </span>
-                      </td>
-                      <td className="text-sm tabular-nums hidden text-muted-foreground md:table-cell">{p.acceptance.toFixed(1)}%</td>
-                      <td>
-                        <CustomButton variant="unstyled"
-                          type="button"
-                          className={cx(
-                            'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium',
-                            status === 'Live' ? 'bg-primary/10 text-primary' : status === 'Draft' ? 'bg-muted text-muted-foreground' : 'bg-destructive/10 text-destructive',
-                          )}
-                          title="Click to cycle status"
-                          onClick={() => cycle(p.id, status)}
-                        >
-                          <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
-                          {status}
-                        </CustomButton>
-                      </td>
-                      <td className="pr-5 text-right">
-                        <span className="flex justify-end gap-1">
-                          <CustomLink variant="unstyled"
-                            to="/admin/problems/new"
-                            className="icon-btn tip"
-                            data-tip="Edit"
-                            aria-label={`Edit ${p.title}`}
-                          >
-                            <Icon name="pencil" size={15} />
-                          </CustomLink>
-                          <CustomButton variant="unstyled"
-                            type="button"
-                            className="icon-btn tip"
-                            data-tip="Archive"
-                            aria-label={`Archive ${p.title}`}
-                            onClick={() => {
-                              setOverrides((o) => ({ ...o, [p.id]: 'Archived' }))
-                              // push({ title: 'Problem archived', description: p.title, tone: 'neutral' })
-                            }}
-                          >
-                            <Icon name="folder" size={15} />
-                          </CustomButton>
-                        </span>
-                      </td>
-                    </tr>
-                  )
-                })}
-                {rows.length === 0 && (
-                  <tr>
-                    <td colSpan={7}>
-                      <EmptyState icon="search" title="No problems found" hint="Try a different keyword or difficulty." />
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+        <CatalogueHealth problems={problems} />
+
+        <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          {error ? (
+            <EmptyState
+              icon="alert"
+              title="We could not load the catalogue"
+              hint="Your account needs the problem:read permission."
+              action={
+                <Button type="button" variant="outline" onClick={() => void refetch()}>
+                  Retry
+                </Button>
+              }
+            />
+          ) : (
+            <ProblemTable
+              problems={problems}
+              loading={loading}
+              onOpen={setEditing}
+              onArchive={setPendingDelete}
+            />
+          )}
+          <PaginationBar pagination={pagination} page={page} onPageChange={setPage} noun="problems" />
         </section>
       </div>
+
+      {editing && <ProblemEditorDialog problem={editing} onClose={() => setEditing(null)} />}
+
+      {pendingDelete && (
+        <ConfirmDeleteDialog
+          title={`Delete “${pendingDelete.title}”?`}
+          description="The problem is soft-deleted: it leaves the public catalogue while its test cases and files are kept for history."
+          loading={deleting}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => {
+            const target = pendingDelete
+            setPendingDelete(null)
+            void deleteProblem(target._id)
+          }}
+        />
+      )}
     </AdminLayout>
   )
 }
@@ -248,138 +186,97 @@ export function AdminProblems() {
 /* Admin · Users                                                       */
 /* ================================================================== */
 
+/** `GET /admin/users` - requires the `user:manage` permission. */
 export function AdminUsers() {
-  
-  const [query, setQuery] = useState('')
-  const [role, setRole] = useState('All roles')
-  const [state, setState] = useState<Record<string, AdminUser['status']>>({})
+  const [searchDraft, setSearchDraft] = useState('')
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState<UserStatusFilter>('ALL')
+  const [includeDeleted, setIncludeDeleted] = useState(false)
+  const [page, setPage] = useState(1)
 
-  const rows = ADMIN_USERS.filter(
-    (u) =>
-      (role === 'All roles' || u.role === role) &&
-      (!query.trim() ||
-        u.handle.toLowerCase().includes(query.toLowerCase()) ||
-        u.email.toLowerCase().includes(query.toLowerCase())),
+  const query = useMemo(
+    () => ({
+      search: search || undefined,
+      status: status === 'ALL' ? undefined : status,
+      includeDeleted,
+      page,
+      limit: 10,
+    }),
+    [search, status, includeDeleted, page],
   )
 
-  const statusOf = (u: AdminUser) => state[u.handle] ?? u.status
+  const { users, pagination, loading, error, refetch } = useAdminUsers(query)
+
+  const applySearch = useCallback((value: string) => {
+    setSearchDraft(value)
+    window.setTimeout(() => {
+      setSearch(value)
+      setPage(1)
+    }, SEARCH_DEBOUNCE_MS)
+  }, [])
 
   return (
     <AdminLayout>
-      <div className="mx-auto w-full max-w-[1440px] flex flex-col gap-5 px-4 py-6 lg:px-8">
-        <PageHead
-          crumbs="ADMIN / USERS"
-          title="User Management"
-          meta={`${ADMIN_USERS.length} accounts`}
-          actions={
-            <CustomButton variant="unstyled"
-              type="button"
-              className="btn btn-primary"
-              // onClick={() => push({ title: 'Invite sent', description: 'A magic link was emailed to the invitee.', tone: 'success' })}
-            >
-              <Icon name="plus" size={14} />
-              Invite user
-            </CustomButton>
-          }
-        />
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-5 px-4 py-6 lg:px-8">
+        <PageHead crumbs="ADMIN / USERS" title="User Management" meta={`${pagination?.totalElements ?? 0} accounts`} />
 
         <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5">
           <div className="relative min-w-[220px] grow">
             <Icon name="search" size={14} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="h-8 pl-8"
-              placeholder="Search handle or email…"
+              placeholder="Search username or email…"
               aria-label="Search users"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              value={searchDraft}
+              onChange={(event) => applySearch(event.target.value)}
             />
           </div>
-          <FilterSelect
-            label="Role"
-            value={role}
-            onChange={setRole}
-            options={['All roles', 'Member', 'Moderator', 'Admin']}
-            className="h-8 w-[140px] text-[13px]"
-          />
+          <div className="flex items-center gap-1" role="group" aria-label="Filter by status">
+            {(['ALL', 'ACTIVE', 'PENDING'] as const).map((option) => (
+              <Button
+                key={option}
+                variant={status === option ? 'default' : 'ghost'}
+                size="sm"
+                type="button"
+                aria-pressed={status === option}
+                onClick={() => {
+                  setStatus(option)
+                  setPage(1)
+                }}
+              >
+                {option === 'ALL' ? 'All statuses' : userStatusLabel(option)}
+              </Button>
+            ))}
+          </div>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={includeDeleted}
+              onChange={(event) => {
+                setIncludeDeleted(event.target.checked)
+                setPage(1)
+              }}
+            />
+            Include soft-deleted
+          </label>
         </div>
 
-        <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="ntable">
-              <thead>
-                <tr>
-                  <th className="pl-5">User</th>
-                  <th>Role</th>
-                  <th className="hidden md:table-cell">Solved</th>
-                  <th className="hidden md:table-cell">Submissions</th>
-                  <th className="hidden lg:table-cell">Joined</th>
-                  <th>Status</th>
-                  <th className="pr-5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((u) => {
-                  const status = statusOf(u)
-                  return (
-                    <tr key={u.handle}>
-                      <td className="pl-5">
-                        <span className="flex items-center gap-3">
-                          <span className="center h-7 w-7 flex-none rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
-                            {u.initials}
-                          </span>
-                          <span className="flex flex-col">
-                            <span className="text-sm font-medium text-foreground">{u.handle}</span>
-                            <span className="text-xs text-muted-foreground">{u.email}</span>
-                          </span>
-                        </span>
-                      </td>
-                      <td>
-                        <Tag tone={u.role === 'Admin' ? 'purple' : u.role === 'Moderator' ? 'blue' : 'gray'}>
-                          {u.role}
-                        </Tag>
-                      </td>
-                      <td className="text-sm tabular-nums hidden text-muted-foreground md:table-cell">{u.problemsSolved}</td>
-                      <td className="text-sm tabular-nums hidden text-muted-foreground md:table-cell">{u.submissions.toLocaleString()}</td>
-                      <td className="text-xs hidden text-muted-foreground lg:table-cell">{u.joined}</td>
-                      <td>
-                        <span
-                          className={cx(
-                            'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium',
-                            status === 'Active' ? 'bg-primary/10 text-primary' : status === 'Idle' ? 'bg-muted text-muted-foreground' : 'bg-destructive/10 text-destructive',
-                          )}
-                        >
-                          {status}
-                        </span>
-                      </td>
-                      <td className="pr-5 text-right">
-                        <CustomButton variant="unstyled"
-                          type="button"
-                          className={cx('btn btn-sm h-7', status === 'Suspended' ? 'btn-secondary' : 'btn-destructive')}
-                          onClick={() => {
-                            const next: AdminUser['status'] = status === 'Suspended' ? 'Active' : 'Suspended'
-                            setState((s) => ({ ...s, [u.handle]: next }))
-                            // push({
-                            //   title: next === 'Suspended' ? `${u.handle} suspended` : `${u.handle} restored`,
-                            //   tone: next === 'Suspended' ? 'error' : 'success',
-                            // })
-                          }}
-                        >
-                          {status === 'Suspended' ? 'Restore' : 'Suspend'}
-                        </CustomButton>
-                      </td>
-                    </tr>
-                  )
-                })}
-                {rows.length === 0 && (
-                  <tr>
-                    <td colSpan={7}>
-                      <EmptyState icon="users" title="No users found" hint="Adjust the search or role filter." />
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+        <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          {error ? (
+            <EmptyState
+              icon="alert"
+              title="We could not load the user directory"
+              hint="Your account needs the user:manage permission."
+              action={
+                <Button type="button" variant="outline" onClick={() => void refetch()}>
+                  Retry
+                </Button>
+              }
+            />
+          ) : (
+            <UserTable users={users} loading={loading} />
+          )}
+          <PaginationBar pagination={pagination} page={page} onPageChange={setPage} noun="accounts" />
         </section>
       </div>
     </AdminLayout>
@@ -390,127 +287,68 @@ export function AdminUsers() {
 /* Admin · Submissions                                                 */
 /* ================================================================== */
 
+/**
+ * Global judge throughput. `GET /admin/submissions` does not exist, so this
+ * view is scoped to the caller's own runs plus the platform counters from
+ * `GET /admin/stats`.
+ */
 export function AdminSubmissions() {
-  
-  const [status, setStatus] = useState('All statuses')
-  const [language, setLanguage] = useState('All languages')
+  const [filters, setFilters] = useState<SubmissionFiltersValue>({ language: 'ALL', status: 'ALL' })
+  const [page, setPage] = useState(1)
 
-  const languages = ['All languages', ...Array.from(new Set(ADMIN_SUBMISSIONS.map((s) => s.language)))]
-  const rows = ADMIN_SUBMISSIONS.filter(
-    (s) =>
-      (status === 'All statuses' || s.status === status) &&
-      (language === 'All languages' || s.language === language),
+  const query = useMemo(
+    () => ({
+      language: filters.language === 'ALL' ? undefined : (filters.language as Language),
+      status: filters.status === 'ALL' ? undefined : (filters.status as SubmissionStatus),
+      page,
+      limit: 10,
+    }),
+    [filters, page],
   )
+
+  const { submissions, pagination, loading } = useMySubmissions(query)
+  const { stats } = useAdminStats()
 
   return (
     <AdminLayout>
-      <div className="mx-auto w-full max-w-[1440px] flex flex-col gap-5 px-4 py-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-5 px-4 py-6 lg:px-8">
         <PageHead
           crumbs="ADMIN / SUBMISSIONS"
-          title="Submission Stream"
-          meta="1,842,910 total"
-          actions={
-            <CustomButton variant="unstyled"
-              type="button"
-              className="btn btn-secondary"
-              // onClick={() => push({ title: 'Stream paused', description: 'Live updates are frozen for this view.', tone: 'neutral' })}
-            >
-              <Icon name="history" size={14} />
-              Pause stream
-            </CustomButton>
-          }
+          title="Judge Throughput"
+          meta={`${stats?.submissions.total ?? 0} total runs`}
         />
 
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          {[
+            { label: 'Queued', value: stats?.submissions.queued },
+            { label: 'Processing', value: stats?.submissions.processing },
+            { label: 'Completed', value: stats?.submissions.completed },
+            { label: 'Failed', value: stats?.submissions.failed },
+            { label: 'Accepted', value: stats?.submissions.accepted },
+          ].map((card) => (
+            <div key={card.label} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+              <p className="text-xs font-semibold text-muted-foreground">{card.label}</p>
+              <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{card.value ?? '—'}</p>
+            </div>
+          ))}
+        </div>
+
         <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5">
-          <span className="font-mono text-xs flex items-center gap-2 text-muted-foreground">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" aria-hidden />
-            LIVE · 420 req/m
+          <span className="grow text-xs text-muted-foreground">
+            Your own runs — the backend exposes a per-user history endpoint, not a platform-wide feed.
           </span>
-          <span className="grow" />
-          <FilterSelect
-            label="Status"
-            value={status}
-            onChange={setStatus}
-            options={['All statuses', 'Accepted', 'Wrong Answer', 'Time Limit Exceeded', 'Memory Limit Exceeded']}
-            className="h-8 w-[190px] text-[13px]"
-          />
-          <FilterSelect
-            label="Language"
-            value={language}
-            onChange={setLanguage}
-            options={languages}
-            className="h-8 w-[160px] text-[13px]"
+          <SubmissionFilters
+            value={filters}
+            onChange={(next) => {
+              setFilters(next)
+              setPage(1)
+            }}
           />
         </div>
 
-        <section className="rounded-xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="ntable">
-              <thead>
-                <tr>
-                  <th className="pl-5">ID</th>
-                  <th>Developer</th>
-                  <th>Problem</th>
-                  <th className="hidden lg:table-cell">Language</th>
-                  <th>Status</th>
-                  <th className="hidden md:table-cell">Runtime</th>
-                  <th className="hidden md:table-cell">Memory</th>
-                  <th className="pr-5 text-right">Timestamp</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((s) => (
-                  <tr
-                    key={s.id}
-                    className="cursor-pointer"
-                    // onClick={() => push({ title: `Inspecting ${s.id}`, description: `${s.developer} · ${s.problemTitle}`, tone: 'neutral' })}
-                  >
-                    <td className="font-mono text-xs pl-5 text-muted-foreground">#{s.id}</td>
-                    <td>
-                      <span className="flex items-center gap-2.5">
-                        <span className="center h-6 w-6 flex-none rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
-                          {s.initials}
-                        </span>
-                        <span className="text-sm font-medium text-foreground">{s.developer}</span>
-                      </span>
-                    </td>
-                    <td>
-                      <span className="flex items-center gap-2">
-                        <span className="font-mono text-xs tabular-nums text-muted-foreground">{s.problemNum}.</span>
-                        <span className="text-sm font-medium text-foreground">{s.problemTitle}</span>
-                      </span>
-                    </td>
-                    <td className="hidden lg:table-cell">
-                      <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground font-mono text-xs">{s.language}</span>
-                    </td>
-                    <td>
-                      <span className={cx('inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium', statusTone(s.status))}>{s.status}</span>
-                    </td>
-                    <td className="text-sm tabular-nums hidden text-muted-foreground md:table-cell">{s.runtime}</td>
-                    <td className="text-sm tabular-nums hidden text-muted-foreground md:table-cell">{s.memory}</td>
-                    <td className="text-xs pr-5 text-right whitespace-nowrap text-muted-foreground">{s.timestamp}</td>
-                  </tr>
-                ))}
-                {rows.length === 0 && (
-                  <tr>
-                    <td colSpan={8}>
-                      <EmptyState icon="terminal" title="No submissions" hint="No runs match the current filters." />
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex items-center justify-between gap-3 border-t border-border px-5 py-3">
-            <span className="text-xs text-muted-foreground">
-              Showing <span className="tabular-nums text-muted-foreground">{rows.length}</span> of{' '}
-              <span className="tabular-nums text-muted-foreground">{ADMIN_SUBMISSIONS.length}</span> recent runs
-            </span>
-            <span className="text-xs flex items-center gap-1.5 text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
-              gVisor sandbox fleet healthy
-            </span>
-          </div>
+        <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <SubmissionStreamTable submissions={submissions} loading={loading} />
+          <PaginationBar pagination={pagination} page={page} onPageChange={setPage} noun="runs" />
         </section>
       </div>
     </AdminLayout>

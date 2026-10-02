@@ -2,7 +2,10 @@ import type { ReactNode } from 'react'
 import { LoaderCircle } from 'lucide-react'
 import { useTheme } from '../theme'
 import { Icon } from './icons'
-import type { Difficulty, ProblemStatus, SubmissionStatus } from '../data'
+import type { ProblemStatus } from '../data'
+import type { Difficulty as ApiDifficulty } from '../types/domain'
+import { difficultyLabel, statusLabel, statusToneClass } from '../lib/format'
+import type { StatusValue } from '../lib/format'
 import CustomButton from './CustomButton'
 import { Badge } from './ui/badge'
 import { Progress as ShadcnProgress } from './ui/progress'
@@ -173,18 +176,18 @@ export function Progress({
 }
 
 /** Difficulty colors remain semantic so the theme controls every route consistently. */
-export function DifficultyBadge({ difficulty, className }: { difficulty: Difficulty; className?: string }) {
-  const variant = difficulty === 'Easy' ? 'secondary' : difficulty === 'Medium' ? 'outline' : 'destructive'
-  return <Badge variant={variant} className={className}>{difficulty}</Badge>
+export function DifficultyBadge({ difficulty, className }: { difficulty: ApiDifficulty; className?: string }) {
+  const label = difficultyLabel(difficulty)
+  const variant = label === 'Easy' ? 'secondary' : label === 'Medium' ? 'outline' : 'destructive'
+  return <Badge variant={variant} className={className}>{label}</Badge>
 }
 
-export function StatusBadge({ status, className }: { status: SubmissionStatus | 'Running' | 'Pending'; className?: string }) {
-  const tone = status === 'Accepted'
-    ? 'bg-primary/10 text-primary'
-    : status === 'Running' || status === 'Pending'
-      ? 'bg-muted text-muted-foreground'
-      : 'bg-destructive/10 text-destructive'
-  return <Badge className={cx('gap-1.5 border-transparent', tone, className)}>{status}</Badge>
+/**
+ * Status pill for verdicts, queue states and the legacy display strings from
+ * `data.ts` - all normalised through `lib/format`.
+ */
+export function StatusBadge({ status, className }: { status: StatusValue; className?: string }) {
+  return <Badge className={cx('gap-1.5 border-transparent', statusToneClass(status), className)}>{statusLabel(status)}</Badge>
 }
 
 /** Row status glyph: solved ✓ / attempted ◐ / todo ○ — shape + color, never color alone. */

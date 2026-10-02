@@ -15,6 +15,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { useAuthStore } from '@/stores/auth'
+import useLogout from '@/hooks/auth/logout/useLogout'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [{ label: 'Problems', to: '/problems' }]
@@ -30,13 +31,13 @@ export default function AppNavbar() {
   const isAuthenticated = useAuthStore((state) => state.auth.isAuthenticated)
   const username = useAuthStore((state) => state.auth.username)
   const role = useAuthStore((state) => state.auth.role)
-  const logout = useAuthStore((state) => state.actions.logout)
+  // Revokes the access token server-side before the local session is dropped.
+  const { logout, loading: loggingOut } = useLogout()
 
   const isAdmin = role === 'ADMIN'
 
   const handleLogout = () => {
-    logout()
-    navigate('/')
+    void logout().finally(() => navigate('/'))
   }
 
   return (
@@ -111,7 +112,7 @@ export default function AppNavbar() {
                         )}
                       </DropdownMenuGroup>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                      <DropdownMenuItem disabled={loggingOut} onClick={handleLogout} className="text-destructive focus:text-destructive">
                         <LogOut className="mr-2 h-4 w-4" />
                         Log out
                       </DropdownMenuItem>
@@ -140,7 +141,7 @@ export default function AppNavbar() {
                         <div className="border-t pt-4">
                           <Link to="/profile" className="block rounded-md px-3 py-2 text-sm text-foreground hover:bg-primary/10">Profile</Link>
                           {isAdmin && <Link to="/admin" className="block rounded-md px-3 py-2 text-sm text-foreground hover:bg-primary/10">Admin dashboard</Link>}
-                          <button type="button" onClick={handleLogout} className="mt-2 block w-full rounded-md px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/10">Log out</button>
+                          <button type="button" disabled={loggingOut} onClick={handleLogout} className="mt-2 block w-full rounded-md px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/10 disabled:opacity-60">Log out</button>
                         </div>
                       </div>
                     </SheetContent>
