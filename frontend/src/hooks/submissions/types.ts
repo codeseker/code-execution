@@ -1,4 +1,4 @@
-import type { Language, SubmissionStatus, SubmissionType, Verdict } from "../../types/domain";
+import type { Language, SubmissionStatus, SubmissionType, TestCaseKind, Verdict } from "../../types/domain";
 
 /** `modules/submission/dtos/SubmitRequest` */
 export type SubmitRequest = {
@@ -6,11 +6,17 @@ export type SubmitRequest = {
     language: Language;
 };
 
-/** `modules/submission/dtos/RunRequest` - the caller's own stdin. */
+/**
+ * `modules/submission/dtos/RunRequest`.
+ *
+ * The sample test cases are NOT sent: the judge loads them from storage so
+ * they can never be overridden, injected or reordered from the client. Only
+ * the caller's own "Custom N" inputs travel with the request, in tab order.
+ */
 export type RunRequest = {
     code: string;
     language: Language;
-    input?: string | null;
+    customTestcases?: string[] | null;
 };
 
 /** `modules/submission/dtos/SubmitResponse` - the JOB_QUEUED acknowledgement. */
@@ -25,10 +31,18 @@ export type SubmitAck = {
 /** `SubmissionResultResponse.TestCaseResultResponse` */
 export type TestCaseResult = {
     testCaseId: string | null;
+    /** 1-based position in the run; null on results stored before it existed. */
+    caseIndex?: number | null;
+    /** Visibility class of the case; null on results stored before it existed. */
+    kind?: TestCaseKind | null;
     status: Verdict;
     executionTimeMs: number;
     memoryUsedKb: number;
-    /** Only populated for EXAMPLE_EVAL / CUSTOM_RUN runs. */
+    /**
+     * Populated for sample and custom cases. Always null for HIDDEN cases -
+     * their input and expected output never leave the server. An empty string
+     * means the program printed nothing, which is different from null.
+     */
     stdout: string | null;
     stderr: string | null;
     expectedOutput: string | null;
@@ -43,8 +57,10 @@ export type SubmissionResult = {
     peakMemoryKb: number;
     passedTestCases: number;
     totalTestCases: number;
-    /** Set only for COMPILE_ERROR. */
+    /** Set only for COMPILE_ERROR, or the reason for SYSTEM_ERROR. */
     compileErrorLogs: string | null;
+    /** 1-based index of the first failing case; null when accepted. */
+    failedCaseIndex?: number | null;
     testCaseResults: TestCaseResult[];
 };
 
@@ -82,7 +98,15 @@ export type SubmissionQuery = {
     limit?: number;
 };
 
-/** `SubmissionEventPublisher` frames pushed into `submission:<id>`. */
+/**
+ * Frames pushed into `submission:<id>` by `SubmissionEventPublisher`.
+ *
+ * Job lifecycle: JOB_QUEUED -> JOB_PROCESSING -> (CASE_RESULT / RUN_FINISHED)* ->
+ * JOB_COMPLETED | JOB_FAILED. Run stream: RUN_STARTED -> CASE_RESULT per case ->
+ * exactly one RUN_FINISHED. Every run-stream frame carries `runId` (equal to
+ * the submission id, because one run == one submission), so a frame from an
+ * earlier run can never overwrite the current one.
+ */
 export type SubmissionEvent =
     | { event: "JOB_QUEUED"; submissionId: string; queuePosition: number; language: string }
     | { event: "JOB_PROCESSING"; submissionId: string }
@@ -93,6 +117,39 @@ export type SubmissionEvent =
           completed: number;
           total: number;
           lastVerdict: string | null;
+      }
+    | { event: "RUN_STARTED"; submissionId: string; runId: string; totalCases: number }
+    | {
+          event: "CASE_RESULT";
+          submissionId: string;
+          runId: string;
+          /** 1-based position in the run. */
+          caseIndex: number;
+          caseId: string;
+          kind: TestCaseKind;
+          status: Verdict;
+          /** null for hidden cases, which must never expose their data. */
+          input: string | null;
+          /** Always null for CUSTOM cases - there is nothing to compare. */
+          expectedOutput: string | null;
+          /** Empty string = the program printed nothing. null = not exposed. */
+          actualOutput: string | null;
+          stdout: string | null;
+          stderr: string | null;
+          runtimeMs: number;
+          memoryKb: number;
+      }
+    | {
+          event: "RUN_FINISHED";
+          submissionId: string;
+          runId: string;
+          overallStatus: Verdict;
+          passedCount: number;
+          totalCount: number;
+          failedCaseIndex: number | null;
+          totalRuntimeMs: number;
+          peakMemoryKb: number;
+          compileError?: string | null;
       }
     | { event: "JOB_COMPLETED"; submissionId: string; result: SubmissionResult | null }
     | { event: "JOB_FAILED"; submissionId: string; error: string }

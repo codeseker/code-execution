@@ -7,18 +7,20 @@ public enum SubmissionType {
     /** Runs all hidden and public test cases; affects statistics. */
     FULL_SUBMISSION,
     /**
-     * LeetCode's "Run" button: executes the code against user-provided
-     * input only - no stored test cases, no statistics, no WRONG_ANSWER
-     * verdict (there is nothing to compare against).
+     * LeetCode's "Run" button: executes the code against the problem's own
+     * sample test cases plus the caller's own custom test cases - no stored
+     * hidden case is used, no statistics change, and a custom case can never
+     * be a WRONG_ANSWER (there is nothing to compare against).
      */
     CUSTOM_RUN;
 
     /**
-     * Whether the raw per-testcase IO belongs in the public payload:
-     * sample runs and custom runs expose their output, full submissions
-     * keep hidden test data server-side only.
+     * Whether the judge stops at the first failing case. A full submission
+     * does (standard judge behaviour, and it stops burning sandbox time once
+     * the verdict is decided); the sample runs do not, because every tab in
+     * the workspace must get its own pass/fail dot.
      */
-    public boolean exposesIo() {
-        return this == EXAMPLE_EVAL || this == CUSTOM_RUN;
+    public boolean stopsAtFirstFailure() {
+        return this == FULL_SUBMISSION;
     }
 }

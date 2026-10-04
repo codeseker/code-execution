@@ -51,4 +51,31 @@ class OutputComparatorTest {
     void treatsNullAsEmpty() {
         assertTrue(OutputComparator.matches(null, ""));
     }
+
+    @Test
+    void ignoresMissingTrailingNewline() {
+        assertTrue(OutputComparator.matches("1 2\n3 4\n", "1 2\n3 4"));
+    }
+
+    @Test
+    void keepsInternalBlankLinesSignificant() {
+        // Only trailing blank lines are forgiven; a blank line between two
+        // answers is part of the expected output.
+        assertFalse(OutputComparator.matches("1\n\n\n2", "1\n\n2\n"));
+    }
+
+    @Test
+    void keepsInternalWhitespace() {
+        assertFalse(OutputComparator.matches("1  2", "1 2"));
+    }
+
+    @Test
+    void rejectsExtraTrailingLine() {
+        assertFalse(OutputComparator.matches("42", "42\nextra"));
+    }
+
+    @Test
+    void normalisesEveryLineEnding() {
+        assertTrue(OutputComparator.matches("a\r\nb\nc", "a\nb\rc"));
+    }
 }

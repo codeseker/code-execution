@@ -6,7 +6,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -130,19 +132,31 @@ public class DockerSandboxService {
         if (envHost != null && !envHost.isBlank()) {
             return envHost;
         }
-        if (Files.exists(Path.of("/var/run/docker.sock"))) {
-            return "unix:///var/run/docker.sock";
-        }
+
+        List<Path> candidates = new ArrayList<>();
         String xdg = System.getenv("XDG_RUNTIME_DIR");
-        if (xdg != null && Files.exists(Path.of(xdg, "docker.sock"))) {
-            return "unix://" + Path.of(xdg, "docker.sock");
+        if (xdg != null && !xdg.isBlank()) {
+            candidates.add(Path.of(xdg, "docker.sock"));
         }
         String home = System.getProperty("user.home");
-        if (home != null && Files.exists(Path.of(home, ".docker/desktop/docker.sock"))) {
-            return "unix://" + Path.of(home, ".docker/desktop/docker.sock");
+        if (home != null && !home.isBlank()) {
+            candidates.add(Path.of(home, ".docker/desktop/docker.sock"));
+            candidates.add(Path.of(home, ".docker/run/docker.sock"));
         }
-        if (home != null && Files.exists(Path.of(home, ".docker/run/docker.sock"))) {
-            return "unix://" + Path.of(home, ".docker/run/docker.sock");
+        candidates.add(Path.of("/mnt/wsl/docker-desktop/shared-sockets/host-services/docker.proxy.sock"));
+        candidates.add(Path.of("/var/run/docker.sock"));
+
+        for (Path candidate : candidates) {
+            if (Files.exists(candidate) && Files.isWritable(candidate)) {
+                return "unix://" + candidate;
+            }
+        }
+        for (Path candidate : candidates) {
+            if (Files.exists(candidate)) {
+                // Preserve the most likely endpoint so the eventual connection error
+                // identifies its path when no candidate is accessible.
+                return "unix://" + candidate;
+            }
         }
         return "unix:///var/run/docker.sock";
     }
@@ -206,8 +220,9 @@ public class DockerSandboxService {
             throw new DockerSandboxException(
                     "Cannot reach the Docker daemon (" + this.properties.getDockerHost()
                             + "): " + exception.getMessage()
-                            + ". Check that the Docker daemon is running and your user "
-                            + "can access it (e.g. is in the docker group).",
+                            + ". Ensure the backend process can access this socket; on WSL, "
+                            + "enable Docker Desktop integration for this distro or set DOCKER_HOST "
+                            + "to a reachable daemon endpoint.",
                     exception);
         }
 

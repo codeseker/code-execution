@@ -137,8 +137,12 @@ public class PublicProblemService {
                 .max()
                 .orElse(DEFAULT_MEMORY_LIMIT_KB);
 
+        // Sorted by id so the sample order shown here is exactly the order the judge
+        // runs them in, which is what lets the UI map a streamed CASE_RESULT
+        // straight onto a testcase tab.
         List<SampleTestCase> samples = all.stream()
                 .filter(TestCase::isSample)
+                .sorted(java.util.Comparator.comparing(TestCase::getId))
                 .map(testCase -> new SampleTestCase(
                         testCase.getId(),
                         readCapped(testCase.getInputFilePath()),

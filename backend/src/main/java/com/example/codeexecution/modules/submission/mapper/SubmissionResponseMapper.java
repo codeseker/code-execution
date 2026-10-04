@@ -12,9 +12,12 @@ import com.example.codeexecution.modules.submission.entities.TestCaseResult;
 import com.example.codeexecution.modules.submission.entities.Verdict;
 
 /**
- * Maps Mongo documents to the client-facing DTO records. Hidden test data
- * (stdout/expected/actual) is stripped unless {@code includeIo} is true,
- * i.e. the run was an example evaluation over public samples.
+ * Maps Mongo documents to the client-facing DTO records.
+ *
+ * <p>No redaction happens here: the worker already decided, per case, what may
+ * be stored (hidden cases are persisted without any IO), so this mapper is a
+ * straight projection. That is what lets a full submission show the IO of the
+ * public sample it failed on instead of an empty output box.
  */
 public final class SubmissionResponseMapper {
 
@@ -22,7 +25,7 @@ public final class SubmissionResponseMapper {
     }
 
     public static SubmissionResponse toSubmissionResponse(
-            Submission submission, SubmissionResult result, boolean includeIo) {
+            Submission submission, SubmissionResult result) {
         return new SubmissionResponse(
                 submission.getId(),
                 submission.getProblemId(),
@@ -30,7 +33,7 @@ public final class SubmissionResponseMapper {
                 submission.getType(),
                 submission.getStatus(),
                 submission.getCreatedAt(),
-                result == null ? null : toResultResponse(result, includeIo));
+                result == null ? null : toResultResponse(result));
     }
 
     /**
@@ -49,8 +52,7 @@ public final class SubmissionResponseMapper {
                 submission.getCreatedAt());
     }
 
-    public static SubmissionResultResponse toResultResponse(
-            SubmissionResult result, boolean includeIo) {
+    public static SubmissionResultResponse toResultResponse(SubmissionResult result) {
         return new SubmissionResultResponse(
                 result.getSubmissionId(),
                 result.getOverallVerdict(),
@@ -59,24 +61,26 @@ public final class SubmissionResponseMapper {
                 result.getPassedTestCases(),
                 result.getTotalTestCases(),
                 result.getCompileErrorLogs(),
-                toTestCaseResponses(result.getTestCaseResults(), includeIo));
+                result.getFailedCaseIndex(),
+                toTestCaseResponses(result.getTestCaseResults()));
     }
 
-    private static List<TestCaseResultResponse> toTestCaseResponses(
-            List<TestCaseResult> rows, boolean includeIo) {
+    private static List<TestCaseResultResponse> toTestCaseResponses(List<TestCaseResult> rows) {
         if (rows == null) {
             return List.of();
         }
         return rows.stream()
                 .map(row -> new TestCaseResultResponse(
                         row.getTestCaseId(),
+                        row.getCaseIndex(),
+                        row.getKind(),
                         row.getStatus(),
                         row.getExecutionTimeMs(),
                         row.getMemoryUsedKb(),
-                        includeIo ? row.getStdout() : null,
-                        includeIo ? row.getStderr() : null,
-                        includeIo ? row.getExpectedOutput() : null,
-                        includeIo ? row.getActualOutput() : null))
+                        row.getStdout(),
+                        row.getStderr(),
+                        row.getExpectedOutput(),
+                        row.getActualOutput()))
                 .toList();
     }
 }

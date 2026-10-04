@@ -24,6 +24,7 @@ import com.example.codeexecution.modules.problem.services.ProblemStatsService;
 import com.example.codeexecution.modules.stats.UserProblemStatService;
 import com.example.codeexecution.modules.submission.config.ExecutionProperties;
 import com.example.codeexecution.modules.submission.dtos.JobMessage;
+import com.example.codeexecution.modules.submission.entities.JudgeCaseKind;
 import com.example.codeexecution.modules.submission.entities.Language;
 import com.example.codeexecution.modules.submission.entities.Submission;
 import com.example.codeexecution.modules.submission.entities.SubmissionResult;
@@ -33,8 +34,8 @@ import com.example.codeexecution.modules.submission.entities.TestCaseResult;
 import com.example.codeexecution.modules.submission.entities.Verdict;
 import com.example.codeexecution.modules.submission.repositories.SubmissionRepository;
 import com.example.codeexecution.modules.submission.repositories.SubmissionResultRepository;
+import com.example.codeexecution.modules.submission.services.CaseJudge.CaseOutcome;
 import com.example.codeexecution.modules.submission.services.DockerSandboxService.CompileOutcome;
-import com.example.codeexecution.modules.submission.services.DockerSandboxService.RunOutcome;
 
 import jakarta.annotation.PreDestroy;
 
@@ -46,7 +47,12 @@ import jakarta.annotation.PreDestroy;
  * Job pickup follows the "lightweight payload" rule - the Redis message
  * only carries ids; the worker fetches the source code from Mongo and the
  * testcase files from disk, runs them in Docker sandboxes, writes the
- * {@link SubmissionResult} and pushes the matching WebSocket event.
+ * {@link SubmissionResult} and pushes the matching WebSocket events.
+ *
+ * <p><b>One judge loop for every run type.</b> Run, example-eval and submit
+ * differ only in the {@link JudgeCase} plan built by {@link #buildPlan} and in
+ * how much IO each case may expose; execution and comparison always go
+ * through {@link CaseJudge}, so the paths cannot drift apart.
  */
 @Component
 public class SubmissionWorker {
@@ -57,15 +63,13 @@ public class SubmissionWorker {
     private static final int DEFAULT_TIME_LIMIT_MS = 1000;
     private static final int DEFAULT_MEMORY_LIMIT_KB = 256000;
 
-    /** Synthetic testcase id reported for a custom-input run row. */
-    private static final String CUSTOM_INPUT_CASE_ID = "custom-input";
-
     private final SubmissionQueueService queueService;
     private final SubmissionRepository submissionRepository;
     private final SubmissionResultRepository resultRepository;
     private final ProblemRepository problemRepository;
     private final TestCaseRepository testCaseRepository;
     private final DockerSandboxService sandbox;
+    private final CaseJudge caseJudge;
     private final SubmissionEventPublisher eventPublisher;
     private final UserProblemStatService statService;
     private final ProblemStatsService problemStatsService;
@@ -81,6 +85,7 @@ public class SubmissionWorker {
             ProblemRepository problemRepository,
             TestCaseRepository testCaseRepository,
             DockerSandboxService sandbox,
+            CaseJudge caseJudge,
             SubmissionEventPublisher eventPublisher,
             UserProblemStatService statService,
             ProblemStatsService problemStatsService,
@@ -91,6 +96,7 @@ public class SubmissionWorker {
         this.problemRepository = problemRepository;
         this.testCaseRepository = testCaseRepository;
         this.sandbox = sandbox;
+        this.caseJudge = caseJudge;
         this.eventPublisher = eventPublisher;
         this.statService = statService;
         this.problemStatsService = problemStatsService;
@@ -146,8 +152,12 @@ public class SubmissionWorker {
         }
     }
 
-    /** Full lifecycle of one job: PROCESSING -> verdict -> COMPLETED/FAILED. */
-    private void process(JobMessage job) {
+    /**
+     * Full lifecycle of one job: PROCESSING -&gt; verdict -&gt;
+     * COMPLETED/FAILED. Package-private so tests can drive a whole job
+     * without a queue.
+     */
+    void process(JobMessage job) {
         Submission submission = this.submissionRepository.findById(job.submissionId()).orElse(null);
         if (submission == null) {
             log.warn("Dropping job for missing submission {}", job.submissionId());
@@ -169,151 +179,199 @@ public class SubmissionWorker {
         }
     }
 
+    /**
+     * Builds the run plan, compiles, then judges every case in order through
+     * {@link CaseJudge}, publishing one event per case as it lands.
+     */
     private void evaluate(Submission submission, JobMessage job) {
         Problem problem = this.problemRepository.findById(job.problemId())
                 .filter(found -> !found.isDeleted())
                 .orElseThrow(() -> new IllegalStateException("Problem no longer exists"));
-
-        boolean isExample = submission.getType() == SubmissionType.EXAMPLE_EVAL;
         if (!problem.isPublished()) {
             throw new IllegalStateException("Problem is not published");
         }
 
-        // "Run" button: no stored test cases, no comparison, no stats.
-        if (submission.getType() == SubmissionType.CUSTOM_RUN) {
-            evaluateCustomRun(submission, problem);
-            return;
-        }
+        // One run == one submission id, so the run id doubles as the
+        // submission id: every run event is tagged with it and a stale frame
+        // from an earlier run can never be mistaken for this one.
+        String runId = submission.getId();
 
-        List<TestCase> testCases = this.testCaseRepository.findByProblemId(problem.getId()).stream()
-                .filter(testCase -> !isExample || testCase.isSample())
-                .sorted(Comparator.comparing(TestCase::getId))
-                .toList();
-        if (testCases.isEmpty()) {
-            throw new IllegalStateException(
-                    isExample ? "Problem has no sample test cases" : "Problem has no test cases");
-        }
+        List<JudgeCase> plan = buildPlan(submission, problem);
+        int total = plan.size();
+        this.eventPublisher.publishRunStarted(submission.getId(), runId, total);
 
         // Phase 1: compile (interpreted languages short-circuit to success).
         CompileOutcome compile = this.sandbox.compile(
                 submission.getId(), submission.getLanguage(), submission.getCode());
         if (!compile.success()) {
+            log.info("Submission {} compile failed: {}", submission.getId(), compile.errorLogs());
+            // Compile errors short-circuit: one terminal event, no case results.
+            // totalCount is 0 because no case was ever judged.
+            this.eventPublisher.publishRunFinished(
+                    submission.getId(), runId, Verdict.COMPILE_ERROR,
+                    0, 0, null, 0, 0, compile.errorLogs());
             finish(submission, buildResult(submission, Verdict.COMPILE_ERROR,
-                    0, 0, 0, 0, compile.errorLogs(), List.of()));
+                    0, 0, 0, 0, compile.errorLogs(), null, List.of()));
             return;
         }
 
-        // Phase 2: one fresh sandbox per testcase.
+        // Phase 2: one fresh sandbox exec per case, streamed as it completes.
         List<TestCaseResult> rows = new ArrayList<>();
         int passed = 0;
         long totalMs = 0;
         long peakKb = 0;
         Verdict firstFailure = null;
-        int index = 0;
+        Integer failedIndex = null;
+        long deadline = System.nanoTime()
+                + this.properties.getJobTimeoutMs() * 1_000_000L;
 
-        for (TestCase testCase : testCases) {
-            index++;
-            RunOutcome outcome = this.sandbox.runTestCase(
-                    submission.getId(),
-                    submission.getLanguage(),
-                    testCase.getInputFilePath(),
-                    testCase.getTimeLimitMs(),
-                    testCase.getMemoryLimitKb());
+        for (JudgeCase testCase : plan) {
+            if (System.nanoTime() > deadline) {
+                // Overall budget exhausted: end the stream instead of leaving
+                // the client spinning on an unterminated run.
+                String reason = "Run exceeded the overall judge budget of "
+                        + this.properties.getJobTimeoutMs() + " ms";
+                log.warn("Submission {} hit the overall run timeout after {} cases: {}",
+                        submission.getId(), rows.size(), reason);
+                this.eventPublisher.publishRunFinished(
+                        submission.getId(), runId, Verdict.SYSTEM_ERROR,
+                        passed, total, failedIndex, totalMs, peakKb, reason);
+                finish(submission, buildResult(submission, Verdict.SYSTEM_ERROR,
+                        passed, total, totalMs, peakKb, reason, failedIndex, rows));
+                return;
+            }
 
-            Verdict verdict = grade(testCase, outcome, isExample);
-            rows.add(toRow(testCase, outcome, verdict, isExample));
+            CaseOutcome outcome = this.caseJudge.judge(
+                    submission.getId(), submission.getLanguage(), testCase);
 
-            if (verdict == Verdict.ACCEPTED) {
+            rows.add(toRow(outcome));
+            if (outcome.verdict() == Verdict.ACCEPTED) {
                 passed++;
             } else if (firstFailure == null) {
-                firstFailure = verdict;
+                firstFailure = outcome.verdict();
+                failedIndex = testCase.caseIndex();
             }
-            totalMs += outcome.elapsedMs();
-            peakKb = Math.max(peakKb, outcome.memoryUsedKb());
+            totalMs += outcome.runtimeMs();
+            peakKb = Math.max(peakKb, outcome.memoryKb());
 
+            // Stream this case before moving on, so the UI can light up the
+            // matching testcase tab immediately.
+            this.eventPublisher.publishCaseResult(submission.getId(), runId, outcome);
             this.eventPublisher.publishProgress(
-                    submission.getId(), passed, index, testCases.size(), verdict.name());
+                    submission.getId(), passed, rows.size(), total, outcome.verdict().name());
+
+            if (outcome.verdict() != Verdict.ACCEPTED
+                    && submission.getType().stopsAtFirstFailure()) {
+                log.info("Submission {} stopped at case {} of {} with {}",
+                        submission.getId(), testCase.caseIndex(), total, outcome.verdict());
+                break;
+            }
         }
 
         Verdict overall = firstFailure == null ? Verdict.ACCEPTED : firstFailure;
+        this.eventPublisher.publishRunFinished(
+                submission.getId(), runId, overall, passed, total,
+                failedIndex, totalMs, peakKb, null);
         finish(submission, buildResult(
-                submission, overall, passed, testCases.size(), totalMs, peakKb, null, rows));
+                submission, overall, passed, total, totalMs, peakKb, null, failedIndex, rows));
     }
 
     /**
-     * Custom-input run: compile, feed the caller's own stdin to the
-     * program and report what came out. With no expected output the
-     * verdict can only describe execution itself, so WRONG_ANSWER is
-     * impossible and statistics stay untouched.
+     * The judge plan for one run. Sample cases always come from the problem's
+     * own stored test cases - never from the request - so a client can neither
+     * override, inject nor reorder them. The only client-influenced entries
+     * are the custom cases a Run may add, and they carry no expected output.
+     *
+     * <ul>
+     *   <li>{@code EXAMPLE_EVAL} - the public sample cases, in storage order.</li>
+     *   <li>{@code CUSTOM_RUN} - the same samples, then the caller's custom
+     *       cases in the order they were sent.</li>
+     *   <li>{@code FULL_SUBMISSION} - every stored case (samples and hidden).</li>
+     * </ul>
      */
-    private void evaluateCustomRun(Submission submission, Problem problem) {
-        CompileOutcome compile = this.sandbox.compile(
-                submission.getId(), submission.getLanguage(), submission.getCode());
-        if (!compile.success()) {
-            finish(submission, buildResult(submission, Verdict.COMPILE_ERROR,
-                    0, 0, 0, 0, compile.errorLogs(), List.of()));
-            return;
+    private List<JudgeCase> buildPlan(Submission submission, Problem problem) {
+        boolean fullSubmission = submission.getType() == SubmissionType.FULL_SUBMISSION;
+        List<TestCase> stored = this.testCaseRepository.findByProblemId(problem.getId()).stream()
+                .filter(testCase -> fullSubmission || testCase.isSample())
+                .sorted(Comparator.comparing(TestCase::getId))
+                .toList();
+
+        List<JudgeCase> plan = new ArrayList<>();
+        int index = 0;
+        for (TestCase testCase : stored) {
+            plan.add(new JudgeCase(
+                    ++index,
+                    testCase.getId(),
+                    testCase.isSample() ? JudgeCaseKind.SAMPLE : JudgeCaseKind.HIDDEN,
+                    Path.of(testCase.getInputFilePath()).toAbsolutePath(),
+                    Path.of(testCase.getOutputFilePath()).toAbsolutePath(),
+                    testCase.getTimeLimitMs(),
+                    testCase.getMemoryLimitKb()));
         }
 
-        Path input = writeCustomInput(submission);
-        RunOutcome outcome = this.sandbox.runTestCase(
-                submission.getId(),
-                submission.getLanguage(),
-                input.toString(),
-                problemTimeLimitMs(problem),
-                problemMemoryLimitKb(problem));
+        if (submission.getType() == SubmissionType.CUSTOM_RUN) {
+            plan.addAll(customPlan(submission, index, problem));
+        }
 
-        Verdict verdict = runVerdict(outcome);
-        boolean accepted = verdict == Verdict.ACCEPTED;
-
-        TestCaseResult row = TestCaseResult.builder()
-                .testCaseId(CUSTOM_INPUT_CASE_ID)
-                .status(verdict)
-                .executionTimeMs(outcome.elapsedMs())
-                .memoryUsedKb(outcome.memoryUsedKb())
-                .stdout(truncateIo(outcome.stdout()))
-                .stderr(truncateIo(outcome.stderr()))
-                .expectedOutput(null)
-                .actualOutput(accepted ? truncateIo(outcome.stdout()) : null)
-                .build();
-
-        finish(submission, buildResult(
-                submission, verdict,
-                accepted ? 1 : 0, 1,
-                outcome.elapsedMs(), outcome.memoryUsedKb(), null, List.of(row)));
+        if (plan.isEmpty()) {
+            throw new IllegalStateException(fullSubmission
+                    ? "Problem has no test cases"
+                    : "Problem has no sample test cases");
+        }
+        return plan;
     }
 
-    /** Writes the caller's stdin into the submission's host work dir. */
-    private Path writeCustomInput(Submission submission) {
+    /**
+     * Stages the caller's own test cases into the submission work dir and
+     * appends them to the plan. Blank inputs are dropped; each case gets no
+     * expected file, so {@link CaseJudge} can only return ACCEPTED or an
+     * execution verdict for them.
+     *
+     * <p>Only {@link Submission#getCustomTestcases()} is read. The legacy
+     * {@code customInput} field is deliberately ignored: a single client
+     * supplied stdin must never be able to stand in for a stored sample.
+     */
+    private List<JudgeCase> customPlan(Submission submission, int alreadyIndexed, Problem problem) {
+        List<String> inputs = new ArrayList<>();
+        if (submission.getCustomTestcases() != null) {
+            for (String input : submission.getCustomTestcases()) {
+                if (input != null && !input.isBlank()) {
+                    inputs.add(input);
+                }
+            }
+        }
+        if (inputs.isEmpty()) {
+            return List.of();
+        }
+
+        Path dir = this.sandbox.workDirFor(submission.getId());
+        int max = this.properties.getMaxCustomTestCases();
+        int timeLimitMs = problemTimeLimitMs(problem);
+        long memoryLimitKb = problemMemoryLimitKb(problem);
+        List<JudgeCase> cases = new ArrayList<>();
+        int index = alreadyIndexed;
         try {
-            Path dir = this.sandbox.workDirFor(submission.getId());
             Files.createDirectories(dir);
-            Path input = dir.resolve("custom.in");
-            Files.writeString(
-                    input,
-                    submission.getCustomInput() == null ? "" : submission.getCustomInput(),
-                    StandardCharsets.UTF_8);
-            return input;
+            for (String input : inputs) {
+                if (cases.size() >= max) {
+                    log.warn("Submission {} sent more than {} custom cases; ignoring the rest",
+                            submission.getId(), max);
+                    break;
+                }
+                String caseId = "custom-" + (cases.size() + 1);
+                Path file = dir.resolve(caseId + ".in");
+                Files.writeString(file, input, StandardCharsets.UTF_8);
+                cases.add(new JudgeCase(
+                        ++index, caseId, JudgeCaseKind.CUSTOM,
+                        file, null, timeLimitMs, memoryLimitKb));
+            }
         } catch (IOException exception) {
-            throw new DockerSandboxException("Could not stage custom input", exception);
+            throw new DockerSandboxException("Could not stage custom testcase input", exception);
         }
+        return cases;
     }
 
-    /** Same matrix as {@link #grade} minus WRONG_ANSWER (nothing to compare). */
-    private Verdict runVerdict(RunOutcome outcome) {
-        if (outcome.timedOut()) {
-            return Verdict.TIME_LIMIT_EXCEEDED;
-        }
-        if (outcome.oomKilled()) {
-            return Verdict.MEMORY_LIMIT_EXCEEDED;
-        }
-        if (outcome.exitCode() != 0) {
-            return Verdict.RUNTIME_ERROR;
-        }
-        return Verdict.ACCEPTED;
-    }
-
-    /** Loosest limit across the problem's test cases (defaults when none). */
+    /** Loosest time limit across the problem's test cases (defaults when none). */
     private int problemTimeLimitMs(Problem problem) {
         return this.testCaseRepository.findByProblemId(problem.getId()).stream()
                 .mapToInt(TestCase::getTimeLimitMs)
@@ -328,68 +386,26 @@ public class SubmissionWorker {
                 .orElse(DEFAULT_MEMORY_LIMIT_KB);
     }
 
-    /** Maps one raw container outcome onto the verdict matrix. */
-    private Verdict grade(TestCase testCase, RunOutcome outcome, boolean includeIo) {
-        if (outcome.timedOut()) {
-            return Verdict.TIME_LIMIT_EXCEEDED;
-        }
-        if (outcome.oomKilled()) {
-            return Verdict.MEMORY_LIMIT_EXCEEDED;
-        }
-        if (outcome.exitCode() != 0) {
-            return Verdict.RUNTIME_ERROR;
-        }
-        String expected = readExpectedOutput(testCase);
-        return OutputComparator.matches(expected, outcome.stdout())
-                ? Verdict.ACCEPTED
-                : Verdict.WRONG_ANSWER;
-    }
-
-    private TestCaseResult toRow(
-            TestCase testCase, RunOutcome outcome, Verdict verdict, boolean includeIo) {
-        boolean runnable = !outcome.timedOut();
-        Verdict status = verdict;
-        String stdout = includeIo ? truncateIo(outcome.stdout()) : null;
-        String stderr = includeIo ? truncateIo(outcome.stderr()) : null;
-        String expected = includeIo ? truncateIo(safeExpected(testCase)) : null;
-        String actual = includeIo && runnable ? stdout : null;
-
+    /**
+     * Projects one graded case onto its persisted row. IO is kept for every
+     * case the user is entitled to see (samples and their own custom inputs)
+     * and dropped entirely for hidden cases, which is what a full submission
+     * needs so a failed public sample is still explainable.
+     */
+    private TestCaseResult toRow(CaseOutcome outcome) {
+        boolean visible = outcome.exposesIo();
         return TestCaseResult.builder()
-                .testCaseId(testCase.getId())
-                .status(status)
-                .executionTimeMs(outcome.elapsedMs())
-                .memoryUsedKb(outcome.memoryUsedKb())
-                .stdout(stdout)
-                .stderr(stderr)
-                .expectedOutput(expected)
-                .actualOutput(actual)
+                .testCaseId(outcome.testCase().caseId())
+                .caseIndex(outcome.testCase().caseIndex())
+                .kind(outcome.testCase().kind())
+                .status(outcome.verdict())
+                .executionTimeMs(outcome.runtimeMs())
+                .memoryUsedKb(outcome.memoryKb())
+                .stdout(visible ? outcome.stdout() : null)
+                .stderr(visible ? outcome.stderr() : null)
+                .expectedOutput(visible ? outcome.expectedOutput() : null)
+                .actualOutput(visible ? outcome.actualOutput() : null)
                 .build();
-    }
-
-    private String safeExpected(TestCase testCase) {
-        try {
-            return readExpectedOutput(testCase);
-        } catch (RuntimeException exception) {
-            return "";
-        }
-    }
-
-    private String readExpectedOutput(TestCase testCase) {
-        try {
-            java.nio.file.Path path = java.nio.file.Path.of(testCase.getOutputFilePath());
-            return java.nio.file.Files.readString(path, java.nio.charset.StandardCharsets.UTF_8);
-        } catch (Exception exception) {
-            throw new DockerSandboxException(
-                    "Expected output file unreadable for testcase " + testCase.getId(), exception);
-        }
-    }
-
-    private String truncateIo(String value) {
-        int max = this.properties.getIoTruncateChars();
-        if (value == null) {
-            return null;
-        }
-        return value.length() <= max ? value : value.substring(0, max) + "\n... [truncated]";
     }
 
     private SubmissionResult buildResult(
@@ -400,6 +416,7 @@ public class SubmissionWorker {
             long totalMs,
             long peakKb,
             String compileErrorLogs,
+            Integer failedCaseIndex,
             List<TestCaseResult> rows) {
         return SubmissionResult.builder()
                 .submissionId(submission.getId())
@@ -408,6 +425,7 @@ public class SubmissionWorker {
                 .peakMemoryKb(peakKb)
                 .passedTestCases(passed)
                 .totalTestCases(total)
+                .failedCaseIndex(failedCaseIndex)
                 .compileErrorLogs(compileErrorLogs)
                 .testCaseResults(rows)
                 .createdAt(Instant.now())
@@ -422,8 +440,7 @@ public class SubmissionWorker {
         submission.setUpdatedAt(Instant.now());
         this.submissionRepository.save(submission);
 
-        boolean includeIo = submission.getType().exposesIo();
-        this.eventPublisher.publishCompleted(submission.getId(), result, includeIo);
+        this.eventPublisher.publishCompleted(submission.getId(), result);
 
         if (submission.getType() == SubmissionType.FULL_SUBMISSION) {
             this.statService.recordSubmission(submission.getUserId());
@@ -437,12 +454,17 @@ public class SubmissionWorker {
         }
     }
 
-    /** Unrecoverable failure: FAILED status + SYSTEM_ERROR result + JOB_FAILED. */
+    /**
+     * Unrecoverable failure: FAILED status + SYSTEM_ERROR result + JOB_FAILED.
+     * The run stream is terminated as well, so a client that is waiting on
+     * {@code RUN_FINISHED} is never left hanging after an infrastructure
+     * error or a worker crash.
+     */
     private void fail(Submission submission, String message) {
         try {
             SubmissionResult result = buildResult(
                     submission, Verdict.SYSTEM_ERROR, 0, 0, 0, 0,
-                    message == null ? null : message, List.of());
+                    message == null ? null : message, null, List.of());
             this.resultRepository.save(result);
         } catch (Exception exception) {
             log.error("Could not persist SYSTEM_ERROR result for {}",
@@ -451,6 +473,9 @@ public class SubmissionWorker {
         submission.setStatus(SubmissionStatus.FAILED);
         submission.setUpdatedAt(Instant.now());
         this.submissionRepository.save(submission);
+        this.eventPublisher.publishRunFinished(
+                submission.getId(), submission.getId(), Verdict.SYSTEM_ERROR,
+                0, 0, null, 0, 0, message == null ? "System error" : message);
         this.eventPublisher.publishFailed(submission.getId(), message);
     }
 }

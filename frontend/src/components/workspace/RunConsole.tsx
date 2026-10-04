@@ -8,9 +8,10 @@ import { Badge } from '../ui/badge'
 import { BaseTooltip } from '../BaseTooltip'
 import RunResultPanel from './RunResultPanel'
 import type { SampleTestCase } from '../../hooks/problems/types'
-import type { RunPhase, RunProgress } from '../../hooks/submissions/useActiveSubmission'
+import type { RunCaseResult, RunPhase, RunProgress, RunSummary } from '../../hooks/submissions/useActiveSubmission'
 import type { SubmissionResult } from '../../hooks/submissions/types'
-import type { SubmissionType } from '../../types/domain'
+import type { SubmissionType, Verdict } from '../../types/domain'
+import { verdictLabel } from '../../lib/format'
 
 type Props = {
   open: boolean
@@ -18,12 +19,13 @@ type Props = {
   sampleTestCases: SampleTestCase[]
   phase: RunPhase
   result: SubmissionResult | null
+  /** Live `CASE_RESULT` rows of the current run, in run order. */
+  cases: RunCaseResult[]
+  /** Terminal `RUN_FINISHED` summary of the current run. */
+  summary: RunSummary | null
   failureReason: string | null
   progress: RunProgress | null
   queuePosition: number | null
-  /** Seeds the stdin box from a sample case. */
-  customInput: string
-  onCustomInputChange: (value: string) => void
   /** `POST /problems/{id}/example-eval` - judges the public samples. */
   onRunSamples: () => void
   isAuthenticated: boolean
@@ -38,7 +40,6 @@ type Props = {
   onRemoveCustomCase: (id: string) => void
   onCustomCaseInputChange: (id: string, input: string) => void
   focusCustomCaseId: string | null
-  runCaseId: string | null
 }
 
 export type CustomTestCase = { id: string; input: string }
@@ -51,11 +52,27 @@ const PHASE_LABEL: Record<RunPhase, string> = {
   failed: 'Failed',
 }
 
+/** Status dot tone for one tab: muted while pending, green/red once judged. */
+function dotClass(verdict: Verdict | null | undefined): string {
+  if (!verdict) return 'bg-muted-foreground/40'
+  if (verdict === 'ACCEPTED') return 'bg-verdict-accepted'
+  if (verdict === 'WRONG_ANSWER') return 'bg-verdict-wrong-answer'
+  if (verdict === 'TIME_LIMIT_EXCEEDED' || verdict === 'MEMORY_LIMIT_EXCEEDED') return 'bg-warning'
+  return 'bg-destructive'
+}
+
+function dotLabel(verdict: Verdict | null | undefined): string {
+  if (!verdict) return 'Not run'
+  return verdict === 'ACCEPTED' ? 'Passed' : verdictLabel(verdict)
+}
+
 /**
- * Console pane: the caller-supplied stdin for `POST /problems/{id}/run` and
- * the verdict for whichever job is active. Sample cases from the problem
- * detail only prefill the stdin box - the judge itself reads them for
- * `example-eval`.
+ * Console pane: the verdict for whichever job is active plus the tab strip of
+ * testcases.
+ *
+ * The sample cases come from the problem detail and are judged by the server,
+ * so a tab lights up as its `CASE_RESULT` streams in. Custom tabs are the
+ * caller's own inputs; they are sent with the run and have no expected output.
  */
 export default function RunConsole({
   open,
@@ -63,10 +80,11 @@ export default function RunConsole({
   sampleTestCases,
   phase,
   result,
+  cases,
+  summary,
   failureReason,
   progress,
   queuePosition,
-  onCustomInputChange,
   onRunSamples,
   isAuthenticated,
   submissionType = null,
@@ -80,7 +98,6 @@ export default function RunConsole({
   onRemoveCustomCase,
   onCustomCaseInputChange,
   focusCustomCaseId,
-  runCaseId,
 }: Props) {
   const instanceId = useId()
   const inputRefs = useRef(new Map<string, HTMLTextAreaElement>())
@@ -103,34 +120,59 @@ export default function RunConsole({
     activeTab?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   }, [activeCaseId])
 
-  const updateCustomInput = (id: string, value: string) => {
-    onCustomCaseInputChange(id, value)
+  /**
+   * Per-case result for a tab. Samples run first and in storage order, so a
+   * sample tab maps to the same run index; custom tabs follow the samples in
+   * the order they were sent.
+   */
+  const caseResult = (index: number): RunCaseResult | null => {
+    const byRunIndex = cases.find((item) => item.caseIndex === index + 1)
+    if (byRunIndex) return byRunIndex
+    // Fall back to the persisted row when the socket never delivered it.
+    const row = result?.testCaseResults.find(
+      (item) => item.caseIndex === index + 1 || (item.caseIndex == null && item.testCaseId === sampleTestCases[index]?.id),
+    )
+    if (!row) return null
+    return {
+      caseIndex: index + 1,
+      caseId: row.testCaseId ?? '',
+      kind: row.kind ?? 'SAMPLE',
+      status: row.status,
+      input: sampleTestCases[index]?.input ?? null,
+      expectedOutput: row.expectedOutput,
+      actualOutput: row.actualOutput,
+      stdout: row.stdout,
+      stderr: row.stderr,
+      runtimeMs: row.executionTimeMs,
+      memoryKb: row.memoryUsedKb,
+    }
   }
 
-  const caseResult = (index: number) => {
-    if (!result) return null
-    if (submissionType === 'EXAMPLE_EVAL') {
-      const sample = sampleTestCases[index]
-      const exactMatch = result.testCaseResults.find((item) => item.testCaseId === sample?.id)
-      if (exactMatch) return exactMatch
-      const positionalMatch = result.testCaseResults[index]
-      const positionalIdBelongsToAnotherSample = positionalMatch?.testCaseId != null
-        && sampleTestCases.some((item) => item.id === positionalMatch.testCaseId && item.id !== sample?.id)
-      return positionalIdBelongsToAnotherSample ? null : positionalMatch ?? null
+  const customCaseResult = (index: number): RunCaseResult | null => {
+    const sampleCount = sampleTestCases.length
+    const byRunIndex = cases.find((item) => item.kind === 'CUSTOM' && item.caseIndex === sampleCount + index + 1)
+    if (byRunIndex) return byRunIndex
+    const row = result?.testCaseResults.filter((item) => item.kind === 'CUSTOM')[index]
+    if (!row) return null
+    return {
+      caseIndex: sampleCount + index + 1,
+      caseId: row.testCaseId ?? `custom-${index + 1}`,
+      kind: 'CUSTOM',
+      status: row.status,
+      input: customCases[index]?.input ?? null,
+      expectedOutput: row.expectedOutput,
+      actualOutput: row.actualOutput,
+      stdout: row.stdout,
+      stderr: row.stderr,
+      runtimeMs: row.executionTimeMs,
+      memoryKb: row.memoryUsedKb,
     }
-    if (submissionType === 'CUSTOM_RUN' && runCaseId === `sample:${sampleTestCases[index]?.id}`) return result.testCaseResults[0] ?? null
-    return null
   }
 
-  const selectCase = (value: string) => {
-    onActiveCaseChange(value)
-    const sample = sampleTestCases.find((item) => `sample:${item.id}` === value)
-    if (sample) onCustomInputChange(sample.input)
-    else {
-      const custom = customCases.find((item) => `custom:${item.id}` === value)
-      if (custom) onCustomInputChange(custom.input)
-    }
-  }
+  const passedCount = summary?.passedCount ?? cases.filter((item) => item.status === 'ACCEPTED').length
+  const judgedCount = summary?.totalCount ?? cases.length
+  const overallVerdict = summary?.overallStatus ?? result?.overallVerdict ?? null
+  const isSampleRun = submissionType === 'EXAMPLE_EVAL' || submissionType === 'CUSTOM_RUN'
 
   const renderOutputBlock = (label: string, value: string, tone = 'text-foreground') => (
     <div className="min-w-0 space-y-1.5">
@@ -138,6 +180,37 @@ export default function RunConsole({
       <pre className={`max-h-40 min-h-12 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 font-mono text-xs leading-5 ${tone}`}>{value || '—'}</pre>
     </div>
   )
+
+  /**
+   * Never show an empty box next to a failing verdict: an empty string means
+   * the program printed nothing, null means the data is not ours to show.
+   */
+  const outputText = (row: RunCaseResult | null): { text: string; tone: string } => {
+    if (!row) return { text: 'Run this testcase to see output.', tone: 'text-muted-foreground' }
+    const actual = row.actualOutput ?? row.stdout
+    if (actual === null) {
+      return {
+        text: 'Hidden test case — the judge keeps its input and expected output private.',
+        tone: 'text-muted-foreground',
+      }
+    }
+    if (actual === '') {
+      return { text: 'No output — the program printed nothing.', tone: 'text-destructive' }
+    }
+    return {
+      text: actual,
+      tone: row.status === 'ACCEPTED' ? 'text-foreground' : 'text-destructive',
+    }
+  }
+
+  const expectedText = (row: RunCaseResult | null, isCustom: boolean): { text: string; tone: string } => {
+    if (isCustom) return { text: 'No expected output for a custom testcase.', tone: 'text-muted-foreground' }
+    if (!row) return { text: '—', tone: 'text-foreground' }
+    if (row.expectedOutput === null) {
+      return { text: 'Hidden test case — the judge keeps its expected output private.', tone: 'text-muted-foreground' }
+    }
+    return { text: row.expectedOutput || '(empty)', tone: 'text-foreground' }
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -163,7 +236,7 @@ export default function RunConsole({
                 {sampleTestCases.length > 0 && (
                   <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2">
                     <p className="text-xs text-muted-foreground">
-                      Run executes the selected input. Example evaluation checks every public sample.
+                      Run judges every sample plus your custom testcases.
                     </p>
                     <Button
                       type="button"
@@ -178,7 +251,7 @@ export default function RunConsole({
                     </Button>
                   </div>
                 )}
-                <BaseTabs value={activeCaseId} onValueChange={selectCase} className="min-w-0">
+                <BaseTabs value={activeCaseId} onValueChange={onActiveCaseChange} className="min-w-0">
                   <div className="flex min-w-0 items-center gap-1 border-b border-border">
                     <BaseTabsList
                       className="scrollbar-hidden flex min-w-0 flex-1 flex-nowrap justify-start gap-1 overflow-x-auto"
@@ -191,7 +264,6 @@ export default function RunConsole({
                     >
                       {sampleTestCases.map((sample, index) => {
                         const row = caseResult(index)
-                        const stateLabel = row ? (row.status === 'ACCEPTED' ? 'Passed' : 'Failed') : 'Not run'
                         return (
                           <BaseTabsTrigger
                             key={sample.id}
@@ -204,18 +276,15 @@ export default function RunConsole({
                           >
                             Case {index + 1}
                             <span
-                              className={`size-1.5 shrink-0 rounded-full ${!row ? 'bg-muted-foreground/40' : row.status === 'ACCEPTED' ? 'bg-verdict-accepted' : 'bg-verdict-wrong-answer'}`}
-                              title={stateLabel}
+                              className={`size-1.5 shrink-0 rounded-full ${dotClass(row?.status)}`}
+                              title={dotLabel(row?.status)}
                               aria-hidden="true"
                             />
                           </BaseTabsTrigger>
                         )
                       })}
                       {customCases.map((custom, index) => {
-                        const row = submissionType === 'CUSTOM_RUN' && activeCaseId === `custom:${custom.id}`
-                          ? result?.testCaseResults[0] ?? null
-                          : null
-                        const stateLabel = row ? (row.status === 'ACCEPTED' ? 'Passed' : 'Failed') : 'Not run'
+                        const row = customCaseResult(index)
                         const tabId = `custom:${custom.id}`
                         return (
                           <span key={custom.id} className="inline-flex shrink-0 items-center">
@@ -236,8 +305,8 @@ export default function RunConsole({
                               Custom {index + 1}
                               <Badge variant="secondary" className="px-1 py-0 text-xs">Custom</Badge>
                               <span
-                                className={`size-1.5 shrink-0 rounded-full ${!row ? 'bg-muted-foreground/40' : row.status === 'ACCEPTED' ? 'bg-verdict-accepted' : 'bg-verdict-wrong-answer'}`}
-                                title={stateLabel}
+                                className={`size-1.5 shrink-0 rounded-full ${dotClass(row?.status)}`}
+                                title={dotLabel(row?.status)}
                                 aria-hidden="true"
                               />
                             </BaseTabsTrigger>
@@ -273,7 +342,8 @@ export default function RunConsole({
 
                   {sampleTestCases.map((sample, index) => {
                     const row = caseResult(index)
-                    const actual = row?.actualOutput ?? row?.stdout
+                    const actual = outputText(row)
+                    const expected = expectedText(row, false)
                     return (
                       <BaseTabsPanel key={sample.id} value={`sample:${sample.id}`} className="min-w-0 space-y-4 pt-4">
                         <div className="space-y-1.5">
@@ -281,19 +351,24 @@ export default function RunConsole({
                           <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 font-mono text-xs leading-5 text-foreground">{sample.input || '—'}</pre>
                         </div>
                         <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-                          {renderOutputBlock('Expected output', sample.output)}
-                          {renderOutputBlock('Actual output', actual ?? (row ? 'No output returned.' : 'Run this testcase to see output.'), row && row.status !== 'ACCEPTED' ? 'text-destructive' : 'text-foreground')}
+                          {renderOutputBlock('Expected output', expected.text, expected.tone)}
+                          {renderOutputBlock('Actual output', actual.text, actual.tone)}
                         </div>
-                        {row && <p className="text-xs text-muted-foreground">{row.status === 'ACCEPTED' ? 'Testcase passed.' : `Testcase result: ${row.status.replaceAll('_', ' ').toLowerCase()}.`}</p>}
+                        {row && (
+                          <p className="text-xs text-muted-foreground">
+                            {row.status === 'ACCEPTED'
+                              ? `Testcase ${index + 1} passed.`
+                              : `Testcase ${index + 1}: ${verdictLabel(row.status)}.`}
+                          </p>
+                        )}
                       </BaseTabsPanel>
                     )
                   })}
 
                   {customCases.map((custom, index) => {
-                    const isCurrent = activeCaseId === `custom:${custom.id}`
-                    const row = isCurrent && submissionType === 'CUSTOM_RUN' && runCaseId === `custom:${custom.id}`
-                      ? result?.testCaseResults[0]
-                      : null
+                    const row = customCaseResult(index)
+                    const actual = outputText(row)
+                    const expected = expectedText(row, true)
                     const inputId = `custom-input-${instanceId}-${custom.id}`
                     return (
                       <BaseTabsPanel key={custom.id} value={`custom:${custom.id}`} className="min-w-0 space-y-4 pt-4">
@@ -312,15 +387,19 @@ export default function RunConsole({
                             className="min-h-24 w-full resize-y rounded-md border border-control-border bg-background p-3 font-mono text-xs leading-5 text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             placeholder="Enter program input"
                             value={custom.input}
-                            onChange={(event) => updateCustomInput(custom.id, event.target.value)}
+                            onChange={(event) => onCustomCaseInputChange(custom.id, event.target.value)}
                           />
                         </div>
                         <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-                          {renderOutputBlock('Expected output', 'Not specified for a custom testcase.', 'text-muted-foreground')}
-                          {renderOutputBlock('Actual output', row?.actualOutput ?? row?.stdout ?? (row ? 'No output returned.' : 'Run this input to see output.'), row && row.status !== 'ACCEPTED' ? 'text-destructive' : 'text-foreground')}
+                          {renderOutputBlock('Expected output', expected.text, expected.tone)}
+                          {renderOutputBlock('Actual output', actual.text, actual.tone)}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Used by Run as standard input. Custom testcase {index + 1} is kept in this workspace.
+                          {row
+                            ? row.status === 'ACCEPTED'
+                              ? `Custom testcase ${index + 1} ran successfully.`
+                              : `Custom testcase ${index + 1}: ${verdictLabel(row.status)}.`
+                            : `Custom testcase ${index + 1} is sent with the next Run.`}
                         </p>
                       </BaseTabsPanel>
                     )
@@ -335,9 +414,9 @@ export default function RunConsole({
                   <div className="flex min-h-40 flex-col items-center justify-center gap-3 text-center">
                     <Icon name="play" size={24} className="text-muted-foreground" />
                     <p className="text-sm font-medium text-foreground">No run yet</p>
-                    <p className="text-sm text-muted-foreground">Select a testcase and run your code, or submit to judge the full solution.</p>
+                    <p className="text-sm text-muted-foreground">Run your code to check the sample cases, or submit to judge the full solution.</p>
                   </div>
-                ) : busy ? (
+                ) : busy && cases.length === 0 ? (
                   <div className="flex min-h-40 flex-col items-center justify-center gap-3 text-muted-foreground">
                     <Spinner size={20} />
                     <p className="text-sm">
@@ -352,14 +431,30 @@ export default function RunConsole({
                     )}
                   </div>
                 ) : (
-                  <RunResultPanel
-                    result={result}
-                    failureReason={failureReason}
-                    sampleTestCases={sampleTestCases}
-                    customCases={customCases}
-                    runCaseId={runCaseId}
-                    submissionType={submissionType}
-                  />
+                  <>
+                    {(judgedCount > 0 || overallVerdict) && (
+                      <p className="mb-3 text-sm text-muted-foreground">
+                        {judgedCount > 0 && (
+                          <>
+                            {isSampleRun
+                              ? `${passedCount}/${judgedCount} ${judgedCount === 1 ? 'case' : 'cases'} passed`
+                              : `${passedCount}/${judgedCount} test cases passed`}
+                            {' · '}
+                          </>
+                        )}
+                        {overallVerdict && verdictLabel(overallVerdict)}
+                        {summary?.failedCaseIndex != null && ` · failed on case ${summary.failedCaseIndex}`}
+                      </p>
+                    )}
+                    <RunResultPanel
+                      result={result}
+                      cases={cases}
+                      summary={summary}
+                      failureReason={failureReason}
+                      sampleTestCases={sampleTestCases}
+                      submissionType={submissionType}
+                    />
+                  </>
                 )}
               </BaseTabsPanel>
             </div>

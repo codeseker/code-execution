@@ -35,8 +35,8 @@ public class ExecutionProperties {
     /** Host directory for per-submission source files and artifacts. */
     private String workDir = "./storage/executions";
 
-    /** Docker daemon endpoint (unix socket or tcp://). */
-    private String dockerHost = "unix:///var/run/docker.sock";
+    /** Optional Docker daemon endpoint override (unix socket or tcp://). */
+    private String dockerHost = "";
 
     /**
      * Container mode:
@@ -88,6 +88,16 @@ public class ExecutionProperties {
 
     /** Hard cap on the custom stdin of a CUSTOM_RUN (Run button). */
     private int maxInputChars = 64000;
+
+    /** Hard cap on how many custom test cases one Run request may carry. */
+    private int maxCustomTestCases = 20;
+
+    /**
+     * Overall wall-clock budget for one judging job. When it is exhausted the
+     * worker ends the run with a terminal {@code RUN_FINISHED} carrying
+     * SYSTEM_ERROR instead of leaving the client waiting.
+     */
+    private long jobTimeoutMs = 300_000;
 
     /** PID limit for sandbox containers (fork-bomb protection). */
     private long pidsLimit = 64;

@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -50,6 +52,7 @@ import com.example.codeexecution.modules.submission.services.SubmissionQueueServ
 public class SubmissionService {
 
     private static final int MAX_LIMIT = 100;
+    private static final Logger log = LoggerFactory.getLogger(SubmissionService.class);
 
     private final SubmissionRepository submissionRepository;
     private final SubmissionResultRepository resultRepository;
@@ -107,31 +110,67 @@ public class SubmissionService {
                     : "This problem has no test cases yet");
         }
 
-        return enqueue(problem, userId, request.getCode(), request.getLanguage(), type, null);
+        return enqueue(problem, userId, request.getCode(), request.getLanguage(), type, null, null);
     }
 
     /**
-     * The "Run" button: executes the caller's code against their own
-     * stdin instead of the stored test cases. Architecturally identical
-     * to an example evaluation (queue -> worker -> WebSocket), but the
-     * worker has no expected output to compare against and none of the
-     * statistics are touched.
+     * The "Run" button: executes the caller's code against the problem's own
+     * <b>sample</b> test cases plus any custom test cases the caller wrote.
+     *
+     * <p>The samples are never part of the request - the worker loads them from
+     * storage, so a client can neither override, inject nor reorder them. Only
+     * {@code customTestcases} comes from the client, and those cases have no
+     * expected output, so they can never produce WRONG_ANSWER. No statistics
+     * are touched.
      */
     public SubmitResponse run(String problemId, RunRequest request, String userId) {
         Problem problem = findPublished(problemId);
         validateCode(request.getCode());
         requireRuntime(request.getLanguage());
 
-        String input = request.getInput() == null ? "" : request.getInput();
-        if (input.length() > this.properties.getMaxInputChars()) {
-            throw new BadRequestException(
-                    "input exceeds the maximum length of "
-                            + this.properties.getMaxInputChars() + " characters");
+        List<String> customTestcases = validateCustomTestcases(request.getCustomTestcases());
+
+        // An old client still posts a single `input`; accept it but never use
+        // it, so the samples always come from storage.
+        if (request.getInput() != null && !request.getInput().isBlank()) {
+            log.warn("Ignoring legacy 'input' on run request for problem {}; "
+                    + "the judge loads the stored sample cases itself", problemId);
         }
 
         return enqueue(
                 problem, userId, request.getCode(), request.getLanguage(),
-                SubmissionType.CUSTOM_RUN, input);
+                SubmissionType.CUSTOM_RUN, null, customTestcases);
+    }
+
+    /**
+     * Client-supplied custom test cases: count and per-entry length are capped,
+     * null and blank entries are dropped. Returns the accepted inputs in the
+     * order the caller sent them.
+     */
+    private List<String> validateCustomTestcases(List<String> requested) {
+        if (requested == null || requested.isEmpty()) {
+            return null;
+        }
+        if (requested.size() > this.properties.getMaxCustomTestCases()) {
+            throw new BadRequestException(
+                    "custom_testcases must not contain more than "
+                            + this.properties.getMaxCustomTestCases() + " entries");
+        }
+
+        int maxChars = this.properties.getMaxInputChars();
+        List<String> accepted = new ArrayList<>();
+        for (String input : requested) {
+            if (input == null || input.isBlank()) {
+                continue;
+            }
+            if (input.length() > maxChars) {
+                throw new BadRequestException(
+                        "a custom testcase input exceeds the maximum length of "
+                                + maxChars + " characters");
+            }
+            accepted.add(input);
+        }
+        return accepted.isEmpty() ? null : accepted;
     }
 
     /**
@@ -145,7 +184,8 @@ public class SubmissionService {
             String code,
             Language language,
             SubmissionType type,
-            String customInput) {
+            String customInput,
+            List<String> customTestcases) {
 
         Instant now = Instant.now();
         Submission submission = Submission.builder()
@@ -153,6 +193,7 @@ public class SubmissionService {
                 .problemId(problem.getId())
                 .code(code)
                 .customInput(customInput)
+                .customTestcases(customTestcases)
                 .language(language)
                 .type(type)
                 .status(SubmissionStatus.QUEUED)
@@ -214,10 +255,11 @@ public class SubmissionService {
             this.rbacService.checkPermission(userId, "submission:read");
         }
 
-        boolean includeIo = submission.getType().exposesIo();
+        // Per-case IO visibility was decided by the judge when the rows were
+        // persisted (hidden cases carry none), so this is a plain read-back.
         var result = this.resultRepository.findBySubmissionId(submissionId).orElse(null);
 
-        return SubmissionResponseMapper.toSubmissionResponse(submission, result, includeIo);
+        return SubmissionResponseMapper.toSubmissionResponse(submission, result);
     }
 
     /**

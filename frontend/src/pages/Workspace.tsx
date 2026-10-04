@@ -51,12 +51,10 @@ export default function Workspace() {
   const [tab, setTab] = useState<Tab>('Description')
   const [language, setLanguage] = useState<Language>(FALLBACK_LANGUAGE)
   const [code, setCode] = useState('')
-  const [customInput, setCustomInput] = useState('')
   const [customTestCases, setCustomTestCases] = useState<CustomTestCase[]>([])
   const [activeTestCaseId, setActiveTestCaseId] = useState('')
   const [focusCustomTestCaseId, setFocusCustomTestCaseId] = useState<string | null>(null)
   const [consoleTab, setConsoleTab] = useState<'testcase' | 'result'>('testcase')
-  const [runCaseId, setRunCaseId] = useState<string | null>(null)
   const nextCustomTestCaseId = useRef(1)
   const [pane, setPane] = useState<'description' | 'code' | 'testcases'>('description')
   const [consoleOpen, setConsoleOpen] = useState(true)
@@ -89,7 +87,6 @@ export default function Workspace() {
     setTab('Description')
     setActiveSubmissionId(null)
     setQueuePosition(null)
-    setCustomInput(problem.sampleTestCases[0]?.input ?? '')
     const firstSample = problem.sampleTestCases[0]
     if (firstSample) {
       setCustomTestCases([])
@@ -103,7 +100,6 @@ export default function Workspace() {
     }
     setFocusCustomTestCaseId(null)
     setConsoleTab('testcase')
-    setRunCaseId(null)
   }, [problem])
 
   useEffect(() => {
@@ -115,6 +111,12 @@ export default function Workspace() {
   const run = useRun()
   const submit = useSubmit()
   const exampleEval = useExampleEval()
+  // The judge owns the sample cases; the client only adds its own "Custom N"
+  // inputs, in tab order. Empty custom tabs are dropped.
+  const customTestCaseInputs = useMemo(
+    () => customTestCases.map((item) => item.input).filter((input) => input.trim().length > 0),
+    [customTestCases],
+  )
   const requestPending = run.loading || submit.loading || exampleEval.loading
 
   const { problems: catalogue } = usePublicProblems({ page: 1, limit: 100 })
@@ -140,11 +142,13 @@ export default function Workspace() {
     async (mode: 'run' | 'submit' | 'sample') => {
       if (!problem || requestPending) return
       setQueuePosition(null)
-      setRunCaseId(mode === 'run' ? activeTestCaseId : null)
+      // Custom inputs ride along with a Run; the sample cases come from the
+      // judge itself so they can never be client controlled.
+      const customTestcases = mode === 'run' && customTestCaseInputs.length > 0 ? customTestCaseInputs : null
       try {
         const ack =
           mode === 'run'
-            ? await run.run(problem.id, { code, language, input: customInput || null })
+            ? await run.run(problem.id, { code, language, customTestcases })
             : mode === 'sample'
               ? await exampleEval.exampleEval(problem.id, { code, language })
               : await submit.submit(problem.id, { code, language })
@@ -154,7 +158,7 @@ export default function Workspace() {
         // The mutation hooks already surfaced the backend message.
       }
     },
-    [problem, run, submit, exampleEval, code, language, customInput, activeTestCaseId, requestPending],
+    [problem, run, submit, exampleEval, code, language, customTestCaseInputs, requestPending],
   )
 
   const onRun = useCallback(() => {
@@ -173,7 +177,6 @@ export default function Workspace() {
     const id = `custom-${nextCustomTestCaseId.current++}`
     setCustomTestCases((current) => [...current, { id, input: '' }])
     setActiveTestCaseId(`custom:${id}`)
-    setCustomInput('')
     setFocusCustomTestCaseId(id)
   }, [])
 
@@ -192,14 +195,11 @@ export default function Workspace() {
         ? `sample:${fallbackSample.id}`
         : ''
     setActiveTestCaseId(nextId)
-    if (fallbackCase) setCustomInput(fallbackCase.input)
-    else if (fallbackSample) setCustomInput(fallbackSample.input)
   }, [activeTestCaseId, customTestCases, problem])
 
   const updateCustomTestCase = useCallback((id: string, input: string) => {
     setCustomTestCases((current) => current.map((item) => item.id === id ? { ...item, input } : item))
-    if (activeTestCaseId === `custom:${id}`) setCustomInput(input)
-  }, [activeTestCaseId])
+  }, [])
 
   const { submissions, loading: submissionsLoading, refetch: refetchSubmissions } = useMySubmissions(
     useMemo(() => ({ problemId: problem?.id, limit: 10 }), [problem?.id]),
@@ -207,6 +207,10 @@ export default function Workspace() {
   )
 
   const active = useActiveSubmission(activeSubmissionId)
+
+  // UI-level double-submit guard: one judging job per workspace at a time,
+  // whichever button started it.
+  const runDisabled = active.busy || requestPending
 
   // A finished job moves the user's history and stats, so refresh both.
   useEffect(() => {
@@ -465,8 +469,8 @@ export default function Workspace() {
           variant="outline"
           className="h-8 shrink-0"
           aria-label="Run code"
-          title="Run the selected testcase input"
-          disabled={active.busy || requestPending}
+          title="Run the sample cases and your custom testcases"
+          disabled={runDisabled}
           onClick={onRun}
         >
           {active.busy ? <Spinner size={14} /> : <Icon name="play" size={14} />}
@@ -477,10 +481,11 @@ export default function Workspace() {
           size="sm"
           className="h-8 shrink-0"
           aria-label="Submit solution"
-          loading={active.busy || requestPending}
+          title="Submit against every test case"
+          disabled={runDisabled}
           onClick={onSubmit}
         >
-          <Icon name="upload" size={14} />
+          {active.busy ? <Spinner size={14} /> : <Icon name="upload" size={14} />}
           <span className="hidden sm:inline">Submit</span>
         </Button>
       </div>
@@ -507,11 +512,11 @@ export default function Workspace() {
       sampleTestCases={problem.sampleTestCases}
       phase={active.phase}
       result={active.result}
+      cases={active.cases}
+      summary={active.summary}
       failureReason={active.failureReason}
       progress={active.progress}
       queuePosition={queuePosition}
-      customInput={customInput}
-      onCustomInputChange={setCustomInput}
       onRunSamples={onRunSamples}
       isAuthenticated={isAuthenticated}
       requestPending={requestPending}
@@ -525,7 +530,6 @@ export default function Workspace() {
       onRemoveCustomCase={removeCustomTestCase}
       onCustomCaseInputChange={updateCustomTestCase}
       focusCustomCaseId={focusCustomTestCaseId}
-      runCaseId={runCaseId}
       key={problem.id}
     />
   )

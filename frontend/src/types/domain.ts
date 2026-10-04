@@ -63,10 +63,15 @@ export function isTerminalSubmissionStatus(status: SubmissionStatus): boolean {
     return TERMINAL_SUBMISSION_STATUSES.includes(status);
 }
 
+/** `modules/submission/entities/JudgeCaseKind` - visibility class of one case. */
+export type TestCaseKind = "SAMPLE" | "CUSTOM" | "HIDDEN";
+export const TEST_CASE_KINDS: readonly TestCaseKind[] = ["SAMPLE", "CUSTOM", "HIDDEN"] as const;
+
 /**
- * Only example evaluations and custom runs expose per-testcase IO; full
- * submissions keep hidden test data server-side (SubmissionType#exposesIo).
+ * Only hidden judge cases keep their data server-side; every run type reports
+ * the IO of the public samples it ran, so a failed submission can still be
+ * explained.
  */
-export function exposesIo(type: SubmissionType): boolean {
-    return type === "EXAMPLE_EVAL" || type === "CUSTOM_RUN";
+export function exposesIo(kind: TestCaseKind | null | undefined): boolean {
+    return kind !== "HIDDEN";
 }

@@ -27,10 +27,11 @@ import jakarta.validation.Valid;
  * <ul>
  *   <li>{@code POST /problems/{id}/example-eval} - public sample cases
  *       only, fast feedback loop</li>
- *   <li>{@code POST /problems/{id}/run} - LeetCode's "Run" button:
- *       code against the caller's own input, no stored test cases</li>
- *   <li>{@code POST /problems/{id}/submit} - all test cases; affects
- *       problem acceptance rate and user solved stats</li>
+ *   <li>{@code POST /problems/{id}/run} - the same public samples plus the
+ *       caller's own custom test cases; no statistics</li>
+ *   <li>{@code POST /problems/{id}/submit} - all test cases (samples and
+ *       hidden), stops at the first failure; affects problem acceptance rate
+ *       and user solved stats</li>
  *   <li>{@code GET /submissions/{id}} - polling fallback for the
  *       WebSocket lifecycle events</li>
  *   <li>{@code GET /users/me/submissions} - the caller's own history
@@ -72,8 +73,9 @@ public class SubmissionController {
     }
 
     /**
-     * Runs the code against the caller's own input (the "Run" button).
-     * No stored test cases are involved and no statistics change.
+     * Runs the code against the problem's stored sample cases plus the
+     * caller's own custom test cases. The samples are never taken from the
+     * request and no statistics change.
      */
     @PostMapping("/problems/{id}/run")
     public ApiResponse<SubmitResponse> run(

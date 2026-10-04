@@ -44,8 +44,19 @@ public class Submission {
      * User-provided stdin for {@link SubmissionType#CUSTOM_RUN} jobs;
      * null for every other type (those read their input from the stored
      * test case files).
+     *
+     * @deprecated superseded by {@link #customTestcases}; retained so rows
+     *             queued by an older worker still resolve their input.
      */
     private String customInput;
+
+    /**
+     * Raw stdin of the caller's own "Custom N" test cases, in tab order.
+     * Only {@link SubmissionType#CUSTOM_RUN} reads it, and only as an
+     * addition to the problem's own sample cases - the samples themselves are
+     * never client controlled.
+     */
+    private java.util.List<String> customTestcases;
 
     private Language language;
 

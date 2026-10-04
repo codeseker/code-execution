@@ -32,10 +32,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * {"action":"unsubscribe","submissionId":"..."}
  * </pre>
  *
- * The server then pushes {@code JOB_QUEUED}, {@code JOB_PROCESSING},
- * {@code TESTCASE_PROGRESS}, {@code JOB_COMPLETED} and {@code JOB_FAILED}
- * events into room {@code submission:<id>}. Subscribing also replays the
- * current state so late joiners immediately catch up.
+ * The server then pushes the job lifecycle ({@code JOB_QUEUED},
+ * {@code JOB_PROCESSING}, {@code JOB_COMPLETED}, {@code JOB_FAILED}) and the
+ * run stream ({@code RUN_STARTED}, one {@code CASE_RESULT} per case,
+ * {@code RUN_FINISHED}) into room {@code submission:<id>}. Every run-stream
+ * frame carries {@code runId} so a late frame from an earlier run can never
+ * overwrite a newer one, and {@code RUN_FINISHED} always terminates the run
+ * stream - including on compile errors and infrastructure failures.
+ * Subscribing also replays the current state so late joiners catch up.
  */
 @Component
 public class SubmissionWebSocketHandler extends TextWebSocketHandler {

@@ -44,6 +44,13 @@ public class SubmissionResult {
 
     private int totalTestCases;
 
+    /**
+     * 1-based index of the first failing case, null when the run was accepted
+     * or never reached a case (compile error, system error). Optional: rows
+     * written before this field do not carry it.
+     */
+    private Integer failedCaseIndex;
+
     /** Sanitised compiler/interpreter error output (COMPILE_ERROR only). */
     @Field("compileErrorLogs")
     private String compileErrorLogs;

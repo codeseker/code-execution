@@ -1,31 +1,38 @@
 import { Badge } from '../ui/badge'
 import { StatusBadge } from '../ui'
-import { formatKb, formatMs } from '../../lib/format'
+import { formatKb, formatMs, verdictLabel } from '../../lib/format'
+import type { RunCaseResult, RunSummary } from '../../hooks/submissions/useActiveSubmission'
 import type { SubmissionResult } from '../../hooks/submissions/types'
 import type { SampleTestCase } from '../../hooks/problems/types'
-import type { SubmissionType } from '../../types/domain'
+import type { SubmissionType, Verdict } from '../../types/domain'
 
 type Props = {
   result: SubmissionResult | null
+  /** Live `CASE_RESULT` rows, shown while the run streams. */
+  cases: RunCaseResult[]
+  summary: RunSummary | null
   /** Shown when the job failed before producing a result payload. */
   failureReason: string | null
   sampleTestCases: SampleTestCase[]
-  customCases: Array<{ id: string; input: string }>
-  runCaseId: string | null
   submissionType: SubmissionType | null
 }
 
 /**
- * Verdict panel for a finished job. Per-testcase IO is only rendered when the
- * backend sent it - `SubmissionType.exposesIo()` keeps hidden full-submission
- * data server-side, so those rows arrive without stdout/expected/actual.
+ * Verdict panel for a job in flight or finished. It renders the streamed
+ * `CASE_RESULT` rows while they arrive and falls back to the authoritative
+ * result document for anything the socket did not deliver.
+ *
+ * A failing case always says why: a public sample shows its input, expected
+ * and actual output; a hidden case shows the verdict, its number and an
+ * explicit note that its data stays on the judge. An empty output box is only
+ * ever shown when the program genuinely printed nothing.
  */
 export default function RunResultPanel({
   result,
+  cases,
+  summary,
   failureReason,
   sampleTestCases,
-  customCases,
-  runCaseId,
   submissionType,
 }: Props) {
   if (failureReason) {
@@ -39,117 +46,153 @@ export default function RunResultPanel({
     )
   }
 
-  if (!result) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        The judge finished without recording a result for this run.
-      </p>
-    )
-  }
+  const overallVerdict: Verdict | null = summary?.overallStatus ?? result?.overallVerdict ?? null
+  const compileError = summary?.compileError ?? result?.compileErrorLogs ?? null
+  const totalRuntimeMs = summary?.totalRuntimeMs ?? result?.totalExecutionTimeMs ?? 0
+  const peakMemoryKb = summary?.peakMemoryKb ?? result?.peakMemoryKb ?? 0
 
-  const displayRows = submissionType === 'EXAMPLE_EVAL' && sampleTestCases.length > 0
-    ? (() => {
-        const usedRows = new Set<number>()
-        const samples = sampleTestCases.map((sample, index) => {
-          const matchedIndex = result.testCaseResults.findIndex((item) => item.testCaseId === sample.id)
-          const positionalRow = result.testCaseResults[index]
-          const positionalIdBelongsToAnotherSample = positionalRow?.testCaseId != null
-            && sampleTestCases.some((item) => item.id === positionalRow.testCaseId && item.id !== sample.id)
-          const rowIndex = matchedIndex >= 0
-            ? matchedIndex
-            : positionalRow && !positionalIdBelongsToAnotherSample && !usedRows.has(index)
-              ? index
-              : -1
-          if (rowIndex >= 0) usedRows.add(rowIndex)
-          return { index, sample, row: rowIndex >= 0 ? result.testCaseResults[rowIndex] : null }
-        })
-        const extraRows = result.testCaseResults
-          .map((row, index) => ({ index: samples.length + index, sample: undefined, row }))
-          .filter((_, index) => !usedRows.has(index))
-        return [...samples, ...extraRows]
-      })()
-    : result.testCaseResults.map((row, index) => ({ index, sample: undefined, row }))
+  // Rows still running are shown as pending so the list is stable in length.
+  const totalCases = summary?.totalCount ?? result?.totalTestCases ?? cases.length
+  const rows: Array<RunCaseResult | null> = [
+    ...cases,
+    ...Array.from({ length: Math.max(0, totalCases - cases.length) }, () => null),
+  ]
+
+  const label = (index: number) => {
+    const row = rows[index]
+    if (row?.kind === 'CUSTOM') {
+      const sampleCount = sampleTestCases.length
+      return `Custom ${index - sampleCount + 1}`
+    }
+    if (submissionType === 'EXAMPLE_EVAL' || submissionType === 'CUSTOM_RUN') return `Case ${index + 1}`
+    return `Testcase ${index + 1}`
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2.5">
-        <StatusBadge status={result.overallVerdict} />
-        <Badge variant="secondary" className="tabular-nums">
-          {result.passedTestCases} / {result.totalTestCases} test cases
-        </Badge>
+        {overallVerdict ? <StatusBadge status={overallVerdict} /> : <StatusBadge status="Pending" />}
+        {totalCases > 0 && (
+          <Badge variant="secondary" className="tabular-nums">
+            {summary?.passedCount ?? result?.passedTestCases ?? 0} / {totalCases} test cases
+          </Badge>
+        )}
         <span className="grow" />
-        <span className="font-mono text-xs text-muted-foreground">
-          {formatMs(result.totalExecutionTimeMs)} · {formatKb(result.peakMemoryKb)}
-        </span>
+        {(totalRuntimeMs > 0 || peakMemoryKb > 0) && (
+          <span className="font-mono text-xs text-muted-foreground">
+            {formatMs(totalRuntimeMs)} · {formatKb(peakMemoryKb)}
+          </span>
+        )}
       </div>
 
-      {result.compileErrorLogs && (
+      {compileError && (
         <pre className="overflow-x-auto rounded-md border border-destructive/40 bg-destructive/10 p-3 font-mono text-sm leading-5 text-destructive">
-          {result.compileErrorLogs}
+          {compileError}
         </pre>
       )}
 
-      {displayRows.length > 0 ? (
+      {rows.length > 0 ? (
         <div className="min-w-0 space-y-3" aria-label="Testcase results">
-          {displayRows.map(({ row, sample, index }) => {
-            const resolvedSample = sample
-              ?? (row ? sampleTestCases.find((item) => item.id === row.testCaseId) : undefined)
-              ?? (submissionType === 'CUSTOM_RUN' && runCaseId?.startsWith('sample:')
-                ? sampleTestCases.find((item) => `sample:${item.id}` === runCaseId)
-                : undefined)
-            const runCustomId = runCaseId?.startsWith('custom:') ? runCaseId.slice('custom:'.length) : null
-            const custom = submissionType === 'CUSTOM_RUN' && runCustomId
-              ? customCases.find((item) => item.id === runCustomId)
-              : null
-            const input = resolvedSample?.input ?? custom?.input
-            const expected = row?.expectedOutput ?? resolvedSample?.output ?? 'Not provided for this run.'
-
-            return (
-              <article key={`${row?.testCaseId ?? resolvedSample?.id ?? 'case'}-${index}`} className="min-w-0 space-y-3 rounded-lg border border-border bg-card p-3">
-                <header className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-semibold text-foreground">
-                    {submissionType === 'EXAMPLE_EVAL' ? `Sample ${index + 1}` : `Testcase ${index + 1}`}
-                  </span>
-                  {row ? <StatusBadge status={row.status} /> : <StatusBadge status="Pending" />}
-                  <span className="grow" />
-                  {row && (
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {formatMs(row.executionTimeMs)} · {formatKb(row.memoryUsedKb)}
-                    </span>
-                  )}
-                </header>
-                {input !== undefined && (
-                  <div className="min-w-0 space-y-1.5">
-                    <p className="text-xs font-medium text-muted-foreground">Input</p>
-                    <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 font-mono text-xs leading-5 text-foreground">{input || '—'}</pre>
-                  </div>
-                )}
-                <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-                  <div className="min-w-0 space-y-1.5">
-                    <p className="text-xs font-medium text-muted-foreground">Expected output</p>
-                    <pre className="max-h-40 min-h-12 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 font-mono text-xs leading-5 text-foreground">{expected}</pre>
-                  </div>
-                  <div className="min-w-0 space-y-1.5">
-                    <p className="text-xs font-medium text-muted-foreground">Actual output</p>
-                    <pre className="max-h-40 min-h-12 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 font-mono text-xs leading-5 text-foreground">{row?.actualOutput ?? row?.stdout ?? (row ? 'No output returned.' : 'No result was returned for this sample.')}</pre>
-                  </div>
-                </div>
-                {!row && submissionType === 'EXAMPLE_EVAL' && (
-                  <p className="text-xs text-warning">This sample did not have a result in the example-evaluation response.</p>
-                )}
-                {row?.stderr && (
-                  <div className="min-w-0 space-y-1.5">
-                    <p className="text-xs font-medium text-destructive">Stderr</p>
-                    <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-destructive/10 p-3 font-mono text-xs leading-5 text-destructive">{row.stderr}</pre>
-                  </div>
-                )}
-              </article>
-            )
-          })}
+          {rows.map((row, index) => (
+            <CaseCard
+              key={row?.caseId ?? `pending-${index}`}
+              index={index}
+              title={label(index)}
+              row={row}
+              sample={row?.kind === 'SAMPLE' ? sampleTestCases.find((item) => item.id === row.caseId) : undefined}
+            />
+          ))}
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">No testcase details were returned for this run.</p>
       )}
     </div>
+  )
+}
+
+function CaseCard({
+  index,
+  title,
+  row,
+  sample,
+}: {
+  index: number
+  title: string
+  row: RunCaseResult | null
+  sample: SampleTestCase | undefined
+}) {
+  if (!row) {
+    return (
+      <article className="min-w-0 space-y-2 rounded-lg border border-border bg-card p-3">
+        <header className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-foreground">{title}</span>
+          <StatusBadge status="Pending" />
+        </header>
+        <p className="text-xs text-muted-foreground">Waiting for this case to finish…</p>
+      </article>
+    )
+  }
+
+  const isCustom = row.kind === 'CUSTOM'
+  const isHidden = row.kind === 'HIDDEN'
+  // `CASE_RESULT` echoes the exact stdin the judge fed the program, so it is
+  // authoritative for custom cases too.
+  const input = row.input ?? sample?.input ?? ''
+  // Empty string = printed nothing; null = not ours to show.
+  const actual = row.actualOutput ?? row.stdout
+
+  return (
+    <article className="min-w-0 space-y-3 rounded-lg border border-border bg-card p-3">
+      <header className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-semibold text-foreground">{title}</span>
+        <StatusBadge status={row.status} />
+        <span className="grow" />
+        <span className="font-mono text-xs text-muted-foreground">
+          {formatMs(row.runtimeMs)} · {formatKb(row.memoryKb)}
+        </span>
+      </header>
+
+      {isHidden ? (
+        <p className="text-sm text-muted-foreground">
+          {row.status === 'ACCEPTED'
+            ? `Hidden test case ${index + 1} passed.`
+            : `Hidden test case ${index + 1}: ${verdictLabel(row.status)}. The judge keeps the input and expected output of hidden cases private.`}
+        </p>
+      ) : (
+        <>
+          <div className="min-w-0 space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">Input</p>
+            <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 font-mono text-xs leading-5 text-foreground">
+              {input || '—'}
+            </pre>
+          </div>
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+            <div className="min-w-0 space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Expected output</p>
+              <pre className="max-h-40 min-h-12 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 font-mono text-xs leading-5 text-foreground">
+                {isCustom ? 'No expected output for a custom testcase.' : (row.expectedOutput || '(empty)')}
+              </pre>
+            </div>
+            <div className="min-w-0 space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Actual output</p>
+              <pre
+                className={`max-h-40 min-h-12 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 font-mono text-xs leading-5 ${
+                  row.status === 'ACCEPTED' ? 'text-foreground' : 'text-destructive'
+                }`}
+              >
+                {actual === null ? 'Not available.' : actual === '' ? 'No output — the program printed nothing.' : actual}
+              </pre>
+            </div>
+          </div>
+        </>
+      )}
+
+      {row.stderr && (
+        <div className="min-w-0 space-y-1.5">
+          <p className="text-xs font-medium text-destructive">Stderr</p>
+          <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-destructive/10 p-3 font-mono text-xs leading-5 text-destructive">{row.stderr}</pre>
+        </div>
+      )}
+    </article>
   )
 }
