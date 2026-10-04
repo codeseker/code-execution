@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '../components/icons'
 import { CodeEditor, monacoLanguageFor } from '../components/CodeEditor'
@@ -25,13 +25,14 @@ import { useExampleEval, useRun, useSubmit } from '../hooks/submissions/useSubmi
 import useActiveSubmission from '../hooks/submissions/useActiveSubmission'
 import { useMySubmissions } from '../hooks/submissions/useSubmissions'
 import useToggleBookmark from '../hooks/lists/useToggleBookmark'
-import { LANGUAGES, type Language } from '../types/domain'
+import { LANGUAGES, type Language, type SubmissionType } from '../types/domain'
 import { languageLabel } from '../lib/format'
 import { useAuthStore } from '../stores/auth'
 import { errorToast } from '../toast'
 
 const TABS = ['Description', 'Submissions'] as const
 type Tab = (typeof TABS)[number]
+type CustomTestCase = { id: string; input: string }
 
 /** Default editor language when the problem ships no template for it. */
 const FALLBACK_LANGUAGE: Language = 'python'
@@ -51,7 +52,13 @@ export default function Workspace() {
   const [language, setLanguage] = useState<Language>(FALLBACK_LANGUAGE)
   const [code, setCode] = useState('')
   const [customInput, setCustomInput] = useState('')
-  const [pane, setPane] = useState<'problem' | 'code' | 'console'>('problem')
+  const [customTestCases, setCustomTestCases] = useState<CustomTestCase[]>([])
+  const [activeTestCaseId, setActiveTestCaseId] = useState('')
+  const [focusCustomTestCaseId, setFocusCustomTestCaseId] = useState<string | null>(null)
+  const [consoleTab, setConsoleTab] = useState<'testcase' | 'result'>('testcase')
+  const [runCaseId, setRunCaseId] = useState<string | null>(null)
+  const nextCustomTestCaseId = useRef(1)
+  const [pane, setPane] = useState<'description' | 'code' | 'testcases'>('description')
   const [consoleOpen, setConsoleOpen] = useState(true)
   const [autoComplete, setAutoComplete] = useState(true)
   const [fontSize, setFontSize] = useState(13)
@@ -60,6 +67,14 @@ export default function Workspace() {
   const [activeSubmissionId, setActiveSubmissionId] = useState<string | null>(null)
   const [queuePosition, setQueuePosition] = useState<number | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [isEditorFullscreen, setIsEditorFullscreen] = useState(false)
+  const editorPaneRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const syncFullscreen = () => setIsEditorFullscreen(document.fullscreenElement === editorPaneRef.current)
+    document.addEventListener('fullscreenchange', syncFullscreen)
+    return () => document.removeEventListener('fullscreenchange', syncFullscreen)
+  }, [])
 
   const availableLanguages = useMemo<Language[]>(() => {
     if (!problem) return []
@@ -75,6 +90,20 @@ export default function Workspace() {
     setActiveSubmissionId(null)
     setQueuePosition(null)
     setCustomInput(problem.sampleTestCases[0]?.input ?? '')
+    const firstSample = problem.sampleTestCases[0]
+    if (firstSample) {
+      setCustomTestCases([])
+      setActiveTestCaseId(`sample:${firstSample.id}`)
+      nextCustomTestCaseId.current = 1
+    } else {
+      const initialCase = { id: 'custom-1', input: '' }
+      setCustomTestCases([initialCase])
+      setActiveTestCaseId(`custom:${initialCase.id}`)
+      nextCustomTestCaseId.current = 2
+    }
+    setFocusCustomTestCaseId(null)
+    setConsoleTab('testcase')
+    setRunCaseId(null)
   }, [problem])
 
   useEffect(() => {
@@ -86,6 +115,7 @@ export default function Workspace() {
   const run = useRun()
   const submit = useSubmit()
   const exampleEval = useExampleEval()
+  const requestPending = run.loading || submit.loading || exampleEval.loading
 
   const { problems: catalogue } = usePublicProblems({ page: 1, limit: 100 })
   const neighbours = useMemo(() => catalogue.filter((item) => item.slug !== slug), [catalogue, slug])
@@ -108,8 +138,9 @@ export default function Workspace() {
 
   const queueRun = useCallback(
     async (mode: 'run' | 'submit' | 'sample') => {
-      if (!problem) return
+      if (!problem || requestPending) return
       setQueuePosition(null)
+      setRunCaseId(mode === 'run' ? activeTestCaseId : null)
       try {
         const ack =
           mode === 'run'
@@ -123,7 +154,7 @@ export default function Workspace() {
         // The mutation hooks already surfaced the backend message.
       }
     },
-    [problem, run, submit, exampleEval, code, language, customInput],
+    [problem, run, submit, exampleEval, code, language, customInput, activeTestCaseId, requestPending],
   )
 
   const onRun = useCallback(() => {
@@ -137,6 +168,38 @@ export default function Workspace() {
   const onRunSamples = useCallback(() => {
     if (guardAuth()) void queueRun('sample')
   }, [guardAuth, queueRun])
+
+  const addCustomTestCase = useCallback(() => {
+    const id = `custom-${nextCustomTestCaseId.current++}`
+    setCustomTestCases((current) => [...current, { id, input: '' }])
+    setActiveTestCaseId(`custom:${id}`)
+    setCustomInput('')
+    setFocusCustomTestCaseId(id)
+  }, [])
+
+  const removeCustomTestCase = useCallback((id: string) => {
+    if (!problem) return
+    const index = customTestCases.findIndex((item) => item.id === id)
+    if (index < 0 || customTestCases.length + problem.sampleTestCases.length <= 1) return
+    const nextCases = customTestCases.filter((item) => item.id !== id)
+    setCustomTestCases(nextCases)
+    if (activeTestCaseId !== `custom:${id}`) return
+    const fallbackCase = nextCases[Math.min(index, nextCases.length - 1)]
+    const fallbackSample = problem.sampleTestCases[0]
+    const nextId = fallbackCase
+      ? `custom:${fallbackCase.id}`
+      : fallbackSample
+        ? `sample:${fallbackSample.id}`
+        : ''
+    setActiveTestCaseId(nextId)
+    if (fallbackCase) setCustomInput(fallbackCase.input)
+    else if (fallbackSample) setCustomInput(fallbackSample.input)
+  }, [activeTestCaseId, customTestCases, problem])
+
+  const updateCustomTestCase = useCallback((id: string, input: string) => {
+    setCustomTestCases((current) => current.map((item) => item.id === id ? { ...item, input } : item))
+    if (activeTestCaseId === `custom:${id}`) setCustomInput(input)
+  }, [activeTestCaseId])
 
   const { submissions, loading: submissionsLoading, refetch: refetchSubmissions } = useMySubmissions(
     useMemo(() => ({ problemId: problem?.id, limit: 10 }), [problem?.id]),
@@ -170,7 +233,7 @@ export default function Workspace() {
 
   if (loading) {
     return (
-      <main className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background" aria-busy="true" aria-label="Loading problem workspace">
+      <main className="flex h-workspace min-h-0 flex-col overflow-hidden bg-background" aria-busy="true" aria-label="Loading problem workspace">
         <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">
           <Skeleton className="size-8 rounded-md" />
           <Skeleton className="hidden h-4 w-48 sm:block" />
@@ -299,19 +362,45 @@ export default function Workspace() {
   )
 
   const editorPane = (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-11 flex-none items-center gap-2 overflow-x-auto border-b border-border bg-muted/40 px-3">
+    <div ref={editorPaneRef} className="flex h-full min-h-0 flex-col bg-card">
+      <div className="flex h-11 min-h-11 flex-none items-center gap-1.5 overflow-x-auto border-b border-border bg-muted/40 px-2 sm:gap-2 sm:px-3">
         <BaseSelect
           value={language}
           onValueChange={(value) => {
             if (isLanguage(value)) setLanguage(value)
           }}
           ariaLabel="Editor language"
-          className="h-8 min-w-32"
+          className="h-8 min-w-28 shrink-0"
           options={availableLanguages.map((item) => ({ value: item, label: languageLabel(item) }))}
         />
         <Separator orientation="vertical" className="h-5" />
-        <label className="inline-flex shrink-0 items-center gap-2 text-sm text-muted-foreground" htmlFor="editor-autocomplete">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="shrink-0"
+          aria-label="Reset code to starter template"
+          title="Reset code"
+          onClick={() => setCode(problem.languageTemplates[language] ?? '')}
+        >
+          <Icon name="refresh" size={15} />
+        </Button>
+        <BaseTooltip content={isEditorFullscreen ? 'Exit fullscreen' : 'Expand editor'}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="shrink-0"
+            aria-label={isEditorFullscreen ? 'Exit fullscreen editor' : 'Expand editor fullscreen'}
+            onClick={() => {
+              if (document.fullscreenElement === editorPaneRef.current) void document.exitFullscreen()
+              else void editorPaneRef.current?.requestFullscreen()
+            }}
+          >
+            <Icon name="maximize" size={15} />
+          </Button>
+        </BaseTooltip>
+        <label className="hidden shrink-0 items-center gap-2 text-sm text-muted-foreground xl:inline-flex" htmlFor="editor-autocomplete">
           <Switch.Root
             id="editor-autocomplete"
             checked={autoComplete}
@@ -322,7 +411,6 @@ export default function Workspace() {
           </Switch.Root>
           Auto-complete
         </label>
-        <span className="grow" />
         <Popover.Root open={settingsOpen} onOpenChange={setSettingsOpen}>
           <BaseTooltip content="Editor settings">
             <Popover.Trigger
@@ -370,6 +458,31 @@ export default function Workspace() {
             </Popover.Positioner>
           </Popover.Portal>
         </Popover.Root>
+        <span className="grow" />
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-8 shrink-0"
+          aria-label="Run code"
+          title="Run the selected testcase input"
+          disabled={active.busy || requestPending}
+          onClick={onRun}
+        >
+          {active.busy ? <Spinner size={14} /> : <Icon name="play" size={14} />}
+          <span className="hidden sm:inline">Run</span>
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          className="h-8 shrink-0"
+          aria-label="Submit solution"
+          loading={active.busy || requestPending}
+          onClick={onSubmit}
+        >
+          <Icon name="upload" size={14} />
+          <span className="hidden sm:inline">Submit</span>
+        </Button>
       </div>
 
       <CodeEditor
@@ -401,6 +514,19 @@ export default function Workspace() {
       onCustomInputChange={setCustomInput}
       onRunSamples={onRunSamples}
       isAuthenticated={isAuthenticated}
+      requestPending={requestPending}
+      submissionType={active.submission?.type as SubmissionType | undefined}
+      view={consoleTab}
+      onViewChange={setConsoleTab}
+      customCases={customTestCases}
+      activeCaseId={activeTestCaseId}
+      onActiveCaseChange={setActiveTestCaseId}
+      onAddCustomCase={addCustomTestCase}
+      onRemoveCustomCase={removeCustomTestCase}
+      onCustomCaseInputChange={updateCustomTestCase}
+      focusCustomCaseId={focusCustomTestCaseId}
+      runCaseId={runCaseId}
+      key={problem.id}
     />
   )
 
@@ -422,37 +548,24 @@ export default function Workspace() {
           </Button>
         </div>
         <span className="grow" />
-        <div className="flex items-center gap-1.5">
-          <BaseTooltip content="Run against your own input (⌘↵)">
-            <Button variant="ghost" size="icon" className="size-8" type="button" aria-label="Run code" disabled={active.busy} onClick={onRun}>
-              {active.busy ? <Spinner size={16} /> : <Icon name="play" size={16} />}
-            </Button>
-          </BaseTooltip>
-          <BaseTooltip content="Judge every test case (⌘⇧↵)">
-            <Button size="sm" type="button" className="h-8" aria-label="Submit solution" loading={active.busy} onClick={onSubmit}>
-              <Icon name="upload" size={15} />
-              <span className="hidden sm:inline">Submit</span>
-            </Button>
-          </BaseTooltip>
-        </div>
         <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
         <ThemeToggle className="size-8" />
       </header>
 
       <main className="flex h-workspace min-h-0 flex-col overflow-hidden bg-background">
-        <div className="hidden min-h-0 grow p-2 lg:flex">
-          <ResizablePanelGroup orientation="horizontal" autoSaveId="codeforge-workspace-columns-v2" defaultLayout={{ problem: 36, right: 64 }} className="flex min-h-0 grow gap-2">
-            <ResizablePanel id="problem" defaultSize="36%" minSize="30%">
+        <div className="hidden min-h-0 grow p-1 md:flex">
+          <ResizablePanelGroup orientation="horizontal" autoSaveId="codeforge-workspace-columns-v2" defaultLayout={{ problem: 40, right: 60 }} className="flex min-h-0 grow gap-1">
+            <ResizablePanel id="problem" defaultSize="40%" minSize="30%">
               <PanelSurface className="h-full">{problemPane}</PanelSurface>
             </ResizablePanel>
             <ResizableHandle withHandle aria-label="Resize problem and editor panels" />
-            <ResizablePanel id="right" defaultSize="64%" minSize="35%">
-              <ResizablePanelGroup orientation="vertical" autoSaveId="codeforge-workspace-editor-console-v2" defaultLayout={{ editor: 54, console: 46 }} className="h-full min-h-0 gap-2">
-                <ResizablePanel id="editor" defaultSize="54%" minSize="34%">
+            <ResizablePanel id="right" defaultSize="60%" minSize="35%">
+              <ResizablePanelGroup orientation="vertical" autoSaveId="codeforge-workspace-editor-console-v2" defaultLayout={{ editor: 65, console: 35 }} className="h-full min-h-0 gap-1">
+                <ResizablePanel id="editor" defaultSize="65%" minSize="40%">
                   <PanelSurface className="h-full">{editorPane}</PanelSurface>
                 </ResizablePanel>
                 <ResizableHandle withHandle aria-label="Resize editor and console panels" />
-                <ResizablePanel id="console" defaultSize="46%" minSize="18%" collapsible collapsedSize="8%">
+                <ResizablePanel id="console" defaultSize="35%" minSize="25%">
                   <PanelSurface className="h-full">{consoleView}</PanelSurface>
                 </ResizablePanel>
               </ResizablePanelGroup>
@@ -460,23 +573,20 @@ export default function Workspace() {
           </ResizablePanelGroup>
         </div>
 
-        <div className="flex min-h-0 grow flex-col gap-2 p-2 lg:hidden">
+        <div className="flex min-h-0 grow flex-col gap-2 p-2 md:hidden">
           <BaseTabs value={pane} onValueChange={(value) => setPane(value as typeof pane)} className="flex min-h-0 grow flex-col gap-2">
             <BaseTabsList className="h-11 shrink-0 rounded-lg bg-muted/40 p-1">
-              <BaseTabsTrigger value="problem" className="h-9 flex-1">Problem</BaseTabsTrigger>
+              <BaseTabsTrigger value="description" className="h-9 flex-1">Description</BaseTabsTrigger>
               <BaseTabsTrigger value="code" className="h-9 flex-1">Code</BaseTabsTrigger>
-              <BaseTabsTrigger value="console" className="h-9 flex-1">Console</BaseTabsTrigger>
+              <BaseTabsTrigger value="testcases" className="h-9 flex-1">Testcases</BaseTabsTrigger>
             </BaseTabsList>
-            <BaseTabsPanel value="problem" className="min-h-0 grow">
+            <BaseTabsPanel value="description" className="min-h-0 grow">
               <PanelSurface className="h-full">{problemPane}</PanelSurface>
             </BaseTabsPanel>
             <BaseTabsPanel value="code" className="min-h-0 grow">
-              <div className="flex h-full min-h-0 flex-col gap-2">
-                <PanelSurface className="min-h-0 grow">{editorPane}</PanelSurface>
-                <PanelSurface className="h-2/5 min-h-48 shrink-0">{consoleView}</PanelSurface>
-              </div>
+              <PanelSurface className="h-full">{editorPane}</PanelSurface>
             </BaseTabsPanel>
-            <BaseTabsPanel value="console" className="min-h-0 grow">
+            <BaseTabsPanel value="testcases" className="min-h-0 grow">
               <PanelSurface className="h-full">{consoleView}</PanelSurface>
             </BaseTabsPanel>
           </BaseTabs>

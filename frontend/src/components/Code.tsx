@@ -82,7 +82,7 @@ export function buildTheme(dark: boolean): Parameters<Monaco['editor']['defineTh
       'editor.inactiveSelectionBackground': themeColor('--editor-selection'),
       'editorCursor.foreground': themeColor('--ring'),
       'editorGutter.background': themeColor('--editor-gutter'),
-      'scrollbarSlider.background': themeColor('--muted-foreground'),
+      'scrollbarSlider.background': themeColor('--editor-scrollbar-thumb'),
       'scrollbarSlider.hoverBackground': themeColor('--foreground'),
     },
   }
@@ -219,7 +219,7 @@ export function CodeView({
           scrollbar: {
             vertical: 'hidden',
             horizontal: 'auto',
-            horizontalScrollbarSize: SCROLLBAR,
+            horizontalScrollbarSize: 7,
             alwaysConsumeMouseWheel: false, // let the page scroll over the editor
             useShadows: false,
           },

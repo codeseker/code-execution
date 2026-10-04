@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react'
 import type { ComponentProps } from 'react'
-import { GripHorizontal, GripVertical } from 'lucide-react'
 import { Group, Panel, Separator } from 'react-resizable-panels'
 import { cn } from '../lib/utils'
 
@@ -53,16 +52,19 @@ export function ResizableHandle({
   return (
     <Separator
       className={cn(
-        'group relative z-10 flex shrink-0 items-center justify-center bg-border outline-none transition-colors hover:bg-ring focus-visible:bg-ring data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-px',
+        'group relative z-10 flex shrink-0 items-center justify-center bg-transparent outline-none after:pointer-events-none after:absolute after:rounded-full after:bg-border after:transition-colors hover:after:bg-primary/40 focus-visible:after:bg-ring data-[separator=active]:after:bg-ring aria-[orientation=vertical]:w-2 aria-[orientation=vertical]:cursor-col-resize aria-[orientation=vertical]:after:inset-y-0 aria-[orientation=vertical]:after:left-1/2 aria-[orientation=vertical]:after:w-px aria-[orientation=vertical]:after:-translate-x-1/2 aria-[orientation=horizontal]:h-2 aria-[orientation=horizontal]:cursor-row-resize aria-[orientation=horizontal]:after:top-1/2 aria-[orientation=horizontal]:after:right-0 aria-[orientation=horizontal]:after:left-0 aria-[orientation=horizontal]:after:h-px aria-[orientation=horizontal]:after:-translate-y-1/2',
         className,
       )}
       {...props}
     >
       {withHandle && (
-        <span className="flex size-5 items-center justify-center rounded border border-border bg-background text-muted-foreground group-hover:text-foreground group-focus-visible:text-foreground">
-          <GripHorizontal className="hidden size-3 group-data-[orientation=horizontal]:block" aria-hidden="true" />
-          <GripVertical className="hidden size-3 group-data-[orientation=vertical]:block" aria-hidden="true" />
-        </span>
+        <span
+          className={cn(
+            'pointer-events-none absolute z-10 rounded-full bg-primary/40 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100',
+            'h-1 w-4 group-aria-[orientation=vertical]:h-4 group-aria-[orientation=vertical]:w-1',
+          )}
+          aria-hidden="true"
+        />
       )}
     </Separator>
   )

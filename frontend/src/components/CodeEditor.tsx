@@ -155,7 +155,7 @@ export function CodeEditor({
           minimap: { enabled: false },
           scrollBeyondLastLine: false,
           wordWrap: 'off',
-          scrollbar: { useShadows: false, verticalScrollbarSize: 10, horizontalScrollbarSize: 10 },
+          scrollbar: { useShadows: false, verticalScrollbarSize: 7, horizontalScrollbarSize: 7 },
           overviewRulerLanes: 0,
           overviewRulerBorder: false,
           hideCursorInOverviewRuler: true,
