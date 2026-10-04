@@ -82,7 +82,7 @@ export function AdminProblems() {
 
   return (
     <AdminLayout>
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-5 px-4 py-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-360 flex-col gap-5 px-4 py-6 lg:px-8">
         <PageHead
           crumbs="ADMIN / PROBLEMS"
           title="Problem Catalog"
@@ -96,7 +96,7 @@ export function AdminProblems() {
         />
 
         <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5">
-          <div className="relative min-w-[220px] grow">
+          <div className="relative min-w-55 grow">
             <Icon name="search" size={14} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="h-8 pl-8"
@@ -217,11 +217,11 @@ export function AdminUsers() {
 
   return (
     <AdminLayout>
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-5 px-4 py-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-360 flex-col gap-5 px-4 py-6 lg:px-8">
         <PageHead crumbs="ADMIN / USERS" title="User Management" meta={`${pagination?.totalElements ?? 0} accounts`} />
 
         <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5">
-          <div className="relative min-w-[220px] grow">
+          <div className="relative min-w-55 grow">
             <Icon name="search" size={14} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="h-8 pl-8"
@@ -311,7 +311,7 @@ export function AdminSubmissions() {
 
   return (
     <AdminLayout>
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-5 px-4 py-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-360 flex-col gap-5 px-4 py-6 lg:px-8">
         <PageHead
           crumbs="ADMIN / SUBMISSIONS"
           title="Judge Throughput"

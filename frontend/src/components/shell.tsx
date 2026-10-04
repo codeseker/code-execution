@@ -95,14 +95,14 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-start justify-center bg-background/80 pt-[14vh]"
+      className="fixed inset-0 z-70 flex items-start justify-center bg-background/80 pt-[14vh]"
       role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
       <div
-        className="w-full max-w-[600px] overflow-hidden rounded-xl border border-border bg-popover shadow-e3 anim-scale-in"
+        className="w-full max-w-150 overflow-hidden rounded-xl border border-border bg-popover shadow-xl anim-scale-in"
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
@@ -111,14 +111,14 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
           <Icon name="search" size={16} className="text-muted-foreground" />
           <input
             ref={inputRef}
-            className="h-12 w-full bg-transparent text-[15px] outline-none placeholder:text-muted-foreground"
+            className="h-12 w-full bg-transparent text-base outline-none placeholder:text-muted-foreground"
             placeholder="Search problems, pages and actions…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
           <span className="kbd">esc</span>
         </div>
-        <div className="scroll-y max-h-[380px] p-2">
+        <div className="scroll-y max-h-95 p-2">
           {Object.entries(groups).map(([group, items]) => (
             <div key={group} className="mb-1.5 last:mb-0">
               <p className="text-sm font-semibold px-2 pt-2 pb-1 text-muted-foreground">{group}</p>
@@ -198,7 +198,7 @@ export function PortalTopbar({ active }: { active?: string }) {
               key={n.to}
               to={n.to}
               className={cx(
-                'rounded px-2.5 py-1 text-[14px] transition-colors hover:bg-muted/40',
+                'rounded px-2.5 py-1 text-sm transition-colors hover:bg-muted/40',
                 active === n.label ? 'bg-muted/40 font-medium text-foreground' : 'text-muted-foreground',
               )}
             >
@@ -212,12 +212,12 @@ export function PortalTopbar({ active }: { active?: string }) {
         {/* Search trigger (opens ⌘K palette) */}
         <CustomButton variant="unstyled"
           type="button"
-          className="input hidden h-7 w-[240px] cursor-pointer items-center gap-2 border-border text-left text-muted-foreground lg:flex"
+          className="input hidden h-7 w-60 cursor-pointer items-center gap-2 border-border text-left text-muted-foreground lg:flex"
           onClick={() => setPalette(true)}
           aria-label="Search problems (Command K)"
         >
           <Icon name="search" size={13} />
-          <span className="grow text-[13px]">Search problems…</span>
+          <span className="grow text-sm">Search problems…</span>
           <span className="kbd">⌘K</span>
         </CustomButton>
         <CustomButton variant="unstyled"
@@ -250,7 +250,7 @@ export function PortalTopbar({ active }: { active?: string }) {
                 aria-label="Close notifications"
                 onClick={() => setPanel('none')}
               />
-              <div className="absolute right-0 z-50 mt-2 w-[320px] popover anim-fade-up">
+              <div className="absolute right-0 z-50 mt-2 w-80 popover anim-fade-up">
                 <p className="text-sm font-semibold px-2 pt-1.5 pb-1 text-muted-foreground">Notifications</p>
                 {NOTIFICATIONS.map((n) => (
                   <div key={n.title} className="menu-item h-auto items-start gap-2.5 px-2 py-2">
@@ -289,7 +289,7 @@ export function PortalTopbar({ active }: { active?: string }) {
                 aria-label="Close menu"
                 onClick={() => setPanel('none')}
               />
-              <div className="absolute right-0 z-50 mt-2 w-[240px] popover anim-fade-up" role="menu">
+              <div className="absolute right-0 z-50 mt-2 w-60 popover anim-fade-up" role="menu">
                 <div className="border-b border-border px-2 pt-1.5 pb-2">
                   <p className="text-sm font-medium truncate text-foreground">Guest</p>
                   <p className="text-xs truncate text-muted-foreground">Public access</p>

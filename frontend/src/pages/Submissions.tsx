@@ -48,16 +48,17 @@ export default function Submissions() {
     [problem?.id, filters, page],
   )
 
-  const { submissions, pagination, loading, error } = useMySubmissions(query, { enabled: isAuthenticated })
+  const { submissions, pagination, loading, error, refetch } = useMySubmissions(query, { enabled: isAuthenticated })
 
   // The inspector polls while the selected job is still in the queue.
   const detail = useSubmission(selectedId ?? undefined, { live: true })
 
   const acceptedCount = submissions.filter((item) => item.verdict === 'ACCEPTED').length
+  const hasFilters = filters.language !== 'ALL' || filters.status !== 'ALL'
 
   if (!isAuthenticated) {
     return (
-      <div className="flex min-h-[calc(100vh-3.5rem)] flex-col bg-background">
+      <div className="flex min-h-app flex-col bg-background">
         <EmptyState
           icon="lock"
           title="Sign in to see your submissions"
@@ -73,7 +74,7 @@ export default function Submissions() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col bg-background">
+    <div className="flex min-h-app flex-col bg-background">
       <header className="flex h-11 flex-none items-center gap-3 border-b border-border px-3">
         <Button variant="ghost" size="icon" className="size-7" type="button" aria-label="Back to problem" onClick={() => navigate(`/problems/${slug ?? ''}`)}>
           <Icon name="chevronLeft" size={15} />
@@ -84,10 +85,10 @@ export default function Submissions() {
         </CustomLink>
         {problem && <DifficultyBadge difficulty={problem.difficulty} className="hidden sm:inline-flex" />}
         <nav className="ml-2 hidden items-center gap-1 lg:flex" aria-label="Problem views">
-          <CustomLink variant="unstyled" to={`/problems/${slug ?? ''}`} className="rounded px-2.5 py-1 text-[14px] text-muted-foreground hover:bg-muted/40 hover:text-foreground">
+          <CustomLink variant="unstyled" to={`/problems/${slug ?? ''}`} className="rounded px-2.5 py-1 text-sm text-muted-foreground hover:bg-muted/40 hover:text-foreground">
             Problem
           </CustomLink>
-          <span className="rounded bg-muted/40 px-2.5 py-1 text-[14px] font-medium text-foreground">Submissions</span>
+          <span className="rounded bg-muted/40 px-2.5 py-1 text-sm font-medium text-foreground">Submissions</span>
         </nav>
         <span className="grow" />
         <CustomLink variant="unstyled" to={`/problems/${slug ?? ''}`} className="btn btn-primary">
@@ -128,7 +129,7 @@ export default function Submissions() {
         </span>
       </div>
 
-      <main className="mx-auto grid w-full max-w-[1460px] grow items-start gap-5 px-4 py-5 lg:grid-cols-[minmax(0,1fr)_460px] lg:px-8">
+      <main className="mx-auto grid w-full max-w-365 grow items-start gap-5 px-4 py-5 lg:grid-cols-[minmax(0,1fr)_460px] lg:px-8">
         <section className="min-w-0 overflow-hidden rounded-lg border border-border bg-card" aria-label="Submissions list">
           {loading ? (
             <div className="flex flex-col gap-2 p-4" aria-busy="true" aria-label="Loading submissions">
@@ -137,12 +138,22 @@ export default function Submissions() {
               ))}
             </div>
           ) : error ? (
-            <EmptyState icon="alert" title="We could not load your submissions" hint="Please retry in a moment." />
+            <EmptyState
+              icon="alert"
+              title="We could not load your submissions"
+              hint="Please retry in a moment."
+              action={<Button type="button" variant="outline" onClick={() => void refetch()}><Icon name="refresh" size={14} />Retry</Button>}
+            />
           ) : submissions.length === 0 ? (
             <EmptyState
-              icon="history"
-              title="No submissions match these filters"
-              hint="Clear the language or status filter to see your full history."
+              icon={hasFilters ? 'search' : 'history'}
+              title={hasFilters ? 'No submissions match these filters' : 'No submissions yet'}
+              hint={hasFilters ? 'Clear the language or status filter to see your full history.' : 'Submit a solution to see verdicts, runtimes and memory usage here.'}
+              action={hasFilters ? (
+                <Button type="button" variant="outline" onClick={() => { setFilters(EMPTY_FILTERS); setPage(1) }}>Clear filters</Button>
+              ) : (
+                <CustomLink variant="unstyled" to={`/problems/${slug ?? ''}`} className="btn btn-primary">Start solving</CustomLink>
+              )}
             />
           ) : (
             <div className="overflow-x-auto">

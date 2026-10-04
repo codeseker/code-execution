@@ -5,6 +5,7 @@ import { CodeEditor, monacoLanguageFor } from '../components/CodeEditor'
 import { Spinner, ThemeToggle } from '../components/ui'
 import { EngineStatusBar } from '../components/shell'
 import { Button } from '../components/ui/button'
+import { Skeleton } from '../components/ui/skeleton'
 import { BaseTabs, BaseTabsList, BaseTabsPanel, BaseTabsTrigger } from '../components/BaseTabs'
 import { BaseSelect } from '../components/BaseSelect'
 import { BaseTooltip } from '../components/BaseTooltip'
@@ -169,15 +170,39 @@ export default function Workspace() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-background">
-        <Spinner size={24} className="text-muted-foreground" />
-      </div>
+      <main className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background" aria-busy="true" aria-label="Loading problem workspace">
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">
+          <Skeleton className="size-8 rounded-md" />
+          <Skeleton className="hidden h-4 w-48 sm:block" />
+          <span className="grow" />
+          <Skeleton className="size-8 rounded-md" />
+          <Skeleton className="h-8 w-20 rounded-md" />
+        </header>
+        <div className="hidden min-h-0 grow gap-2 p-2 lg:flex">
+          <section className="flex min-w-0 flex-1 flex-col gap-4 rounded-lg border border-border bg-card p-5">
+            <Skeleton className="h-8 w-2/3" />
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="mt-4 h-5 w-1/2" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </section>
+          <section className="flex min-w-0 flex-1 flex-col gap-2">
+            <Skeleton className="min-h-0 grow rounded-lg" />
+            <Skeleton className="h-2/5 rounded-lg" />
+          </section>
+        </div>
+        <div className="flex min-h-0 grow flex-col gap-2 p-2 lg:hidden">
+          <Skeleton className="h-11 shrink-0 rounded-lg" />
+          <Skeleton className="min-h-0 grow rounded-lg" />
+        </div>
+        <div className="hidden h-6 shrink-0 border-t border-border sm:block" />
+      </main>
     )
   }
 
   if (notFound) {
     return (
-      <div className="flex min-h-[calc(100vh-3.5rem)] flex-col bg-background">
+      <div className="flex min-h-app flex-col bg-background">
         <EmptyState
           icon="search"
           title="Problem not found"
@@ -194,7 +219,7 @@ export default function Workspace() {
 
   if (!problem || error) {
     return (
-      <div className="flex min-h-[calc(100vh-3.5rem)] flex-col bg-background">
+      <div className="flex min-h-app flex-col bg-background">
         <EmptyState
           icon="alert"
           title="We could not load this problem"
@@ -291,9 +316,9 @@ export default function Workspace() {
             id="editor-autocomplete"
             checked={autoComplete}
             onCheckedChange={setAutoComplete}
-            className="relative inline-flex h-5 w-9 items-center rounded-full bg-input transition-colors data-[checked]:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="relative inline-flex h-5 w-9 items-center rounded-full bg-control-border transition-colors data-checked:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <Switch.Thumb className="block size-4 translate-x-0.5 rounded-full bg-background shadow-sm transition-transform data-[checked]:translate-x-4" />
+            <Switch.Thumb className="block size-4 translate-x-0.5 rounded-full bg-background shadow-sm transition-transform data-checked:translate-x-4" />
           </Switch.Root>
           Auto-complete
         </label>
@@ -399,12 +424,12 @@ export default function Workspace() {
         <span className="grow" />
         <div className="flex items-center gap-1.5">
           <BaseTooltip content="Run against your own input (⌘↵)">
-            <Button variant="ghost" size="icon" className="size-8" type="button" disabled={active.busy} onClick={onRun}>
-              <Icon name="play" size={16} />
+            <Button variant="ghost" size="icon" className="size-8" type="button" aria-label="Run code" disabled={active.busy} onClick={onRun}>
+              {active.busy ? <Spinner size={16} /> : <Icon name="play" size={16} />}
             </Button>
           </BaseTooltip>
           <BaseTooltip content="Judge every test case (⌘⇧↵)">
-            <Button size="sm" type="button" className="h-8" disabled={active.busy} onClick={onSubmit}>
+            <Button size="sm" type="button" className="h-8" aria-label="Submit solution" loading={active.busy} onClick={onSubmit}>
               <Icon name="upload" size={15} />
               <span className="hidden sm:inline">Submit</span>
             </Button>
@@ -414,7 +439,7 @@ export default function Workspace() {
         <ThemeToggle className="size-8" />
       </header>
 
-      <main className="flex h-[calc(100dvh-3.5rem)] min-h-0 flex-col overflow-hidden bg-background">
+      <main className="flex h-workspace min-h-0 flex-col overflow-hidden bg-background">
         <div className="hidden min-h-0 grow p-2 lg:flex">
           <ResizablePanelGroup orientation="horizontal" autoSaveId="codeforge-workspace-columns-v2" defaultLayout={{ problem: 36, right: 64 }} className="flex min-h-0 grow gap-2">
             <ResizablePanel id="problem" defaultSize="36%" minSize="30%">
@@ -448,7 +473,7 @@ export default function Workspace() {
             <BaseTabsPanel value="code" className="min-h-0 grow">
               <div className="flex h-full min-h-0 flex-col gap-2">
                 <PanelSurface className="min-h-0 grow">{editorPane}</PanelSurface>
-                <PanelSurface className="h-[40%] min-h-48 shrink-0">{consoleView}</PanelSurface>
+                <PanelSurface className="h-2/5 min-h-48 shrink-0">{consoleView}</PanelSurface>
               </div>
             </BaseTabsPanel>
             <BaseTabsPanel value="console" className="min-h-0 grow">

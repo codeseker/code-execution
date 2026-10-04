@@ -43,7 +43,7 @@ export default function AppNavbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-6xl items-center px-4 py-3 sm:px-6">
-        <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-full border border-border bg-background/80 px-2 py-2 shadow-sm shadow-black/5">
+          <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-full border border-border bg-background/80 px-2 py-2 shadow-sm">
           <div className="flex items-center justify-self-start pl-2">
             <Link to="/" className="inline-flex items-center gap-2 rounded-full px-2 py-1.5 transition-colors hover:bg-primary/10" aria-label="CodeForge home">
               <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
@@ -127,7 +127,7 @@ export default function AppNavbar() {
                         <Menu className="h-4 w-4" />
                       </Button>
                     </SheetTrigger>
-                    <SheetContent side="right" className="w-[85vw] sm:max-w-sm">
+                    <SheetContent side="right" className="w-11/12 sm:max-w-sm">
                       <div className="mt-4 space-y-4">
                         {NAV_ITEMS.map((item) => (
                           <NavLink
@@ -150,12 +150,8 @@ export default function AppNavbar() {
               </>
             ) : (
               <div className="flex items-center gap-2">
-                <Button variant="ghost" >
-                  <Link to="/login">Log in</Link>
-                </Button>
-                <Button  className="hidden sm:inline-flex">
-                  <Link to="/register">Create account</Link>
-                </Button>
+                <Button variant="ghost" render={<Link to="/login" />}>Log in</Button>
+                <Button className="hidden sm:inline-flex" render={<Link to="/register" />}>Create account</Button>
               </div>
             )}
           </div>

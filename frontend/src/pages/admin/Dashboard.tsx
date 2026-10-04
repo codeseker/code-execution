@@ -174,7 +174,7 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout>
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-5 px-4 py-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-360 flex-col gap-5 px-4 py-6 lg:px-8">
         <div className="flex flex-col gap-1">
           <p className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
             ADMIN / DASHBOARD

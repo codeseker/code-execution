@@ -121,7 +121,7 @@ export function CodeEditor({
   const fontFamily = getComputedStyle(document.documentElement).getPropertyValue('--font-mono').trim()
 
   return (
-    <div className={cx('relative min-h-0 overflow-hidden bg-card', className)}>
+    <div className={cx('relative min-h-0 overflow-hidden bg-editor-background', className)}>
       <Editor
         height="100%"
         width="100%"
@@ -131,7 +131,7 @@ export function CodeEditor({
         beforeMount={beforeMount}
         onMount={onMount}
         onChange={(v) => onChange(v ?? '')}
-        loading={<div className="h-full w-full animate-pulse bg-muted" />}
+        loading={<div className="h-full w-full animate-pulse bg-editor-background" />}
         options={{
           readOnly,
           ariaLabel: 'Code editor',

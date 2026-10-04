@@ -62,7 +62,7 @@ export default function ProblemRow({
         )}
         <div className="mt-1 hidden flex-wrap gap-1.5 sm:flex">
           {problem.tags.slice(0, 3).map((tag) => (
-            <Badge key={tag} variant="secondary" className="rounded-sm px-1.5 py-0 text-[11px] font-normal">
+            <Badge key={tag} variant="secondary" className="rounded-sm px-1.5 py-0 text-xs font-normal">
               {tag}
             </Badge>
           ))}

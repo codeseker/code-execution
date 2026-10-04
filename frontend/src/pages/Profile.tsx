@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 
-import { EmptyState, Spinner, cx } from '../components/ui'
+import { EmptyState, cx } from '../components/ui'
 import { Icon } from '../components/icons'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
+import { Skeleton } from '../components/ui/skeleton'
 import CustomLink from '../components/CustomLink'
 import ProfileStats from '../components/profile/ProfileStats'
 import ProfileActivity from '../components/profile/ProfileActivity'
@@ -24,7 +25,7 @@ import { DIFFICULTIES, type Difficulty } from '../types/domain'
  * per-difficulty breakdown.
  */
 export default function Profile() {
-  const { profile, loading: profileLoading } = useProfile()
+  const { profile, loading: profileLoading, error: profileError, refetch: refetchProfile } = useProfile()
   const { stats, loading: statsLoading } = useMyStats()
   const { problems: catalogue } = usePublicProblems({ page: 1, limit: 100 })
   const { bookmarks, loading: bookmarksLoading } = useBookmarks()
@@ -56,23 +57,44 @@ export default function Profile() {
 
   if (profileLoading) {
     return (
-      <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-background">
-        <Spinner size={24} className="text-muted-foreground" />
-      </div>
+      <main className="mx-auto flex min-h-app w-full max-w-7xl flex-col gap-4 px-4 py-6 lg:px-8" aria-busy="true" aria-label="Loading profile">
+        <section className="flex items-center gap-5 rounded-xl border border-border bg-card p-5 lg:p-6">
+          <Skeleton className="size-20 shrink-0 rounded-full" />
+          <div className="flex min-w-0 grow flex-col gap-3">
+            <Skeleton className="h-6 w-48 max-w-full" />
+            <Skeleton className="h-4 w-64 max-w-full" />
+          </div>
+        </section>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <section key={index} className="flex min-h-56 flex-col gap-4 rounded-xl border border-border bg-card p-5">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-8 w-20" />
+              <Skeleton className="h-2 w-full" />
+              <Skeleton className="mt-auto h-20 w-full" />
+            </section>
+          ))}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+          <Skeleton className="h-72 w-full rounded-xl" />
+          <Skeleton className="h-72 w-full rounded-xl" />
+        </div>
+      </main>
     )
   }
 
   if (!profile) {
     return (
-      <div className="flex min-h-[calc(100vh-3.5rem)] flex-col bg-background">
+      <div className="flex min-h-app flex-col bg-background">
         <EmptyState
           icon="user"
           title="We could not load your profile"
-          hint="Your session may have expired. Sign in again to continue."
+          hint={profileError ? 'Your profile could not be loaded. Please try again, or sign in again if your session expired.' : 'Your session may have expired. Sign in again to continue.'}
           action={
-            <CustomLink variant="unstyled" to="/login" className="btn btn-primary">
-              Log in
-            </CustomLink>
+            <div className="flex flex-wrap justify-center gap-2">
+              {profileError && <Button type="button" variant="outline" onClick={() => void refetchProfile()}>Retry</Button>}
+              <CustomLink variant="unstyled" to="/login" className="btn btn-primary">Log in</CustomLink>
+            </div>
           }
         />
       </div>
@@ -80,8 +102,8 @@ export default function Profile() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col bg-background">
-      <main className="mx-auto w-full max-w-[1280px] grow px-4 py-6 lg:px-8">
+    <div className="flex min-h-app flex-col bg-background">
+      <main className="mx-auto w-full max-w-7xl grow px-4 py-6 lg:px-8">
         <div className="flex flex-col gap-4">
           {/* -------- Identity card -------- */}
           <section className="rounded-xl border border-border bg-card p-5 shadow-sm lg:p-6">

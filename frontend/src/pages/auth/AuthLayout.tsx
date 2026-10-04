@@ -12,9 +12,9 @@ export function AuthLayout({
   showcase: ReactNode
 }) {
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] bg-background">
-      <div className="flex w-full flex-col px-6 py-6 sm:px-10 lg:w-[48%] lg:min-w-[520px] lg:px-16">
-        <main className="mx-auto flex w-full max-w-[400px] grow flex-col justify-center py-12">
+    <div className="flex min-h-app bg-background">
+      <div className="flex w-full flex-col px-6 py-6 sm:px-10 lg:w-1/2 lg:min-w-130 lg:px-16">
+        <main className="mx-auto flex w-full max-w-100 grow flex-col justify-center py-12">
           {children}
         </main>
       </div>
@@ -47,7 +47,7 @@ export function AuthShowcase({ headline, sub, children, chip, status, overline, 
           {chip ? (
             <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1">
               <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
-              <span className="font-mono text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+              <span className="font-mono text-xs font-medium tracking-wide text-muted-foreground uppercase">
                 {chip}
               </span>
             </span>
@@ -58,12 +58,12 @@ export function AuthShowcase({ headline, sub, children, chip, status, overline, 
         </div>
       )}
 
-      <div className="mx-auto flex w-full max-w-[600px] grow flex-col justify-center gap-3 py-10">
+      <div className="mx-auto flex w-full max-w-150 grow flex-col justify-center gap-3 py-10">
         {overline && (
-          <p className="font-mono text-[12px] tracking-[0.14em] text-muted-foreground uppercase">{overline}</p>
+          <p className="font-mono text-xs tracking-wider text-muted-foreground uppercase">{overline}</p>
         )}
         <h2 className="text-2xl font-semibold tracking-tight text-foreground">{headline}</h2>
-        {sub && <p className="text-sm leading-7 max-w-[520px] text-muted-foreground">{sub}</p>}
+        {sub && <p className="text-sm leading-7 max-w-130 text-muted-foreground">{sub}</p>}
         {children && <div className="mt-6">{children}</div>}
       </div>
 
@@ -98,7 +98,7 @@ export function Divider({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-3 py-1" role="separator">
       <span className="h-px grow bg-hair" />
-      <span className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">{label}</span>
+      <span className="font-mono text-xs tracking-wide text-muted-foreground uppercase">{label}</span>
       <span className="h-px grow bg-hair" />
     </div>
   )

@@ -178,8 +178,12 @@ export function Progress({
 /** Difficulty colors remain semantic so the theme controls every route consistently. */
 export function DifficultyBadge({ difficulty, className }: { difficulty: ApiDifficulty; className?: string }) {
   const label = difficultyLabel(difficulty)
-  const variant = label === 'Easy' ? 'secondary' : label === 'Medium' ? 'outline' : 'destructive'
-  return <Badge variant={variant} className={className}>{label}</Badge>
+  const tone = difficulty === 'EASY'
+    ? 'bg-difficulty-easy/10 text-difficulty-easy'
+    : difficulty === 'MEDIUM'
+      ? 'bg-difficulty-medium/10 text-difficulty-medium'
+      : 'bg-difficulty-hard/10 text-difficulty-hard'
+  return <Badge variant="outline" className={cx('border-transparent', tone, className)}>{label}</Badge>
 }
 
 /**
@@ -250,7 +254,7 @@ export function EmptyState({
         <Icon name={icon} size={32} strokeWidth={1.5} />
       </span>
       <p className="text-base font-semibold text-foreground">{title}</p>
-      {hint && <p className="max-w-[380px] text-sm leading-6 text-muted-foreground">{hint}</p>}
+      {hint && <p className="max-w-95 text-sm leading-6 text-muted-foreground">{hint}</p>}
       {action && <div className="mt-2">{action}</div>}
     </div>
   )

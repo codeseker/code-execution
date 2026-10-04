@@ -20,7 +20,7 @@ export default function RunResultPanel({ result, failureReason }: Props) {
     return (
       <div className="space-y-3">
         <StatusBadge status="SYSTEM_ERROR" />
-        <pre className="overflow-x-auto rounded-md border border-destructive/40 bg-destructive/10 p-3 font-mono text-[13px] leading-5 text-destructive">
+        <pre className="overflow-x-auto rounded-md border border-destructive/40 bg-destructive/10 p-3 font-mono text-sm leading-5 text-destructive">
           {failureReason}
         </pre>
       </div>
@@ -51,7 +51,7 @@ export default function RunResultPanel({ result, failureReason }: Props) {
       </div>
 
       {result.compileErrorLogs && (
-        <pre className="overflow-x-auto rounded-md border border-destructive/40 bg-destructive/10 p-3 font-mono text-[13px] leading-5 text-destructive">
+        <pre className="overflow-x-auto rounded-md border border-destructive/40 bg-destructive/10 p-3 font-mono text-sm leading-5 text-destructive">
           {result.compileErrorLogs}
         </pre>
       )}

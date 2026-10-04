@@ -31,49 +31,59 @@ function langFor(code: string, lang?: CodeLang): CodeLang {
 
 export const THEME = 'app-code'
 
-export function buildTheme(dark: boolean): Parameters<Monaco['editor']['defineTheme']>[1] {
-  if (!dark) {
-    return { base: 'vs', inherit: true, rules: [], colors: {} }
-  }
+function themeColor(token: string): string {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(token).trim()
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d', { willReadFrequently: true })
+  if (!context) return value
 
+  context.clearRect(0, 0, 1, 1)
+  context.fillStyle = value
+  context.fillRect(0, 0, 1, 1)
+  const [red, green, blue, alpha] = context.getImageData(0, 0, 1, 1).data
+  const channels = [red, green, blue, alpha].map((channel) => channel.toString(16).padStart(2, '0'))
+  return `#${channels.join('')}`
+}
+
+export function buildTheme(dark: boolean): Parameters<Monaco['editor']['defineTheme']>[1] {
   return {
-    base: 'vs-dark',
+    base: dark ? 'vs-dark' : 'vs',
     inherit: true,
     rules: [
-      { token: '', foreground: 'f8f8f2' },
-      { token: 'keyword', foreground: 'ff79c6' },
-      { token: 'keyword.control', foreground: 'ff79c6' },
-      { token: 'keyword.operator', foreground: 'ff79c6' },
-      { token: 'storage', foreground: 'ff79c6' },
-      { token: 'storage.type', foreground: '8be9fd' },
-      { token: 'string', foreground: 'f1fa8c' },
-      { token: 'string.escape', foreground: 'ffb86c' },
-      { token: 'number', foreground: 'bd93f9' },
-      { token: 'number.float', foreground: 'bd93f9' },
-      { token: 'number.hex', foreground: 'bd93f9' },
-      { token: 'constant', foreground: 'bd93f9' },
-      { token: 'comment', foreground: '6272a4', fontStyle: 'italic' },
-      { token: 'type', foreground: '8be9fd' },
-      { token: 'type.identifier', foreground: '8be9fd' },
-      { token: 'entity.name.type', foreground: '8be9fd' },
-      { token: 'support.type', foreground: '8be9fd' },
-      { token: 'entity.name.function', foreground: '50fa7b' },
-      { token: 'support.function', foreground: '50fa7b' },
-      { token: 'delimiter', foreground: 'f8f8f2' },
-      { token: 'operator', foreground: 'ff79c6' },
+      { token: '', foreground: themeColor('--foreground') },
+      { token: 'keyword', foreground: themeColor('--syntax-keyword') },
+      { token: 'keyword.control', foreground: themeColor('--syntax-keyword') },
+      { token: 'keyword.operator', foreground: themeColor('--syntax-keyword') },
+      { token: 'storage', foreground: themeColor('--syntax-keyword') },
+      { token: 'storage.type', foreground: themeColor('--syntax-type') },
+      { token: 'string', foreground: themeColor('--syntax-string') },
+      { token: 'string.escape', foreground: themeColor('--syntax-function') },
+      { token: 'number', foreground: themeColor('--syntax-number') },
+      { token: 'number.float', foreground: themeColor('--syntax-number') },
+      { token: 'number.hex', foreground: themeColor('--syntax-number') },
+      { token: 'constant', foreground: themeColor('--syntax-number') },
+      { token: 'comment', foreground: themeColor('--syntax-comment'), fontStyle: 'italic' },
+      { token: 'type', foreground: themeColor('--syntax-type') },
+      { token: 'type.identifier', foreground: themeColor('--syntax-type') },
+      { token: 'entity.name.type', foreground: themeColor('--syntax-type') },
+      { token: 'support.type', foreground: themeColor('--syntax-type') },
+      { token: 'entity.name.function', foreground: themeColor('--syntax-function') },
+      { token: 'support.function', foreground: themeColor('--syntax-function') },
+      { token: 'delimiter', foreground: themeColor('--foreground') },
+      { token: 'operator', foreground: themeColor('--syntax-operator') },
     ],
     colors: {
-      'editor.background': '#282a36',
-      'editor.foreground': '#f8f8f2',
-      'editorLineNumber.foreground': '#6272a4',
-      'editorLineNumber.activeForeground': '#f8f8f2',
-      'editor.lineHighlightBackground': '#44475a66',
-      'editor.selectionBackground': '#44475a',
-      'editor.inactiveSelectionBackground': '#44475a88',
-      'editorCursor.foreground': '#f8f8f0',
-      'editorGutter.background': '#282a36',
-      'scrollbarSlider.background': '#6272a466',
-      'scrollbarSlider.hoverBackground': '#6272a4aa',
+      'editor.background': themeColor('--editor-background'),
+      'editor.foreground': themeColor('--foreground'),
+      'editorLineNumber.foreground': themeColor('--muted-foreground'),
+      'editorLineNumber.activeForeground': themeColor('--foreground'),
+      'editor.lineHighlightBackground': themeColor('--editor-line-highlight'),
+      'editor.selectionBackground': themeColor('--editor-selection'),
+      'editor.inactiveSelectionBackground': themeColor('--editor-selection'),
+      'editorCursor.foreground': themeColor('--ring'),
+      'editorGutter.background': themeColor('--editor-gutter'),
+      'scrollbarSlider.background': themeColor('--muted-foreground'),
+      'scrollbarSlider.hoverBackground': themeColor('--foreground'),
     },
   }
 }
@@ -134,6 +144,7 @@ export function CodeView({
   const lineCount = text.split('\n').length
   const height = lineCount * LINE_HEIGHT + PAD_Y * 2 + SCROLLBAR
   const isDark = useIsDark()
+  const fontFamily = getComputedStyle(document.documentElement).getPropertyValue('--font-mono').trim()
 
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null)
   const monacoRef = useRef<Monaco | null>(null)
@@ -167,14 +178,14 @@ export function CodeView({
   }, [isDark])
 
   return (
-    <div className={cx('overflow-hidden bg-muted/50', className)} style={{ height }}>
+    <div className={cx('min-w-0 overflow-hidden bg-editor-background', className)}>
       <Editor
         height={height}
         width="100%"
         language={MONACO_LANG[resolved]}
         value={text}
         theme={THEME}
-        loading={<div style={{ height }} />}
+        loading={<div className="h-full w-full animate-pulse bg-editor-background" />}
         beforeMount={(monaco) => {
           monacoRef.current = monaco
           monaco.editor.defineTheme(THEME, buildTheme(isDark))
@@ -190,7 +201,7 @@ export function CodeView({
           domReadOnly: true,
           automaticLayout: true,
 
-          fontFamily: 'ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace',
+          fontFamily,
           fontSize: 13,
           lineHeight: LINE_HEIGHT,
           fontLigatures: false,
@@ -270,7 +281,7 @@ export function CodeWindow({
     window.setTimeout(() => setCopied(false), 2000)
   }
   return (
-    <div className={cx('code-window', className)}>
+    <div className={cx('code-window min-w-0 max-w-full overflow-hidden', className)}>
       <div className="flex h-9 items-center gap-3 border-b border-border px-3">
         <span className="flex gap-1.5" aria-hidden>
           <span className="size-2.5 rounded-full bg-destructive" />
@@ -278,16 +289,16 @@ export function CodeWindow({
           <span className="size-2.5 rounded-full bg-primary" />
         </span>
         {title && (
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground font-mono text-[11px] font-medium tracking-[0.02em]">
+          <span className="inline-flex min-w-0 max-w-full truncate items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 font-mono text-xs font-medium tracking-wide text-secondary-foreground">
             {title}
           </span>
         )}
         <span className="grow" />
-        {headerRight}
+        {headerRight && <span className="hidden min-w-0 items-center gap-2 sm:flex">{headerRight}</span>}
         {copyable && (
           <CustomButton variant="unstyled"
             type="button"
-            className="btn btn-ghost btn-sm h-6 gap-1 px-1.5 text-[12px] opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+            className="btn btn-ghost btn-sm hidden h-6 gap-1 px-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 sm:inline-flex"
             onClick={copy}
             aria-label="Copy code"
           >

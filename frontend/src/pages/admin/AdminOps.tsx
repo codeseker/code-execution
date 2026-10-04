@@ -32,7 +32,7 @@ export function AdminHealth() {
 
   return (
     <AdminLayout>
-      <div className="mx-auto w-full max-w-[1440px] flex flex-col gap-5 px-4 py-6 lg:px-8">
+      <div className="mx-auto w-full max-w-360 flex flex-col gap-5 px-4 py-6 lg:px-8">
         <div className="flex flex-col gap-1">
           <p className="font-mono text-xs text-muted-foreground">ADMIN / SYSTEM HEALTH</p>
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -165,7 +165,7 @@ export function AdminSettings() {
 
   return (
     <AdminLayout>
-      <div className="mx-auto w-full max-w-[880px] flex flex-col gap-5 px-4 py-6 lg:px-8">
+      <div className="mx-auto w-full max-w-220 flex flex-col gap-5 px-4 py-6 lg:px-8">
         <div className="flex flex-col gap-1">
           <p className="font-mono text-xs text-muted-foreground">ADMIN / SETTINGS</p>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Settings</h1>
@@ -199,7 +199,7 @@ export function AdminSettings() {
               <Select value={defaultLang} onValueChange={(value) => {
                 if (value !== null) setDefaultLang(value)
               }}>
-                <SelectTrigger id="s-lang" className="h-9 w-full sm:w-[220px]">
+                <SelectTrigger id="s-lang" className="h-9 w-full sm:w-55">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

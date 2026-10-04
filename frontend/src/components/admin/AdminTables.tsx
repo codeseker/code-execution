@@ -39,7 +39,7 @@ export function UserTable({ users, loading }: { users: AdminUser[]; loading: boo
                         <tr key={user._id}>
                             <td className="pl-5">
                                 <span className="flex items-center gap-3">
-                                    <span className="center size-7 flex-none rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
+                                    <span className="center size-7 flex-none rounded-full bg-primary/10 text-xs font-semibold text-primary">
                                         {initialsOf(user.username)}
                                     </span>
                                     <span className="flex flex-col">

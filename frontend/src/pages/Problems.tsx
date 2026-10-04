@@ -69,8 +69,8 @@ export default function Problems() {
   const total = pagination?.totalElements ?? 0
 
   return (
-    <main className="min-h-[calc(100vh-3.5rem)] bg-background">
-      <div className="mx-auto w-full max-w-[1040px] px-4 py-8 sm:px-6 lg:px-8">
+    <main className="min-h-app bg-background">
+      <div className="mx-auto w-full max-w-260 px-4 py-8 sm:px-6 lg:px-8">
         <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase text-muted-foreground">Practice</p>

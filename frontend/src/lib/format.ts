@@ -74,10 +74,16 @@ export function statusTone(status: StatusValue): Tone {
 
 /** Tailwind classes shared by every status pill in the app. */
 export function statusToneClass(status: StatusValue): string {
+    if (status === "ACCEPTED" || status === "COMPLETED" || status === "Accepted") return "bg-verdict-accepted text-verdict-accepted-foreground";
+    if (status === "WRONG_ANSWER" || status === "Wrong Answer") return "bg-verdict-wrong-answer text-verdict-wrong-answer-foreground";
+    if (status === "TIME_LIMIT_EXCEEDED" || status === "Time Limit Exceeded" || status === "MEMORY_LIMIT_EXCEEDED" || status === "Memory Limit Exceeded") return "bg-verdict-time-limit-exceeded text-verdict-time-limit-exceeded-foreground";
+    if (status === "COMPILE_ERROR" || status === "Compile Error") return "bg-verdict-compile-error text-verdict-compile-error-foreground";
+    if (status === "RUNTIME_ERROR" || status === "SYSTEM_ERROR" || status === "FAILED") return "bg-verdict-runtime-error text-verdict-runtime-error-foreground";
+    if (status === "QUEUED" || status === "PROCESSING" || status === "Running" || status === "Pending") return "bg-verdict-pending text-verdict-pending-foreground";
     const tone = statusTone(status);
-    if (tone === "success") return "bg-primary/10 text-primary";
+    if (tone === "success") return "bg-success/10 text-success";
     if (tone === "error") return "bg-destructive/10 text-destructive";
-    if (tone === "warning") return "bg-muted text-muted-foreground";
+    if (tone === "warning") return "bg-warning/10 text-warning";
     return "bg-secondary text-secondary-foreground";
 }
 

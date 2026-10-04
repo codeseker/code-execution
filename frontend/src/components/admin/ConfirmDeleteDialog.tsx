@@ -26,7 +26,7 @@ export default function ConfirmDeleteDialog({
 }: Props) {
     return (
         <div
-            className="fixed inset-0 z-[70] flex items-center justify-center bg-background/80 px-4 backdrop-blur-sm"
+            className="fixed inset-0 z-70 flex items-center justify-center bg-background/80 px-4 backdrop-blur-sm"
             role="dialog"
             aria-modal="true"
             aria-label={title}

@@ -287,15 +287,15 @@ export default function Lists() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-background">
+      <div className="flex min-h-app items-center justify-center bg-background">
         <Spinner size={24} className="text-muted-foreground" />
       </div>
     )
   }
 
   return (
-    <main className="min-h-[calc(100vh-3.5rem)] bg-background">
-      <div className="mx-auto w-full max-w-[1180px] px-4 py-8 sm:px-6 lg:px-8">
+    <main className="min-h-app bg-background">
+      <div className="mx-auto w-full max-w-295 px-4 py-8 sm:px-6 lg:px-8">
         <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase text-muted-foreground">Library</p>

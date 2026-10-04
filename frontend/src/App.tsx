@@ -34,13 +34,13 @@ function ScrollToTop() {
 
 function NotFound() {
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] flex-col bg-background">
+    <div className="flex min-h-app flex-col bg-background">
       <div className="empty-state grow">
         <span className="empty-icon">
           <Icon name="search" size={48} strokeWidth={1.2} />
         </span>
         <p className="text-xl font-semibold text-foreground">Page not found</p>
-        <p className="text-sm max-w-[420px] text-muted-foreground">
+        <p className="text-sm max-w-105 text-muted-foreground">
           The route you followed does not exist — it may have been renamed or archived.
         </p>
         <div className="mt-3 flex gap-2.5">

@@ -60,7 +60,7 @@ export default function WorkspaceSubmissionsTab({
   }
 
   return (
-    <div className="mx-auto flex max-w-[760px] flex-col gap-4">
+    <div className="mx-auto flex max-w-190 flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-semibold text-foreground">Your submissions</h2>
         <CustomLink variant="unstyled" to={`/problems/${problemSlug}/submissions`} className="btn btn-ghost btn-sm">

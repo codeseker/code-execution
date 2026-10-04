@@ -71,7 +71,7 @@ export default function AddProblem() {
 
   return (
     <AdminLayout>
-      <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-5 px-4 py-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-295 flex-col gap-5 px-4 py-6 lg:px-8">
         <div className="flex flex-col gap-1">
           <p className="font-mono text-xs text-muted-foreground">ADMIN / PROBLEMS / NEW PROBLEM</p>
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -161,7 +161,7 @@ export default function AddProblem() {
                   {topicDraft !== null ? (
                     <Input
                       autoFocus
-                      className="h-6 w-[130px] border-none px-1 text-xs shadow-none focus-visible:ring-0"
+                      className="h-6 w-32.5 border-none px-1 text-xs shadow-none focus-visible:ring-0"
                       placeholder="Tag name…"
                       aria-label="New topic tag"
                       value={topicDraft}
@@ -176,7 +176,7 @@ export default function AddProblem() {
                       onBlur={() => setTopicDraft(null)}
                     />
                   ) : (
-                    <button type="button" className="btn btn-ghost btn-sm h-6 px-1.5 text-[12px]" onClick={() => setTopicDraft('')}>
+                    <button type="button" className="btn btn-ghost btn-sm h-6 px-1.5 text-xs" onClick={() => setTopicDraft('')}>
                       <Icon name="plus" size={12} />
                       Add Tag
                     </button>
@@ -224,7 +224,7 @@ export default function AddProblem() {
           </div>
 
           <Textarea
-            className="block min-h-[320px] w-full resize-y rounded-none border-0 bg-background px-5 py-4 font-mono text-sm leading-[22px] shadow-none focus-visible:ring-0"
+            className="block min-h-80 w-full resize-y rounded-none border-0 bg-background px-5 py-4 font-mono text-sm leading-6 shadow-none focus-visible:ring-0"
             aria-label="Problem statement in markdown"
             value={markdown}
             spellCheck={false}

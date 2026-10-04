@@ -99,7 +99,7 @@ export default function SubmissionDetailPanel({ submission, loading, onClose }: 
               size={17}
             />
           </span>
-          <span className="text-[20px] font-semibold leading-7 text-foreground">
+          <span className="text-xl font-semibold leading-7 text-foreground">
             {verdict ? verdictLabel(verdict) : statusLabel(submission.status)}
           </span>
           <span className="grow" />
@@ -139,7 +139,7 @@ export default function SubmissionDetailPanel({ submission, loading, onClose }: 
             </div>
 
             {result.compileErrorLogs && (
-              <pre className="overflow-x-auto rounded-md border border-destructive/40 bg-destructive/10 p-3 font-mono text-[13px] leading-5 text-destructive">
+              <pre className="overflow-x-auto rounded-md border border-destructive/40 bg-destructive/10 p-3 font-mono text-sm leading-5 text-destructive">
                 {result.compileErrorLogs}
               </pre>
             )}

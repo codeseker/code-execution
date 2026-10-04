@@ -28,7 +28,7 @@ export default function SubmissionFilters({ value, onChange }: Props) {
           }
         }}
       >
-        <SelectTrigger className="h-8 w-[150px] text-[13px]" aria-label="Filter by language">
+        <SelectTrigger className="h-8 w-37.5 text-sm" aria-label="Filter by language">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -49,7 +49,7 @@ export default function SubmissionFilters({ value, onChange }: Props) {
           }
         }}
       >
-        <SelectTrigger className="h-8 w-[160px] text-[13px]" aria-label="Filter by status">
+        <SelectTrigger className="h-8 w-40 text-sm" aria-label="Filter by status">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

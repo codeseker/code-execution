@@ -19,5 +19,5 @@ export default function useProfile() {
         retry: false,
     });
 
-    return { profile: query.data, loading: query.isPending, error: query.error };
+    return { profile: query.data, loading: query.isPending, error: query.error, refetch: query.refetch };
 }

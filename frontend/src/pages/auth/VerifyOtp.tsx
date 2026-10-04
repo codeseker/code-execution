@@ -95,7 +95,7 @@ export default function VerifyOtp() {
             </label>
             <Input
               id="otp-code"
-              className="h-10 font-mono tracking-[0.4em]"
+              className="h-10 font-mono tracking-widest"
               inputMode="numeric"
               maxLength={6}
               placeholder="000000"

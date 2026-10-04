@@ -37,7 +37,7 @@ export default function ProblemDescription({ problem, acceptanceRate }: Props) {
   const constraints = paragraphs.filter((block) => /^constraints/im.test(block))
 
   return (
-    <article className="mx-auto flex max-w-[760px] flex-col gap-6">
+    <article className="mx-auto flex max-w-190 flex-col gap-6">
       <header className="space-y-3">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">{problem.title}</h1>
         {problem.description && (

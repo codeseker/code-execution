@@ -74,22 +74,22 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [query, setQuery] = useState('')
 
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] bg-background">
+    <div className="flex min-h-app bg-background">
       {/* Desktop sidebar */}
-      <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-[240px] flex-none border-r border-border bg-sidebar lg:block">
+      <aside className="sticky top-14 hidden h-workspace w-60 flex-none border-r border-border bg-sidebar lg:block">
         <Sidebar />
       </aside>
 
       {/* Mobile drawer */}
       {drawer && (
-        <div className="fixed inset-0 z-[60] lg:hidden">
+        <div className="fixed inset-0 z-60 lg:hidden">
           <CustomButton variant="unstyled"
             type="button"
             className="absolute inset-0 bg-background/80 backdrop-blur-sm"
             aria-label="Close navigation"
             onClick={() => setDrawer(false)}
           />
-          <div className="absolute inset-y-0 left-0 w-[260px] bg-sidebar shadow-e3 anim-fade-up">
+          <div className="absolute inset-y-0 left-0 w-65 bg-sidebar shadow-xl anim-fade-up">
             <Sidebar onNavigate={() => setDrawer(false)} />
           </div>
         </div>
@@ -112,7 +112,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <span className="text-sm font-medium hidden text-muted-foreground sm:block">Admin Console</span>
           </CustomLink>
 
-          <div className="relative mx-auto hidden w-full max-w-[440px] md:block">
+          <div className="relative mx-auto hidden w-full max-w-110 md:block">
             <Icon
               name="search"
               size={14}
@@ -166,7 +166,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   aria-label="Close menu"
                   onClick={() => setMenu(false)}
                 />
-                <div className="absolute right-0 z-50 mt-2 w-[230px] popover anim-fade-up" role="menu">
+                <div className="absolute right-0 z-50 mt-2 w-57.5 popover anim-fade-up" role="menu">
                   <CustomLink variant="unstyled" to="/profile" className="menu-item" role="menuitem" onClick={() => setMenu(false)}>
                     <Icon name="user" size={15} className="text-muted-foreground" />
                     User portal

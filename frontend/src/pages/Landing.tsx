@@ -4,6 +4,7 @@ import { Logo, cx } from '../components/ui'
 import { CodeWindow } from '../components/Code'
 import { ENGINE_BULLETS, FAQ, LANDING_FEATURES, LANDING_ROADMAP, LANDING_STATS, PRICING, REGISTER_SHOWCASE, SYSTEM_DESIGN_POINTS } from '../data'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import CustomLink from '../components/CustomLink'
 import { Button } from '../components/ui/button'
 
@@ -18,8 +19,8 @@ const FEATURE_ICONS: Record<string, Parameters<typeof Icon>[0]['name']> = {
 
 function Hero() {
   return (
-    <section className="mx-auto grid max-w-[1160px] items-center gap-12 px-6 py-16 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:py-24">
-      <div className="flex flex-col gap-6">
+    <section className="mx-auto grid min-w-0 grid-cols-1 max-w-290 items-center gap-12 px-6 py-16 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:py-24">
+      <div className="flex min-w-0 flex-col gap-6">
         <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium bg-primary/10 text-primary w-fit">
           <Icon name="zap" size={12} />
           v2.4 — Adaptive mock interviews are live
@@ -29,16 +30,14 @@ function Hero() {
           <br />
           Crack interviews.
         </h1>
-        <p className="text-sm leading-7 max-w-[520px] text-muted-foreground">
+        <p className="text-sm leading-7 max-w-130 text-muted-foreground">
           Curated problems, visual company trackers, and 15-year essential drills. Real interview
           signal, distilled for your dream role.
         </p>
         <div className="flex flex-wrap items-center gap-3">
-          <Button  size="lg">
-            <CustomLink variant="unstyled" to="/register">
-              Start learning free
-              <Icon name="arrowRight" size={15} />
-            </CustomLink>
+          <Button size="lg" render={<Link to="/register" />}>
+            Start learning free
+            <Icon name="arrowRight" size={15} />
           </Button>
           <Button variant="outline" size="lg"
             type="button"
@@ -52,7 +51,7 @@ function Hero() {
         </div>
         <div className="flex flex-wrap items-center gap-x-7 gap-y-2 pt-2 text-muted-foreground">
           {['Google', 'Meta', 'Stripe', 'Amazon', 'Netflix'].map((c) => (
-            <span key={c} className="text-[15px] font-semibold tracking-[-0.01em] grayscale-0">
+            <span key={c} className="text-base font-semibold tracking-tight grayscale-0">
               {c}
             </span>
           ))}
@@ -95,7 +94,7 @@ function Hero() {
 function StatsBand() {
   return (
     <section className="border-y border-border bg-sidebar">
-      <div className="mx-auto grid max-w-[1160px] grid-cols-2 gap-y-8 px-6 py-10 md:grid-cols-4">
+      <div className="mx-auto grid max-w-290 grid-cols-2 gap-y-8 px-6 py-10 md:grid-cols-4">
         {LANDING_STATS.map((s, i) => (
           <div
             key={s.label}
@@ -113,8 +112,8 @@ function StatsBand() {
 
 function Features() {
   return (
-    <section id="features" className="mx-auto max-w-[1160px] scroll-mt-20 px-6 py-20 lg:py-24">
-      <div className="mx-auto max-w-[720px] text-center">
+    <section id="features" className="mx-auto max-w-290 scroll-mt-20 px-6 py-20 lg:py-24">
+      <div className="mx-auto max-w-180 text-center">
         <p className="text-sm font-semibold text-primary">Designed for mastery</p>
         <h2 className="text-2xl font-semibold tracking-tight mt-3 text-foreground">
           Engineered for deep comprehension, not rote memorization.
@@ -126,11 +125,11 @@ function Features() {
       </div>
       <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {LANDING_FEATURES.map((f) => (
-          <article key={f.title} className="rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col gap-3 p-5 transition-shadow hover:shadow-e1">
+          <article key={f.title} className="rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col gap-3 p-5 transition-shadow hover:shadow-md">
             <span className="center h-9 w-9 rounded-md bg-primary/10 text-primary">
               <Icon name={FEATURE_ICONS[f.icon] ?? 'star'} size={18} />
             </span>
-            <h3 className="text-[15px] leading-5 font-semibold text-foreground">{f.title}</h3>
+            <h3 className="text-base leading-5 font-semibold text-foreground">{f.title}</h3>
             <p className="text-sm text-muted-foreground">{f.text}</p>
           </article>
         ))}
@@ -142,9 +141,9 @@ function Features() {
 function Roadmap() {
   return (
     <section id="how-it-works" className="border-y border-border bg-sidebar scroll-mt-20">
-      <div className="mx-auto max-w-[1160px] px-6 py-20">
+      <div className="mx-auto max-w-290 px-6 py-20">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="max-w-[640px]">
+          <div className="max-w-160">
             <p className="text-sm font-semibold text-primary">The roadmap</p>
             <h2 className="text-2xl font-semibold tracking-tight mt-3 text-foreground">
               An expert roadmap from array two-pointers to dynamic programming.
@@ -162,7 +161,7 @@ function Roadmap() {
                 <span className="font-mono text-xs text-muted-foreground">{r.step}</span>
                 <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">{r.phase}</span>
               </div>
-              <h3 className="text-[17px] leading-6 font-semibold text-foreground">{r.title}</h3>
+              <h3 className="text-lg leading-6 font-semibold text-foreground">{r.title}</h3>
               <p className="text-sm text-muted-foreground">{r.text}</p>
               <CustomLink
                 to="/register"
@@ -190,7 +189,7 @@ const ENGINE_CODE = `def two_sum(nums, target):
 
 function EngineSection() {
   return (
-    <section className="mx-auto grid max-w-[1160px] items-center gap-12 px-6 py-20 lg:grid-cols-2">
+    <section className="mx-auto grid min-w-0 grid-cols-1 max-w-290 items-center gap-12 px-6 py-20 lg:grid-cols-2">
       <CodeWindow
         title="big-o.trace"
         lang="python"
@@ -249,7 +248,7 @@ const RELIABILITY_LOG = [
 function SystemDesignSection() {
   return (
     <section className="border-y border-border bg-sidebar">
-      <div className="mx-auto grid max-w-[1160px] items-center gap-12 px-6 py-20 lg:grid-cols-2">
+      <div className="mx-auto grid min-w-0 grid-cols-1 max-w-290 items-center gap-12 px-6 py-20 lg:grid-cols-2">
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-3">
             <p className="text-sm font-semibold text-primary">System design</p>
@@ -267,26 +266,24 @@ function SystemDesignSection() {
               </li>
             ))}
           </ul>
-          <Button  variant="outline" className="w-fit">
-            <CustomLink variant="unstyled" to="/register">
-              Explore design tracks
-              <Icon name="arrowRight" size={14} />
-            </CustomLink>
+          <Button variant="outline" className="w-fit" render={<Link to="/register" />}>
+            Explore design tracks
+            <Icon name="arrowRight" size={14} />
           </Button>
         </div>
 
-        <div className="code-window">
+        <div className="code-window min-w-0 max-w-full overflow-hidden">
           <div className="flex h-9 items-center gap-3 border-b border-border px-3">
             <span className="flex gap-1.5" aria-hidden>
               <span className="size-2.5 rounded-full bg-primary" />
               <span className="size-2.5 rounded-full bg-secondary" />
               <span className="size-2.5 rounded-full bg-destructive" />
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 text-xs text-secondary-foreground font-mono text-[11px]">system_reliability.log</span>
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 font-mono text-xs text-secondary-foreground">system_reliability.log</span>
             <span className="grow" />
             <span className="font-mono text-xs hidden text-muted-foreground sm:inline">Live tail · 10Hz</span>
           </div>
-          <div className="flex flex-col gap-1.5 p-4 font-mono text-[12.5px] leading-5">
+          <div className="flex flex-col gap-1.5 p-4 font-mono text-xs leading-5">
             {RELIABILITY_LOG.map((l) => (
               <div key={l.t + l.src} className="flex gap-3 whitespace-nowrap">
                 <span className="text-muted-foreground">[{l.t}]</span>
@@ -312,8 +309,8 @@ function SystemDesignSection() {
 
 function Pricing() {
   return (
-    <section id="pricing" className="mx-auto max-w-[1160px] scroll-mt-20 px-6 py-20">
-      <div className="mx-auto max-w-[680px] text-center">
+    <section id="pricing" className="mx-auto max-w-290 scroll-mt-20 px-6 py-20">
+      <div className="mx-auto max-w-170 text-center">
         <p className="text-sm font-semibold text-primary">Pricing</p>
         <h2 className="text-2xl font-semibold tracking-tight mt-3 text-foreground">Transparent pricing for ambitious developers.</h2>
         <p className="text-sm leading-7 mt-3 text-muted-foreground">
@@ -326,7 +323,7 @@ function Pricing() {
             key={plan.name}
             className={cx(
               'rounded-xl border border-border bg-card text-card-foreground shadow-sm relative flex flex-col gap-5 p-6',
-              plan.featured && 'border-accent shadow-e1',
+              plan.featured && 'border-accent shadow-md',
             )}
           >
             {plan.featured && (
@@ -336,7 +333,7 @@ function Pricing() {
               </span>
             )}
             <div className="flex flex-col gap-1.5">
-              <h3 className="text-[16px] font-semibold text-foreground">{plan.name}</h3>
+              <h3 className="text-base font-semibold text-foreground">{plan.name}</h3>
               <p className="text-xs text-muted-foreground">{plan.tagline}</p>
             </div>
             <div className="flex items-baseline gap-1.5">
@@ -381,7 +378,7 @@ function Faq() {
   const [open, setOpen] = useState<number | null>(0)
   return (
     <section id="faq" className="border-t border-border bg-sidebar scroll-mt-20">
-      <div className="mx-auto max-w-[720px] px-6 py-20">
+      <div className="mx-auto max-w-180 px-6 py-20">
         <div className="text-center">
           <p className="text-sm font-semibold text-primary">FAQ</p>
           <h2 className="text-2xl font-semibold tracking-tight mt-3 text-foreground">Frequently Asked Questions</h2>
@@ -411,7 +408,7 @@ function Faq() {
                   />
                 </Button>
                 {isOpen && (
-                  <p className="text-sm anim-fade -mt-1 max-w-[660px] pb-4 text-muted-foreground">{item.a}</p>
+                  <p className="text-sm anim-fade -mt-1 max-w-165 pb-4 text-muted-foreground">{item.a}</p>
                 )}
               </div>
             )
@@ -425,10 +422,10 @@ function Faq() {
 function Cta() {
   return (
     <section className="bg-primary px-6 py-16 text-center">
-      <h2 className="text-2xl font-semibold tracking-tight mx-auto max-w-[640px] text-primary-foreground">
+      <h2 className="text-2xl font-semibold tracking-tight mx-auto max-w-160 text-primary-foreground">
         Ready to land your dream engineering role?
       </h2>
-      <p className="mx-auto mt-3 max-w-[560px] text-sm leading-7 text-primary-foreground/90">
+      <p className="mx-auto mt-3 max-w-140 text-sm leading-7 text-primary-foreground/90">
         Join 10,000+ candidates practicing smarter with adaptive feedback — every problem, every day.
       </p>
       <Button  variant="secondary" size="lg" className="mx-auto mt-7 bg-primary-foreground text-primary hover:bg-primary-foreground/90">
@@ -453,8 +450,8 @@ const FOOTER_COLUMNS = [
 function SiteFooter() {
   return (
     <footer className="border-t border-border bg-background">
-      <div className="mx-auto grid max-w-[1160px] gap-10 px-6 py-14 md:grid-cols-[1.6fr_repeat(3,1fr)]">
-        <div className="flex flex-col max-w-[300px] gap-4">
+      <div className="mx-auto grid max-w-290 gap-10 px-6 py-14 md:grid-cols-[1.6fr_repeat(3,1fr)]">
+        <div className="flex flex-col max-w-75 gap-4">
           <CustomLink variant="unstyled" to="/" aria-label="CodeForge home">
             <Logo size={26} />
           </CustomLink>
@@ -479,7 +476,7 @@ function SiteFooter() {
         ))}
       </div>
       <div className="border-t border-border">
-        <div className="mx-auto flex max-w-[1160px] flex-wrap items-center justify-between gap-3 px-6 py-5">
+        <div className="mx-auto flex max-w-290 flex-wrap items-center justify-between gap-3 px-6 py-5">
           <p className="text-xs text-muted-foreground">© 2026 CodeForge Labs, Inc. · Built with care for engineers.</p>
           <div className="flex gap-5 text-muted-foreground">
             {['Terms', 'Privacy', 'Status'].map((l) => (
@@ -496,7 +493,7 @@ function SiteFooter() {
 
 export default function Landing() {
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-background text-foreground">
+    <div className="min-h-app overflow-x-clip bg-background text-foreground">
       <main>
         <Hero />
         <StatsBand />

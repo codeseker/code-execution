@@ -91,7 +91,7 @@ export default function ProblemEditorDialog({ problem, onClose }: Props) {
 
     return (
         <div
-            className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-background/80 px-4 py-8 backdrop-blur-sm"
+            className="fixed inset-0 z-70 flex items-start justify-center overflow-y-auto bg-background/80 px-4 py-8 backdrop-blur-sm"
             role="dialog"
             aria-modal="true"
             aria-label={`Edit ${problem.title}`}

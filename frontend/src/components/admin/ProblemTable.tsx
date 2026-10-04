@@ -67,7 +67,7 @@ export function ProblemTable({ problems, loading, onOpen, onArchive }: Props) {
                   {problem.title}
                 </button>
                 {problem.description && (
-                  <p className="max-w-[320px] truncate text-xs text-muted-foreground">{problem.description}</p>
+                  <p className="max-w-80 truncate text-xs text-muted-foreground">{problem.description}</p>
                 )}
               </td>
               <td className="font-mono text-xs text-muted-foreground">{problem.slug}</td>
