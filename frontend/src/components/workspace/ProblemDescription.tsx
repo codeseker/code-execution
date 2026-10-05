@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import { Icon, type IconName } from '../icons'
-import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
 import { DifficultyBadge } from '../ui'
 import { TestcaseExample } from '../TestcaseBlock'
