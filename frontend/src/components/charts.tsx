@@ -133,7 +133,7 @@ export function Donut({
           return el
         })}
       </svg>
-      <div className="absolute inset-0 center flex-col">{children}</div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">{children}</div>
     </div>
   )
 }

@@ -7,6 +7,7 @@ import type { Difficulty as ApiDifficulty } from '../types/domain'
 import { difficultyLabel, statusLabel, statusToneClass } from '../lib/format'
 import type { StatusValue } from '../lib/format'
 import CustomButton from './CustomButton'
+import { BaseTooltip } from './BaseTooltip'
 import { Badge } from './ui/badge'
 import { Progress as ShadcnProgress } from './ui/progress'
 import { Button } from './ui/button'
@@ -45,15 +46,18 @@ export function Logo({
 export function ThemeToggle({ className }: { className?: string }) {
   const { resolved, toggle } = useTheme()
   return (
-    <CustomButton variant="unstyled"
-      type="button"
-      className={cx('icon-btn tip', className)}
-      data-tip="Toggle theme ⌘⇧L"
-      aria-label={`Switch to ${resolved === 'dark' ? 'light' : 'dark'} theme`}
-      onClick={toggle}
-    >
-      <Icon name={resolved === 'dark' ? 'sun' : 'moon'} size={17} />
-    </CustomButton>
+    <BaseTooltip content="Toggle theme ⌘⇧L">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className={className}
+        aria-label={`Switch to ${resolved === 'dark' ? 'light' : 'dark'} theme`}
+        onClick={toggle}
+      >
+        <Icon name={resolved === 'dark' ? 'sun' : 'moon'} size={17} />
+      </Button>
+    </BaseTooltip>
   )
 }
 
@@ -219,14 +223,23 @@ export function Segmented<T extends string>({
   ariaLabel: string
 }) {
   return (
-    <div className="seg" role="tablist" aria-label={ariaLabel}>
+    <div
+      role="tablist"
+      aria-label={ariaLabel}
+      className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-muted p-0.5"
+    >
       {options.map((o) => (
         <CustomButton variant="unstyled"
           key={o.value}
           type="button"
           role="tab"
           aria-selected={o.value === value}
-          className={cx('seg-btn', o.value === value && 'is-active')}
+          className={cx(
+            'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+            o.value === value
+              ? 'bg-card text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
           onClick={() => onChange(o.value)}
         >
           {o.label}

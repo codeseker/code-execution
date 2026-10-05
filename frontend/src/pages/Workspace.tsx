@@ -19,6 +19,11 @@ import { EmptyState } from '../components/ui'
 import ProblemDescription from '../components/workspace/ProblemDescription'
 import RunConsole from '../components/workspace/RunConsole'
 import WorkspaceSubmissionsTab from '../components/workspace/WorkspaceSubmissionsTab'
+import {
+  createCustomTestCase,
+  toCustomTestcasePayload,
+  type CustomTestCase,
+} from '../components/workspace/customCases'
 import usePublicProblemDetail from '../hooks/problems/public/usePublicProblemDetail'
 import usePublicProblems from '../hooks/problems/public/usePublicProblems'
 import { useExampleEval, useRun, useSubmit } from '../hooks/submissions/useSubmitMutations'
@@ -32,10 +37,9 @@ import { errorToast } from '../toast'
 
 const TABS = ['Description', 'Submissions'] as const
 type Tab = (typeof TABS)[number]
-type CustomTestCase = { id: string; input: string }
 
 /** Default editor language when the problem ships no template for it. */
-const FALLBACK_LANGUAGE: Language = 'python'
+const FALLBACK_LANGUAGE: Language = 'cpp'
 
 function isLanguage(value: string): value is Language {
   return (LANGUAGES as readonly string[]).includes(value)
@@ -93,7 +97,7 @@ export default function Workspace() {
       setActiveTestCaseId(`sample:${firstSample.id}`)
       nextCustomTestCaseId.current = 1
     } else {
-      const initialCase = { id: 'custom-1', input: '' }
+      const initialCase = createCustomTestCase('custom-1')
       setCustomTestCases([initialCase])
       setActiveTestCaseId(`custom:${initialCase.id}`)
       nextCustomTestCaseId.current = 2
@@ -112,11 +116,9 @@ export default function Workspace() {
   const submit = useSubmit()
   const exampleEval = useExampleEval()
   // The judge owns the sample cases; the client only adds its own "Custom N"
-  // inputs, in tab order. Empty custom tabs are dropped.
-  const customTestCaseInputs = useMemo(
-    () => customTestCases.map((item) => item.input).filter((input) => input.trim().length > 0),
-    [customTestCases],
-  )
+  // cases, in tab order. Cases without an input are dropped, so the payload
+  // order matches the `custom-1..N` ids the judge assigns.
+  const customTestcases = useMemo(() => toCustomTestcasePayload(customTestCases), [customTestCases])
   const requestPending = run.loading || submit.loading || exampleEval.loading
 
   const { problems: catalogue } = usePublicProblems({ page: 1, limit: 100 })
@@ -142,23 +144,18 @@ export default function Workspace() {
     async (mode: 'run' | 'submit' | 'sample') => {
       if (!problem || requestPending) return
       setQueuePosition(null)
-      // Custom inputs ride along with a Run; the sample cases come from the
-      // judge itself so they can never be client controlled.
-      const customTestcases = mode === 'run' && customTestCaseInputs.length > 0 ? customTestCaseInputs : null
-      try {
-        const ack =
-          mode === 'run'
-            ? await run.run(problem.id, { code, language, customTestcases })
-            : mode === 'sample'
-              ? await exampleEval.exampleEval(problem.id, { code, language })
-              : await submit.submit(problem.id, { code, language })
-        setActiveSubmissionId(ack.submissionId)
-        setQueuePosition(ack.queuePosition)
-      } catch {
-        // The mutation hooks already surfaced the backend message.
-      }
+      // Custom cases ride along with both Run and Run samples: the judge loads
+      // the stored samples itself, so only the caller's own cases are sent.
+      const ack =
+        mode === 'submit'
+          ? await submit.submit(problem.id, { code, language })
+          : mode === 'sample'
+            ? await exampleEval.exampleEval(problem.id, { code, language, customTestcases })
+            : await run.run(problem.id, { code, language, customTestcases })
+      setActiveSubmissionId(ack.submissionId)
+      setQueuePosition(ack.queuePosition)
     },
-    [problem, run, submit, exampleEval, code, language, customTestCaseInputs, requestPending],
+    [problem, run, submit, exampleEval, code, language, customTestcases, requestPending],
   )
 
   const onRun = useCallback(() => {
@@ -175,7 +172,7 @@ export default function Workspace() {
 
   const addCustomTestCase = useCallback(() => {
     const id = `custom-${nextCustomTestCaseId.current++}`
-    setCustomTestCases((current) => [...current, { id, input: '' }])
+    setCustomTestCases((current) => [...current, createCustomTestCase(id)])
     setActiveTestCaseId(`custom:${id}`)
     setFocusCustomTestCaseId(id)
   }, [])
@@ -197,9 +194,14 @@ export default function Workspace() {
     setActiveTestCaseId(nextId)
   }, [activeTestCaseId, customTestCases, problem])
 
-  const updateCustomTestCase = useCallback((id: string, input: string) => {
-    setCustomTestCases((current) => current.map((item) => item.id === id ? { ...item, input } : item))
-  }, [])
+  const updateCustomTestCase = useCallback(
+    (id: string, patch: Partial<Pick<CustomTestCase, 'input' | 'expectedOutput'>>) => {
+      setCustomTestCases((current) =>
+        current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+      )
+    },
+    [],
+  )
 
   const { submissions, loading: submissionsLoading, refetch: refetchSubmissions } = useMySubmissions(
     useMemo(() => ({ problemId: problem?.id, limit: 10 }), [problem?.id]),
@@ -528,7 +530,7 @@ export default function Workspace() {
       onActiveCaseChange={setActiveTestCaseId}
       onAddCustomCase={addCustomTestCase}
       onRemoveCustomCase={removeCustomTestCase}
-      onCustomCaseInputChange={updateCustomTestCase}
+      onCustomCaseChange={updateCustomTestCase}
       focusCustomCaseId={focusCustomTestCaseId}
       key={problem.id}
     />

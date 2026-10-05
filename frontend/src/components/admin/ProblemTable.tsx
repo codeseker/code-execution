@@ -1,7 +1,11 @@
 import { Icon } from '../../components/icons'
+import { BaseTooltip } from '../BaseTooltip'
+import CustomLink from '../CustomLink'
+import { Button } from '../ui/button'
 import { Progress } from '../../components/ui'
 import { DifficultyBadge } from '../../components/ui'
 import { Skeleton } from '../../components/ui/skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
 import { EmptyState } from '../../components/ui'
 import { useUpdateProblem } from '../../hooks/problems/admin/useProblemMutations'
 import type { AdminProblem, CreateProblemPayload } from '../../hooks/problems/types'
@@ -10,13 +14,12 @@ import { cx } from '../../components/ui'
 type Props = {
   problems: AdminProblem[]
   loading: boolean
-  onOpen: (problem: AdminProblem) => void
   /** Soft delete - confirmation and the request live in the page. */
   onArchive: (problem: AdminProblem) => void
 }
 
 /** Presentational row set for the admin catalogue. */
-export function ProblemTable({ problems, loading, onOpen, onArchive }: Props) {
+export function ProblemTable({ problems, loading, onArchive }: Props) {
   const { updateProblem, loading: updating } = useUpdateProblem()
 
   if (loading) {
@@ -46,35 +49,38 @@ export function ProblemTable({ problems, loading, onOpen, onArchive }: Props) {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="ntable">
-        <thead>
-          <tr>
-            <th className="pl-5">Title</th>
-            <th>Slug</th>
-            <th>Difficulty</th>
-            <th className="hidden lg:table-cell">Topics</th>
-            <th className="hidden md:table-cell">Test cases</th>
-            <th>Visibility</th>
-            <th className="pr-5 text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {problems.map((problem) => (
-            <tr key={problem._id}>
-              <td className="pl-5">
-                <button type="button" className="text-sm font-medium text-foreground hover:text-primary" onClick={() => onOpen(problem)}>
-                  {problem.title}
-                </button>
-                {problem.description && (
-                  <p className="max-w-80 truncate text-xs text-muted-foreground">{problem.description}</p>
-                )}
-              </td>
-              <td className="font-mono text-xs text-muted-foreground">{problem.slug}</td>
-              <td>
-                <DifficultyBadge difficulty={problem.difficulty} />
-              </td>
-              <td className="hidden lg:table-cell">
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="pl-5">Title</TableHead>
+          <TableHead>Slug</TableHead>
+          <TableHead>Difficulty</TableHead>
+          <TableHead className="hidden lg:table-cell">Topics</TableHead>
+          <TableHead className="hidden md:table-cell">Test cases</TableHead>
+          <TableHead>Visibility</TableHead>
+          <TableHead className="pr-5 text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {problems.map((problem) => (
+          <TableRow key={problem._id}>
+<TableCell className="pl-5">
+              <CustomLink
+                variant="unstyled"
+                to={`/admin/problems/${problem._id}`}
+                className="text-sm font-medium text-foreground hover:text-primary"
+              >
+                {problem.title}
+              </CustomLink>
+              {problem.description && (
+                <p className="max-w-80 truncate text-xs text-muted-foreground">{problem.description}</p>
+              )}
+            </TableCell>
+            <TableCell className="font-mono text-xs text-muted-foreground">{problem.slug}</TableCell>
+            <TableCell>
+              <DifficultyBadge difficulty={problem.difficulty} />
+            </TableCell>
+            <TableCell className="hidden lg:table-cell">
                 <span className="flex flex-wrap gap-1.5">
                   {problem.tags.slice(0, 2).map((tag) => (
                     <span key={tag} className="rounded-md bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
@@ -82,9 +88,9 @@ export function ProblemTable({ problems, loading, onOpen, onArchive }: Props) {
                     </span>
                   ))}
                 </span>
-              </td>
-              <td className="hidden text-sm tabular-nums text-muted-foreground md:table-cell">{problem.testCaseCount}</td>
-              <td>
+            </TableCell>
+            <TableCell className="hidden text-sm tabular-nums text-muted-foreground md:table-cell">{problem.testCaseCount}</TableCell>
+            <TableCell>
                 <button
                   type="button"
                   disabled={updating}
@@ -98,34 +104,37 @@ export function ProblemTable({ problems, loading, onOpen, onArchive }: Props) {
                   <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
                   {problem.isPublished ? 'Published' : 'Draft'}
                 </button>
-              </td>
-              <td className="pr-5 text-right">
-                <span className="flex justify-end gap-1">
-                  <button
-                    type="button"
-                    className="icon-btn tip"
-                    data-tip="Open in workspace"
-                    aria-label={`Open ${problem.title}`}
-                    onClick={() => onOpen(problem)}
+            </TableCell>
+            <TableCell className="pr-5 text-right">
+              <span className="flex justify-end gap-1">
+                <BaseTooltip content="Open problem details">
+                  <CustomLink
+                    variant="unstyled"
+                    to={`/admin/problems/${problem._id}`}
+                    className="inline-flex size-7 flex-none items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label={`Edit ${problem.title}`}
                   >
                     <Icon name="pencil" size={15} />
-                  </button>
-                  <button
+                  </CustomLink>
+                </BaseTooltip>
+                <BaseTooltip content="Soft delete">
+                  <Button
                     type="button"
-                    className="icon-btn tip"
-                    data-tip="Soft delete"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-muted-foreground hover:text-destructive"
                     aria-label={`Delete ${problem.title}`}
                     onClick={() => onArchive(problem)}
                   >
                     <Icon name="folder" size={15} />
-                  </button>
-                </span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+                  </Button>
+                </BaseTooltip>
+              </span>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   )
 }
 

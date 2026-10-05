@@ -42,20 +42,23 @@ export function useSubmit() {
     };
 }
 
-/** `POST /problems/{id}/example-eval` - public samples cases only. */
+/**
+ * `POST /problems/{id}/example-eval` - the stored sample cases plus the
+ * caller's own custom test cases (each with an optional expected output).
+ */
 export function useExampleEval() {
-    const { queue, loading, error } = useQueueSubmission<SubmitRequest>(
+    const { queue, loading, error } = useQueueSubmission<RunRequest>(
         ENDPOINTS.EXAMPLE_EVAL,
         "Unable to run the sample cases.",
     );
     return {
-        exampleEval: (id: string, request: SubmitRequest) => queue({ id, request }),
+        exampleEval: (id: string, request: RunRequest) => queue({ id, request }),
         loading,
         error,
     };
 }
 
-/** `POST /problems/{id}/run` - caller-provided stdin, nothing is compared. */
+/** `POST /problems/{id}/run` - samples plus custom cases, nothing compared. */
 export function useRun() {
     const { queue, loading, error } = useQueueSubmission<RunRequest>(
         ENDPOINTS.RUN,

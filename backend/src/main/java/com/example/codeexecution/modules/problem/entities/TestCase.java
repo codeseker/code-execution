@@ -44,4 +44,11 @@ public class TestCase {
 
     @Builder.Default
     private int memoryLimitKb = 256000;
+
+    /**
+     * Optional human note about this case (how to read it, what a correct
+     * answer means). Stored with the case and never sent to the judge; null
+     * on cases uploaded before it existed.
+     */
+    private String explanation;
 }

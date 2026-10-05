@@ -35,7 +35,7 @@ function StatCard({
           <p className="text-sm font-semibold text-muted-foreground">{label}</p>
           {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
         </div>
-        <span className="center size-8 rounded-md bg-muted/40 text-muted-foreground">
+        <span className="flex size-8 items-center justify-center rounded-md bg-muted/40 text-muted-foreground">
           <Icon name={icon} size={16} />
         </span>
       </div>
@@ -86,7 +86,7 @@ function DifficultyMatrix() {
         </span>
       </div>
 
-      <div className="center py-1">
+      <div className="flex justify-center py-1">
         <Donut
           size={168}
           thickness={16}

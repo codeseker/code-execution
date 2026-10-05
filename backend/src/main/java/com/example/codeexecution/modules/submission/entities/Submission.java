@@ -51,12 +51,13 @@ public class Submission {
     private String customInput;
 
     /**
-     * Raw stdin of the caller's own "Custom N" test cases, in tab order.
-     * Only {@link SubmissionType#CUSTOM_RUN} reads it, and only as an
-     * addition to the problem's own sample cases - the samples themselves are
-     * never client controlled.
+     * The caller's own "Custom N" test cases, in tab order. Read by
+     * {@link SubmissionType#CUSTOM_RUN} and {@link SubmissionType#EXAMPLE_EVAL}
+     * jobs, and only as an addition to the problem's own sample cases - the
+     * samples themselves are never client controlled. A case whose
+     * {@code expectedOutput} is null is executed but not graded.
      */
-    private java.util.List<String> customTestcases;
+    private java.util.List<CustomTestCaseInput> customTestcases;
 
     private Language language;
 

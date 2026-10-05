@@ -39,6 +39,9 @@ export function useUploadTestCase() {
             const form = new FormData();
             form.append("input", payload.input);
             form.append("output", payload.output);
+            if (payload.explanation && payload.explanation.trim()) {
+                form.append("explanation", payload.explanation.trim());
+            }
 
             const params: Record<string, unknown> = {};
             if (payload.isSample !== undefined) params.isSample = payload.isSample;

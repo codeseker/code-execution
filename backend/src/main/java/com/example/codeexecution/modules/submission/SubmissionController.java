@@ -18,22 +18,22 @@ import com.example.codeexecution.modules.submission.dtos.SubmissionSummaryRespon
 import com.example.codeexecution.modules.submission.dtos.SubmitRequest;
 import com.example.codeexecution.modules.submission.dtos.SubmitResponse;
 import com.example.codeexecution.modules.submission.dtos.SubmissionResponse;
-import com.example.codeexecution.modules.submission.entities.SubmissionType;
 
 import jakarta.validation.Valid;
 
 /**
  * Code evaluation ingestion:
  * <ul>
- *   <li>{@code POST /problems/{id}/example-eval} - public sample cases
- *       only, fast feedback loop</li>
- *   <li>{@code POST /problems/{id}/run} - the same public samples plus the
+ *   <li>{@code POST /problems/{id}/example-eval} - the public sample cases
+ *       plus the caller's own custom test cases, fast feedback loop</li>
+ *   <li>{@code POST /problems/{id}/run} - the same samples plus the
  *       caller's own custom test cases; no statistics</li>
  *   <li>{@code POST /problems/{id}/submit} - all test cases (samples and
  *       hidden), stops at the first failure; affects problem acceptance rate
  *       and user solved stats</li>
- *   <li>{@code GET /submissions/{id}} - polling fallback for the
- *       WebSocket lifecycle events</li>
+ *   <li>{@code GET /submissions/{id}} - one submission with its code and
+ *       per-testcase results; polling fallback for the WebSocket lifecycle
+ *       events</li>
  *   <li>{@code GET /users/me/submissions} - the caller's own history
  *       with pagination and problem/status/language/type filters</li>
  * </ul>
@@ -56,19 +56,22 @@ public class SubmissionController {
             @PathVariable String id,
             @Valid @RequestBody SubmitRequest request,
             @AuthenticationPrincipal String userId) {
-        SubmitResponse response = this.submissionService.submit(
-                id, request, userId, SubmissionType.FULL_SUBMISSION);
+        SubmitResponse response = this.submissionService.submit(id, request, userId);
         return ApiResponse.success("Submission queued", response);
     }
 
-    /** Runs the submission against only the public sample test cases. */
+    /**
+     * Runs the code against the problem's stored <b>sample</b> cases plus the
+     * caller's own {@code customTestcases}. Each custom case carries its own
+     * {@code customInput} and an optional {@code expectedOutput}; the samples
+     * are never taken from the request and no statistics change.
+     */
     @PostMapping("/problems/{id}/example-eval")
     public ApiResponse<SubmitResponse> exampleEval(
             @PathVariable String id,
-            @Valid @RequestBody SubmitRequest request,
+            @Valid @RequestBody RunRequest request,
             @AuthenticationPrincipal String userId) {
-        SubmitResponse response = this.submissionService.submit(
-                id, request, userId, SubmissionType.EXAMPLE_EVAL);
+        SubmitResponse response = this.submissionService.exampleEval(id, request, userId);
         return ApiResponse.success("Example evaluation queued", response);
     }
 
@@ -86,7 +89,11 @@ public class SubmissionController {
         return ApiResponse.success("Run queued", response);
     }
 
-    /** Status + result of a submission (owner or submission:read). */
+    /**
+     * Full submission detail - metadata, the source code that was submitted
+     * and the per-testcase breakdown. Owner-scoped: anyone else needs the
+     * {@code submission:read} permission.
+     */
     @GetMapping("/submissions/{id}")
     public ApiResponse<SubmissionResponse> get(
             @PathVariable String id,

@@ -113,10 +113,11 @@ public class ProblemController {
             @RequestPart("output") MultipartFile output,
             @RequestParam(defaultValue = "false") boolean isSample,
             @RequestParam(required = false) Integer timeLimitMs,
-            @RequestParam(required = false) Integer memoryLimitKb) {
+            @RequestParam(required = false) Integer memoryLimitKb,
+            @RequestPart(value = "explanation", required = false) String explanation) {
 
         TestCaseResponse testCase = this.problemService.addTestCase(
-                id, input, output, isSample, timeLimitMs, memoryLimitKb);
+                id, input, output, isSample, timeLimitMs, memoryLimitKb, explanation);
         return ApiResponse.success("Testcase added successfully", testCase);
     }
 

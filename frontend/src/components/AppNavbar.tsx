@@ -42,7 +42,7 @@ export default function AppNavbar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex w-full max-w-6xl items-center px-4 py-3 sm:px-6">
+      <div className="mx-auto flex h-navbar w-full max-w-6xl items-center justify-center px-4 sm:px-6">
           <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-full border border-border bg-background/80 px-2 py-2 shadow-sm">
           <div className="flex items-center justify-self-start pl-2">
             <Link to="/" className="inline-flex items-center gap-2 rounded-full px-2 py-1.5 transition-colors hover:bg-primary/10" aria-label="CodeForge home">

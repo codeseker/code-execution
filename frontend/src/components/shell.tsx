@@ -191,7 +191,7 @@ export function PortalTopbar({ active }: { active?: string }) {
         <CustomLink variant="unstyled" to="/problems" aria-label="CodeForge home">
           <Logo size={24} />
         </CustomLink>
-        <span className="hidden h-4 w-px bg-hair md:block" aria-hidden />
+        <span className="hidden h-4 w-px bg-border md:block" aria-hidden />
         <nav className="hidden items-center gap-1 md:flex" aria-label="Portal">
           {PORTAL_NAV.map((n) => (
             <CustomLink variant="unstyled"
@@ -255,7 +255,7 @@ export function PortalTopbar({ active }: { active?: string }) {
                 {NOTIFICATIONS.map((n) => (
                   <div key={n.title} className="menu-item h-auto items-start gap-2.5 px-2 py-2">
                     <span
-                      className={cx('mt-1.5 h-1.5 w-1.5 flex-none rounded-full', n.unread ? 'bg-primary' : 'bg-hair')}
+                      className={cx('mt-1.5 h-1.5 w-1.5 flex-none rounded-full', n.unread ? 'bg-primary' : 'bg-border')}
                       aria-hidden
                     />
                     <span className="flex flex-col">

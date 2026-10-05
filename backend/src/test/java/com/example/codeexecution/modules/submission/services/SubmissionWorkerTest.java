@@ -40,6 +40,7 @@ import com.example.codeexecution.modules.problem.services.ProblemStatsService;
 import com.example.codeexecution.modules.stats.UserProblemStatService;
 import com.example.codeexecution.modules.submission.config.ExecutionProperties;
 import com.example.codeexecution.modules.submission.dtos.JobMessage;
+import com.example.codeexecution.modules.submission.entities.CustomTestCaseInput;
 import com.example.codeexecution.modules.submission.entities.JudgeCaseKind;
 import com.example.codeexecution.modules.submission.entities.Language;
 import com.example.codeexecution.modules.submission.entities.Submission;
@@ -169,7 +170,7 @@ class SubmissionWorkerTest {
         when(this.testCaseRepository.findByProblemId(PROBLEM_ID)).thenReturn(cases);
     }
 
-    private Submission submission(SubmissionType type, List<String> customTestcases) {
+    private Submission submission(SubmissionType type, List<CustomTestCaseInput> customTestcases) {
         this.submission = Submission.builder()
                 .id(SUBMISSION_ID)
                 .userId("user-1")
@@ -264,11 +265,14 @@ class SubmissionWorkerTest {
     }
 
     @Test
-    void customCasesRunAfterTheSamplesAndHaveNoExpectedOutput() throws Exception {
+    void customCasesRunAfterTheSamplesAndWithoutExpectedOutput() throws Exception {
         withCases(List.of(
                 storedCase("c1", true, "sample-1", "out-1"),
                 storedCase("c2", true, "sample-2", "out-2")));
-        submission(SubmissionType.CUSTOM_RUN, List.of("my own stdin", "", "second stdin"));
+        submission(SubmissionType.CUSTOM_RUN, List.of(
+                new CustomTestCaseInput("my own stdin", null),
+                new CustomTestCaseInput("", null),
+                new CustomTestCaseInput("second stdin", "  ")));
 
         run();
 
@@ -280,14 +284,84 @@ class SubmissionWorkerTest {
         assertTrue(this.executedInputs.get(3).endsWith("custom-2.in"));
         assertEquals("my own stdin", Files.readString(this.tempDir.resolve("work/custom-1.in")));
         assertEquals("second stdin", Files.readString(this.tempDir.resolve("work/custom-2.in")));
+        // A blank expected output is treated as "no expected output".
+        assertFalse(Files.exists(this.tempDir.resolve("work/custom-2.out")));
 
         List<TestCaseResult> rows = savedResult().getTestCaseResults();
         assertEquals(JudgeCaseKind.SAMPLE, rows.get(0).getKind());
         assertEquals(JudgeCaseKind.CUSTOM, rows.get(2).getKind());
         assertNull(rows.get(2).getExpectedOutput());
-        // Nothing to compare against, so a custom case is never WRONG_ANSWER.
+        // Nothing to compare against, so an ungraded custom case is never
+        // WRONG_ANSWER.
         assertEquals(Verdict.ACCEPTED, rows.get(2).getStatus());
         assertEquals(3, rows.get(2).getCaseIndex().intValue());
+    }
+
+    @Test
+    void customCaseWithExpectedOutputIsGraded() throws Exception {
+        withCases(List.of(storedCase("c1", true, "sample-1", "out-1")));
+        stubExecution(invocation -> new RunOutcome(false, false, 0, "nope", "", 5, 1024));
+        submission(SubmissionType.CUSTOM_RUN, List.of(
+                new CustomTestCaseInput("2\n3", "5")));
+
+        run();
+
+        assertEquals(2, this.executedInputs.size());
+        assertEquals("5", Files.readString(this.tempDir.resolve("work/custom-1.out")));
+
+        List<TestCaseResult> rows = savedResult().getTestCaseResults();
+        TestCaseResult custom = rows.get(1);
+        assertEquals(JudgeCaseKind.CUSTOM, custom.getKind());
+        assertEquals("5", custom.getExpectedOutput());
+        assertEquals("nope", custom.getActualOutput());
+        assertEquals(Verdict.WRONG_ANSWER, custom.getStatus());
+        assertEquals(Verdict.WRONG_ANSWER, savedResult().getOverallVerdict());
+        assertEquals(2, custom.getCaseIndex().intValue());
+    }
+
+    @Test
+    void exampleEvalRunsCustomCasesAfterTheSamples() throws Exception {
+        withCases(List.of(
+                storedCase("c1", true, "sample-1", "ok\n"),
+                storedCase("c2", true, "sample-2", "ok\n")));
+        stubExecution(invocation -> new RunOutcome(false, false, 0, "ok\n", "", 5, 1024));
+        submission(SubmissionType.EXAMPLE_EVAL, List.of(
+                new CustomTestCaseInput("my own stdin", "ok\n")));
+
+        run();
+
+        // Samples first (stored order), then the caller's custom case.
+        assertEquals(3, this.executedInputs.size());
+        assertTrue(this.executedInputs.get(0).endsWith("c1.in"));
+        assertTrue(this.executedInputs.get(1).endsWith("c2.in"));
+        assertTrue(this.executedInputs.get(2).endsWith("custom-1.in"));
+
+        List<TestCaseResult> rows = savedResult().getTestCaseResults();
+        assertEquals(3, rows.size());
+        assertEquals(JudgeCaseKind.SAMPLE, rows.get(0).getKind());
+        assertEquals(JudgeCaseKind.CUSTOM, rows.get(2).getKind());
+        assertEquals(Verdict.ACCEPTED, rows.get(2).getStatus());
+        assertEquals(Verdict.ACCEPTED, savedResult().getOverallVerdict());
+        assertEquals(3, savedResult().getTotalTestCases());
+    }
+
+    @Test
+    void customCaseIdsStayInSendOrderSoTabsLineUp() throws Exception {
+        withCases(List.of(storedCase("c1", true, "sample", "out")));
+        stubExecution(invocation -> new RunOutcome(false, false, 0, "ok", "", 5, 1024));
+        submission(SubmissionType.CUSTOM_RUN, List.of(
+                new CustomTestCaseInput(null, "ignored"),
+                new CustomTestCaseInput("first", null),
+                new CustomTestCaseInput("second", null)));
+
+        run();
+
+        // The blank entry is dropped without consuming an id.
+        assertEquals(3, this.executedInputs.size());
+        assertEquals("first", Files.readString(this.tempDir.resolve("work/custom-1.in")));
+        assertEquals("second", Files.readString(this.tempDir.resolve("work/custom-2.in")));
+        assertEquals("custom-1", savedResult().getTestCaseResults().get(1).getTestCaseId());
+        assertEquals("custom-2", savedResult().getTestCaseResults().get(2).getTestCaseId());
     }
 
     // ------------------------------------------------------------------

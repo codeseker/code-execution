@@ -18,6 +18,7 @@ import AdminDashboard from './pages/admin/Dashboard'
 import { AdminProblems, AdminSubmissions, AdminUsers } from './pages/admin/AdminPages'
 import { AdminHealth, AdminSettings } from './pages/admin/AdminOps'
 import AddProblem from './pages/admin/AddProblem'
+import AdminProblemDetails from './pages/admin/ProblemDetails'
 import CustomLink from './components/CustomLink'
 import AuthGuard, { AdminGuard, GuestGuard } from './components/AuthGuard'
 import AppNavbar from './components/AppNavbar'
@@ -83,6 +84,7 @@ function AppRoutes() {
         <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
         <Route path="/admin/problems" element={<AdminGuard><AdminProblems /></AdminGuard>} />
         <Route path="/admin/problems/new" element={<AdminGuard><AddProblem /></AdminGuard>} />
+        <Route path="/admin/problems/:id" element={<AdminGuard><AdminProblemDetails /></AdminGuard>} />
         <Route path="/admin/users" element={<AdminGuard><AdminUsers /></AdminGuard>} />
         <Route path="/admin/submissions" element={<AdminGuard><AdminSubmissions /></AdminGuard>} />
         <Route path="/admin/health" element={<AdminGuard><AdminHealth /></AdminGuard>} />

@@ -1,10 +1,13 @@
-import { Badge } from '../ui/badge'
 import { StatusBadge } from '../ui'
+import { TestcaseBlock } from '../TestcaseBlock'
 import { formatKb, formatMs, verdictLabel } from '../../lib/format'
 import type { RunCaseResult, RunSummary } from '../../hooks/submissions/useActiveSubmission'
 import type { SubmissionResult } from '../../hooks/submissions/types'
 import type { SampleTestCase } from '../../hooks/problems/types'
-import type { SubmissionType, Verdict } from '../../types/domain'
+import type { SubmissionType } from '../../types/domain'
+
+/** Shown instead of a pass/fail verdict when nothing was expected. */
+const NO_EXPECTED_OUTPUT = 'No expected output provided'
 
 type Props = {
   result: SubmissionResult | null
@@ -18,14 +21,15 @@ type Props = {
 }
 
 /**
- * Verdict panel for a job in flight or finished. It renders the streamed
- * `CASE_RESULT` rows while they arrive and falls back to the authoritative
- * result document for anything the socket did not deliver.
+ * Per-case detail for a finished or in-flight run. The verdict/count headline
+ * is rendered by `RunConsole` directly above this, so this component only lists
+ * the cases themselves.
  *
- * A failing case always says why: a public sample shows its input, expected
- * and actual output; a hidden case shows the verdict, its number and an
- * explicit note that its data stays on the judge. An empty output box is only
- * ever shown when the program genuinely printed nothing.
+ * A failing case always says why: a public sample shows its input, expected and
+ * actual output; a custom case shows what the caller typed next to what the
+ * program printed; a hidden case shows the verdict and an explicit note that its
+ * data stays on the judge. A custom case the caller left without an expected
+ * output is labelled as such instead of being reported as a pass.
  */
 export default function RunResultPanel({
   result,
@@ -39,73 +43,52 @@ export default function RunResultPanel({
     return (
       <div className="space-y-3">
         <StatusBadge status="SYSTEM_ERROR" />
-        <pre className="overflow-x-auto rounded-md border border-destructive/40 bg-destructive/10 p-3 font-mono text-sm leading-5 text-destructive">
+        <pre className="overflow-x-auto rounded-lg border border-destructive/40 bg-destructive/10 p-3 font-mono text-sm leading-5 text-destructive">
           {failureReason}
         </pre>
       </div>
     )
   }
 
-  const overallVerdict: Verdict | null = summary?.overallStatus ?? result?.overallVerdict ?? null
   const compileError = summary?.compileError ?? result?.compileErrorLogs ?? null
-  const totalRuntimeMs = summary?.totalRuntimeMs ?? result?.totalExecutionTimeMs ?? 0
-  const peakMemoryKb = summary?.peakMemoryKb ?? result?.peakMemoryKb ?? 0
-
-  // Rows still running are shown as pending so the list is stable in length.
   const totalCases = summary?.totalCount ?? result?.totalTestCases ?? cases.length
+
+  // Rows still running are shown as pending so the list stays stable in length.
   const rows: Array<RunCaseResult | null> = [
     ...cases,
     ...Array.from({ length: Math.max(0, totalCases - cases.length) }, () => null),
   ]
 
+  /**
+   * Samples run first and in storage order, so the custom cases that follow are
+   * numbered from the sample count. The judge labels them `custom-1..N`.
+   */
   const label = (index: number) => {
-    const row = rows[index]
-    if (row?.kind === 'CUSTOM') {
-      const sampleCount = sampleTestCases.length
-      return `Custom ${index - sampleCount + 1}`
-    }
+    if (rows[index]?.kind === 'CUSTOM') return `Custom Case ${index - sampleTestCases.length + 1}`
     if (submissionType === 'EXAMPLE_EVAL' || submissionType === 'CUSTOM_RUN') return `Case ${index + 1}`
     return `Testcase ${index + 1}`
   }
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2.5">
-        {overallVerdict ? <StatusBadge status={overallVerdict} /> : <StatusBadge status="Pending" />}
-        {totalCases > 0 && (
-          <Badge variant="secondary" className="tabular-nums">
-            {summary?.passedCount ?? result?.passedTestCases ?? 0} / {totalCases} test cases
-          </Badge>
-        )}
-        <span className="grow" />
-        {(totalRuntimeMs > 0 || peakMemoryKb > 0) && (
-          <span className="font-mono text-xs text-muted-foreground">
-            {formatMs(totalRuntimeMs)} · {formatKb(peakMemoryKb)}
-          </span>
-        )}
-      </div>
+  if (rows.length === 0) {
+    return <p className="text-sm text-muted-foreground">No testcase details were returned for this run.</p>
+  }
 
+  return (
+    <div className="min-w-0 space-y-3" aria-label="Testcase results">
       {compileError && (
-        <pre className="overflow-x-auto rounded-md border border-destructive/40 bg-destructive/10 p-3 font-mono text-sm leading-5 text-destructive">
+        <pre className="overflow-x-auto rounded-lg border border-destructive/40 bg-destructive/10 p-3 font-mono text-sm leading-5 text-destructive">
           {compileError}
         </pre>
       )}
-
-      {rows.length > 0 ? (
-        <div className="min-w-0 space-y-3" aria-label="Testcase results">
-          {rows.map((row, index) => (
-            <CaseCard
-              key={row?.caseId ?? `pending-${index}`}
-              index={index}
-              title={label(index)}
-              row={row}
-              sample={row?.kind === 'SAMPLE' ? sampleTestCases.find((item) => item.id === row.caseId) : undefined}
-            />
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">No testcase details were returned for this run.</p>
-      )}
+      {rows.map((row, index) => (
+        <CaseCard
+          key={row?.caseId ?? `pending-${index}`}
+          index={index}
+          title={label(index)}
+          row={row}
+          sample={row?.kind === 'SAMPLE' ? sampleTestCases.find((item) => item.id === row.caseId) : undefined}
+        />
+      ))}
     </div>
   )
 }
@@ -140,12 +123,27 @@ function CaseCard({
   const input = row.input ?? sample?.input ?? ''
   // Empty string = printed nothing; null = not ours to show.
   const actual = row.actualOutput ?? row.stdout
+  // A custom case the caller did not grade has no expected output at all; that
+  // is not a pass, so it gets its own wording instead of a verdict badge.
+  const ungraded = isCustom && row.status === 'ACCEPTED' && row.expectedOutput === null
+  const actualText =
+    actual === null
+      ? 'Not available.'
+      : actual === ''
+        ? 'No output — the program printed nothing.'
+        : actual
 
   return (
     <article className="min-w-0 space-y-3 rounded-lg border border-border bg-card p-3">
       <header className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold text-foreground">{title}</span>
-        <StatusBadge status={row.status} />
+        {ungraded ? (
+          <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground">
+            {NO_EXPECTED_OUTPUT}
+          </span>
+        ) : (
+          <StatusBadge status={row.status} />
+        )}
         <span className="grow" />
         <span className="font-mono text-xs text-muted-foreground">
           {formatMs(row.runtimeMs)} · {formatKb(row.memoryKb)}
@@ -160,38 +158,32 @@ function CaseCard({
         </p>
       ) : (
         <>
-          <div className="min-w-0 space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">Input</p>
-            <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 font-mono text-xs leading-5 text-foreground">
-              {input || '—'}
-            </pre>
-          </div>
+          <TestcaseBlock
+            label="Input"
+            value={input}
+            placeholder="No input provided"
+            maxHeightClassName="max-h-40"
+          />
           <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-            <div className="min-w-0 space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">Expected output</p>
-              <pre className="max-h-40 min-h-12 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 font-mono text-xs leading-5 text-foreground">
-                {isCustom ? 'No expected output for a custom testcase.' : (row.expectedOutput || '(empty)')}
-              </pre>
-            </div>
-            <div className="min-w-0 space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">Actual output</p>
-              <pre
-                className={`max-h-40 min-h-12 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 font-mono text-xs leading-5 ${
-                  row.status === 'ACCEPTED' ? 'text-foreground' : 'text-destructive'
-                }`}
-              >
-                {actual === null ? 'Not available.' : actual === '' ? 'No output — the program printed nothing.' : actual}
-              </pre>
-            </div>
+            <TestcaseBlock
+              label="Expected Output"
+              value={row.expectedOutput}
+              tone="muted"
+              placeholder={NO_EXPECTED_OUTPUT}
+              maxHeightClassName="max-h-40"
+            />
+            <TestcaseBlock
+              label="Actual Output"
+              value={actualText}
+              tone={ungraded || row.status === 'ACCEPTED' ? 'default' : 'destructive'}
+              maxHeightClassName="max-h-40"
+            />
           </div>
         </>
       )}
 
       {row.stderr && (
-        <div className="min-w-0 space-y-1.5">
-          <p className="text-xs font-medium text-destructive">Stderr</p>
-          <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-destructive/10 p-3 font-mono text-xs leading-5 text-destructive">{row.stderr}</pre>
-        </div>
+        <TestcaseBlock label="Stderr" value={row.stderr} tone="destructive" maxHeightClassName="max-h-40" />
       )}
     </article>
   )

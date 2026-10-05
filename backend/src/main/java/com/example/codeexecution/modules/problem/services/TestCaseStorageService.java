@@ -1,6 +1,7 @@
 package com.example.codeexecution.modules.problem.services;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -48,6 +49,29 @@ public class TestCaseStorageService {
             throw new BadRequestException("Output testcase file is required");
         }
 
+        try {
+            String inputContent = new String(input.getBytes(), StandardCharsets.UTF_8);
+            String outputContent = new String(output.getBytes(), StandardCharsets.UTF_8);
+            return save(problemId, inputContent, outputContent);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to read testcase files", exception);
+        }
+    }
+
+    /**
+     * Persists an input/output pair given as text. Used by the problem seeder,
+     * which authors its test cases in code rather than uploading them; the
+     * multipart overload above delegates here so both paths share the same
+     * directory resolution and file naming.
+     */
+    public StoredFiles save(String problemId, String inputContent, String outputContent) {
+        if (inputContent == null || inputContent.isBlank()) {
+            throw new BadRequestException("Input testcase content is required");
+        }
+        if (outputContent == null || outputContent.isBlank()) {
+            throw new BadRequestException("Output testcase content is required");
+        }
+
         String directoryName = sanitize(problemId);
         Path directory = this.storageRoot.resolve(directoryName).normalize();
         if (!directory.startsWith(this.storageRoot)) {
@@ -60,8 +84,8 @@ public class TestCaseStorageService {
 
         try {
             Files.createDirectories(directory);
-            input.transferTo(inputPath);
-            output.transferTo(outputPath);
+            Files.writeString(inputPath, inputContent, StandardCharsets.UTF_8);
+            Files.writeString(outputPath, outputContent, StandardCharsets.UTF_8);
         } catch (IOException exception) {
             throw new IllegalStateException("Failed to store testcase files", exception);
         }

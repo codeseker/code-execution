@@ -1,19 +1,21 @@
-import { CodeView } from '../Code'
+import { CodeWindow } from '../Code'
 import { Icon } from '../icons'
 import { Spinner, StatusBadge } from '../ui'
 import { Badge } from '../ui/badge'
-import { Separator } from '../ui/separator'
+import { Button } from '../ui/button'
+import { Kbd } from '../Kbd'
 import { Skeleton } from '../ui/skeleton'
 import { EmptyState } from '../ui'
+import { TestcaseBlock } from '../TestcaseBlock'
 import {
   formatDateTime,
   formatKb,
   formatMs,
   languageLabel,
   relativeTime,
-  submissionTypeLabel,
   statusToneClass,
   statusLabel,
+  submissionTypeLabel,
   verdictLabel,
 } from '../../lib/format'
 import type { SubmissionDetail } from '../../hooks/submissions/types'
@@ -26,6 +28,13 @@ const MONACO_LANG: Record<Language, 'python' | 'js' | 'rust' | 'generic'> = {
   java: 'generic',
 }
 
+const EXT: Record<Language, string> = {
+  python: 'py',
+  javascript: 'js',
+  cpp: 'cpp',
+  java: 'java',
+}
+
 type Props = {
   submission: SubmissionDetail | undefined
   loading: boolean
@@ -33,8 +42,9 @@ type Props = {
 }
 
 /**
- * Inspector for one submission. `GET /submissions/{id}` is owner-scoped and
- * exposes per-testcase IO only for the run types the backend allows
+ * Inspector for one submission. `GET /submissions/{id}` is owner-scoped, returns
+ * the submitted `code` alongside the result document, and only exposes
+ * per-testcase IO for the run types the backend allows
  * (`SubmissionType.exposesIo`).
  */
 export default function SubmissionDetailPanel({ submission, loading, onClose }: Props) {
@@ -49,11 +59,11 @@ export default function SubmissionDetailPanel({ submission, loading, onClose }: 
 
   if (!submission) {
     return (
-      <div className="rounded-xl border border-border bg-card shadow-sm">
+      <div className="rounded-lg border border-border bg-card">
         <EmptyState
           icon="search"
           title="No submission selected"
-          hint="Pick a row from the list to inspect its result, timings and test cases."
+          hint="Pick a row from the list to inspect its code, result and test cases."
         />
       </div>
     )
@@ -62,51 +72,52 @@ export default function SubmissionDetailPanel({ submission, loading, onClose }: 
   const { result } = submission
   const verdict = result?.overallVerdict ?? null
   const statusValue = verdict ?? submission.status
+  const isRunning = submission.status === 'QUEUED' || submission.status === 'PROCESSING'
 
   return (
     <>
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-foreground">Submission Details</h2>
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm h-7"
-          onClick={onClose}
-          aria-label="Close submission details"
-        >
-          <span className="kbd">ESC</span>
+        <h2 className="flex min-w-0 flex-col">
+          <span className="truncate text-base font-semibold text-foreground">
+            {submission.problemTitle ?? 'Problem removed'}
+          </span>
+          <span className="font-mono text-xs text-muted-foreground">#{submission.id.slice(-8)}</span>
+        </h2>
+        <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close submission details">
+          <Kbd>ESC</Kbd>
           <Icon name="x" size={13} />
-        </button>
+        </Button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2.5">
-        <span className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${statusToneClass(statusValue)}`}>
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ${statusToneClass(statusValue)}`}
+        >
           <StatusBadge status={statusValue} />
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary px-2 py-0.5 font-mono text-xs text-secondary-foreground">
-          #{submission.id.slice(-8)}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {languageLabel(submission.language)} · {submissionTypeLabel(submission.type)} ·{' '}
-          {relativeTime(submission.createdAt)}
-        </span>
+        <Badge variant="secondary">{languageLabel(submission.language)}</Badge>
+        <Badge variant="outline">{submissionTypeLabel(submission.type)}</Badge>
+        <span className="text-xs text-muted-foreground">{relativeTime(submission.createdAt)}</span>
       </div>
 
-      <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
+      <section className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4">
         <div className="flex flex-wrap items-center gap-3">
-          <span className={`center size-8 rounded-full ${statusToneClass(statusValue)}`}>
+          <span
+            className={`flex size-8 items-center justify-center rounded-full ${statusToneClass(statusValue)}`}
+          >
             <Icon
               name={submission.status === 'COMPLETED' ? (verdict === 'ACCEPTED' ? 'checkCircle' : 'xCircle') : 'timer'}
               size={17}
             />
           </span>
-          <span className="text-xl font-semibold leading-7 text-foreground">
+          <span className="text-lg font-semibold text-foreground">
             {verdict ? verdictLabel(verdict) : statusLabel(submission.status)}
           </span>
           <span className="grow" />
-          {submission.status === 'QUEUED' || submission.status === 'PROCESSING' ? (
+          {isRunning ? (
             <Spinner size={16} className="text-muted-foreground" />
           ) : result ? (
-            <span className="rounded-sm bg-muted/40 px-2 py-1 font-mono text-xs text-muted-foreground">
+            <span className="rounded-md bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">
               {formatMs(result.totalExecutionTimeMs)} · {formatKb(result.peakMemoryKb)}
             </span>
           ) : null}
@@ -126,46 +137,54 @@ export default function SubmissionDetailPanel({ submission, loading, onClose }: 
               {result.passedTestCases} / {result.totalTestCases} Test Cases Passed
             </p>
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-md border border-border bg-muted/50 px-3.5 py-3">
-                <p className="text-sm font-semibold text-muted-foreground">Runtime</p>
-                <p className="mt-1 text-sm font-medium tabular-nums text-foreground">
+              <div className="rounded-lg border border-border bg-muted/50 px-3.5 py-3">
+                <p className="text-sm font-medium text-muted-foreground">Runtime</p>
+                <p className="mt-1 font-mono text-sm tabular-nums text-foreground">
                   {formatMs(result.totalExecutionTimeMs)}
                 </p>
               </div>
-              <div className="rounded-md border border-border bg-muted/50 px-3.5 py-3">
-                <p className="text-sm font-semibold text-muted-foreground">Peak memory</p>
-                <p className="mt-1 text-sm font-medium tabular-nums text-foreground">{formatKb(result.peakMemoryKb)}</p>
+              <div className="rounded-lg border border-border bg-muted/50 px-3.5 py-3">
+                <p className="text-sm font-medium text-muted-foreground">Peak memory</p>
+                <p className="mt-1 font-mono text-sm tabular-nums text-foreground">
+                  {formatKb(result.peakMemoryKb)}
+                </p>
               </div>
             </div>
 
             {result.compileErrorLogs && (
-              <pre className="overflow-x-auto rounded-md border border-destructive/40 bg-destructive/10 p-3 font-mono text-sm leading-5 text-destructive">
+              <pre className="overflow-x-auto rounded-lg border border-destructive/40 bg-destructive/10 p-3 font-mono text-sm leading-5 text-destructive">
                 {result.compileErrorLogs}
               </pre>
             )}
 
             {result.testCaseResults.map((row, index) => (
-              <div key={`${row.testCaseId ?? 'case'}-${index}`} className="rounded-md border border-border bg-muted/50 p-3">
-                <div className="flex items-center gap-2">
+              <div
+                key={`${row.testCaseId ?? 'case'}-${index}`}
+                className="min-w-0 space-y-2 rounded-lg border border-border bg-muted/50 p-3"
+              >
+                <div className="flex flex-wrap items-center gap-2">
                   <StatusBadge status={row.status} />
-                  <span className="text-sm font-medium text-foreground">Case {index + 1}</span>
+                  <span className="text-sm font-medium text-foreground">Testcase {index + 1}</span>
                   <span className="grow" />
-                  <span className="font-mono text-xs text-muted-foreground">{formatMs(row.executionTimeMs)}</span>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {formatMs(row.executionTimeMs)}
+                  </span>
                 </div>
                 {row.actualOutput !== null && (
-                  <>
-                    <Separator className="my-2" />
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Expected</p>
-                        <pre className="mt-1 overflow-x-auto font-mono text-xs text-foreground">{row.expectedOutput ?? '—'}</pre>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Received</p>
-                        <pre className="mt-1 overflow-x-auto font-mono text-xs text-foreground">{row.actualOutput}</pre>
-                      </div>
-                    </div>
-                  </>
+                  <div className="grid min-w-0 gap-2 sm:grid-cols-2">
+                    <TestcaseBlock
+                      label="Expected"
+                      value={row.expectedOutput}
+                      tone="muted"
+                      maxHeightClassName="max-h-32"
+                    />
+                    <TestcaseBlock
+                      label="Received"
+                      value={row.actualOutput}
+                      tone={row.status === 'ACCEPTED' ? 'default' : 'destructive'}
+                      maxHeightClassName="max-h-32"
+                    />
+                  </div>
                 )}
               </div>
             ))}
@@ -173,24 +192,28 @@ export default function SubmissionDetailPanel({ submission, loading, onClose }: 
         )}
       </section>
 
-      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-3 py-2.5">
-          <Badge variant="secondary">{languageLabel(submission.language)}</Badge>
-          <span className="font-mono text-xs text-muted-foreground">
-            submission.{submission.language === 'python' ? 'py' : submission.language}
+      <section className="overflow-hidden rounded-lg border border-border bg-card">
+        <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-3 py-2">
+          <span className="truncate font-mono text-xs text-muted-foreground">
+            submission.{EXT[submission.language]}
           </span>
           <span className="grow" />
-          <span className="font-mono text-xs text-muted-foreground">{formatDateTime(submission.createdAt)}</span>
+          <span className="font-mono text-xs text-muted-foreground">
+            {formatDateTime(submission.createdAt)}
+          </span>
         </div>
-        <div className="bg-muted/50">
-          {result?.testCaseResults.some((row) => row.stdout) ? (
-            <CodeView code={result.testCaseResults.find((row) => row.stdout)?.stdout ?? ''} lang={MONACO_LANG[submission.language]} />
-          ) : (
-            <p className="p-4 text-sm text-muted-foreground">
-              Source code is not part of the submission payload.
-            </p>
-          )}
-        </div>
+        {submission.code ? (
+          <CodeWindow
+            title={`submission.${EXT[submission.language]}`}
+            code={submission.code}
+            lang={MONACO_LANG[submission.language]}
+            copyable
+          />
+        ) : (
+          <p className="p-4 text-sm text-muted-foreground">
+            The source code for this submission is no longer stored.
+          </p>
+        )}
       </section>
     </>
   )

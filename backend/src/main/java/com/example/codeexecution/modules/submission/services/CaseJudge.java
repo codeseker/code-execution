@@ -31,8 +31,8 @@ import com.example.codeexecution.modules.submission.services.DockerSandboxServic
  *   <li>SIGKILL (137) outside a timeout -&gt; MEMORY_LIMIT_EXCEEDED</li>
  *   <li>any other non-zero exit -&gt; RUNTIME_ERROR (crash, uncaught
  *       exception, bad exit code) - never WRONG_ANSWER</li>
- *   <li>no expected output (custom case) -&gt; ACCEPTED, there is nothing to
- *       compare against</li>
+ *   <li>no expected output (a custom case the caller did not grade) ->
+ *       ACCEPTED, there is nothing to compare against</li>
  *   <li>otherwise {@link OutputComparator#matches} decides ACCEPTED vs
  *       WRONG_ANSWER</li>
  * </ol>
@@ -96,7 +96,8 @@ public class CaseJudge {
 
     /**
      * The one exit-code/outcome to verdict mapping. {@code expected} is null
-     * for custom cases, where a mismatch is impossible by construction.
+     * for an ungraded custom case, where a mismatch is impossible by
+     * construction.
      */
     public static Verdict verdict(RunOutcome raw, String expected) {
         if (raw.timedOut()) {

@@ -67,6 +67,8 @@ export type AdminTestCase = {
     isSample: boolean;
     timeLimitMs: number;
     memoryLimitKb: number;
+    /** Optional note attached by the problem setter; may be null. */
+    explanation?: string | null;
 };
 
 /** `ProblemResponseMapper.ProblemDetailsResponse` - `GET /admin/problems/{id}`. */
@@ -113,6 +115,7 @@ export type UploadTestCasePayload = {
     isSample?: boolean;
     timeLimitMs?: number;
     memoryLimitKb?: number;
+    explanation?: string | null;
 };
 
 /** Drops empty filters so the backend keeps its own defaults. */

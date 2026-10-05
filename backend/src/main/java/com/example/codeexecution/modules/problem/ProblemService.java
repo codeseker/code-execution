@@ -182,7 +182,8 @@ public class ProblemService {
             MultipartFile output,
             boolean isSample,
             Integer timeLimitMs,
-            Integer memoryLimitKb) {
+            Integer memoryLimitKb,
+            String explanation) {
 
         Problem problem = findActive(problemId);
 
@@ -195,6 +196,9 @@ public class ProblemService {
                 .isSample(isSample)
                 .timeLimitMs(timeLimitMs == null ? 1000 : timeLimitMs)
                 .memoryLimitKb(memoryLimitKb == null ? 256000 : memoryLimitKb)
+                .explanation(explanation == null || explanation.isBlank()
+                        ? null
+                        : explanation.trim())
                 .build();
 
         TestCase saved = this.testCaseRepository.save(testCase);

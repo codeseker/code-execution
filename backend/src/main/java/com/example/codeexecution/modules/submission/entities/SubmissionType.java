@@ -2,15 +2,15 @@ package com.example.codeexecution.modules.submission.entities;
 
 /** What kind of evaluation the submission asks for. */
 public enum SubmissionType {
-    /** Runs only the public sample test cases (fast feedback loop). */
+    /** Runs the public sample test cases plus the caller's custom ones. */
     EXAMPLE_EVAL,
     /** Runs all hidden and public test cases; affects statistics. */
     FULL_SUBMISSION,
     /**
-     * LeetCode's "Run" button: executes the code against the problem's own
-     * sample test cases plus the caller's own custom test cases - no stored
-     * hidden case is used, no statistics change, and a custom case can never
-     * be a WRONG_ANSWER (there is nothing to compare against).
+     * LeetCode's "Run" / "Run samples" buttons: executes the code against the
+     * problem's own sample test cases plus the caller's own custom test cases
+     * - no stored hidden case is used and no statistics change. A custom case
+     * carrying an expected output is graded; one without it is only executed.
      */
     CUSTOM_RUN;
 

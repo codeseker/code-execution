@@ -9,8 +9,9 @@ package com.example.codeexecution.modules.submission.entities;
  *   <li>{@link #SAMPLE} - public sample, exposed by
  *       {@code GET /problems/{slug}}; input, expected and actual are safe to
  *       show on every run type.</li>
- *   <li>{@link #CUSTOM} - stdin the caller typed into a "Custom N" tab. There
- *       is no expected output by construction, so the run can never be a
+ *   <li>{@link #CUSTOM} - stdin the caller typed into a "Custom N" tab. When
+ *       the caller also supplied an expected output the case is graded
+ *       normally; otherwise it is executed only and can never be a
  *       WRONG_ANSWER.</li>
  *   <li>{@link #HIDDEN} - private judge case. Its input and expected output
  *       must never reach the client, through any event, response or log.</li>

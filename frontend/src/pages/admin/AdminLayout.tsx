@@ -55,7 +55,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       <p className="text-sm font-semibold px-2 pb-1 text-muted-foreground">Operations</p>
       {FOOTER_NAV.map(row)}
       <div className="mt-2 flex items-center gap-2.5 rounded-md border border-border bg-muted/40 px-3 py-2.5">
-        <span className="center h-7 w-7 flex-none rounded-full bg-primary/10 text-primary">
+        <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-primary/10 text-primary">
           <Icon name="check" size={14} strokeWidth={2.6} />
         </span>
         <span className="min-w-0 flex flex-col">

@@ -14,12 +14,13 @@ import lombok.Setter;
 import com.example.codeexecution.modules.submission.entities.Language;
 
 /**
- * Body of {@code POST /problems/{id}/run} - the LeetCode-style "Run" button.
+ * Body of {@code POST /problems/{id}/run} (the LeetCode-style "Run" button)
+ * and {@code POST /problems/{id}/example-eval}.
  *
- * <p>The sample test cases are NOT part of this body: the worker loads them
- * from storage so the client cannot override, inject or reorder them. The
- * client only identifies the work (problem id from the path, code, language)
- * and may add its own custom test cases on top.
+ * <p>Both judge the problem's own stored sample cases PLUS the caller's custom
+ * test cases. The samples are NOT part of this body: the worker loads them
+ * from storage so the client cannot override, inject or reorder them. Only
+ * {@code customTestcases} comes from the client.
  */
 @AllArgsConstructor
 @NoArgsConstructor
@@ -35,13 +36,17 @@ public class RunRequest {
     private Language language;
 
     /**
-     * Raw stdin of the caller's own "Custom N" test cases, in tab order. Each
-     * entry runs after every stored sample case and has no expected output,
-     * so its result can never be WRONG_ANSWER. Blank/empty entries are
-     * dropped; the count and each entry's length are validated server-side.
+     * The caller's own "Custom N" test cases, in tab order. Each entry runs
+     * after every stored sample case. {@code customInput} is required;
+     * {@code expectedOutput} is optional - without it the case still runs and
+     * reports its actual output, but it is not graded pass/fail.
+     *
+     * <p>Blank inputs are dropped; the count and each entry's length are
+     * validated server-side. A bare string is still accepted per entry for
+     * backwards compatibility (see {@link CustomTestCaseDeserializer}).
      */
     @Size(max = 20, message = "custom_testcases must not contain more than 20 entries")
-    private List<@Size(max = 64000, message = "a custom testcase input is too long") String> customTestcases;
+    private List<CustomTestCaseRequest> customTestcases;
 
     /**
      * Legacy single stdin field, sent by clients built before the Run button

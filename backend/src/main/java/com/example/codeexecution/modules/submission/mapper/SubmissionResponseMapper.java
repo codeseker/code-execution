@@ -25,30 +25,39 @@ public final class SubmissionResponseMapper {
     }
 
     public static SubmissionResponse toSubmissionResponse(
-            Submission submission, SubmissionResult result) {
+            Submission submission, SubmissionResult result, String problemTitle) {
         return new SubmissionResponse(
                 submission.getId(),
                 submission.getProblemId(),
+                problemTitle,
                 submission.getLanguage(),
                 submission.getType(),
                 submission.getStatus(),
+                submission.getCode(),
                 submission.getCreatedAt(),
                 result == null ? null : toResultResponse(result));
     }
 
     /**
      * Lightweight history row for {@code GET /users/me/submissions}:
-     * no code, no testcase output, just the verdict summary.
+     * no code, no testcase output, just the verdict and resource summary.
      */
     public static SubmissionSummaryResponse toSummary(
-            Submission submission, Verdict verdict) {
+            Submission submission,
+            Verdict verdict,
+            String problemTitle,
+            Long runtimeMs,
+            Long memoryKb) {
         return new SubmissionSummaryResponse(
                 submission.getId(),
                 submission.getProblemId(),
+                problemTitle,
                 submission.getLanguage(),
                 submission.getType(),
                 submission.getStatus(),
                 verdict,
+                runtimeMs,
+                memoryKb,
                 submission.getCreatedAt());
     }
 

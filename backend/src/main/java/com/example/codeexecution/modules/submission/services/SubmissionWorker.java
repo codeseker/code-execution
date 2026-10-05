@@ -24,6 +24,7 @@ import com.example.codeexecution.modules.problem.services.ProblemStatsService;
 import com.example.codeexecution.modules.stats.UserProblemStatService;
 import com.example.codeexecution.modules.submission.config.ExecutionProperties;
 import com.example.codeexecution.modules.submission.dtos.JobMessage;
+import com.example.codeexecution.modules.submission.entities.CustomTestCaseInput;
 import com.example.codeexecution.modules.submission.entities.JudgeCaseKind;
 import com.example.codeexecution.modules.submission.entities.Language;
 import com.example.codeexecution.modules.submission.entities.Submission;
@@ -280,10 +281,11 @@ public class SubmissionWorker {
      * The judge plan for one run. Sample cases always come from the problem's
      * own stored test cases - never from the request - so a client can neither
      * override, inject nor reorder them. The only client-influenced entries
-     * are the custom cases a Run may add, and they carry no expected output.
+     * are the custom cases a Run or an example-eval may add.
      *
      * <ul>
-     *   <li>{@code EXAMPLE_EVAL} - the public sample cases, in storage order.</li>
+     *   <li>{@code EXAMPLE_EVAL} - the public sample cases, in storage order,
+     *       then the caller's custom cases.</li>
      *   <li>{@code CUSTOM_RUN} - the same samples, then the caller's custom
      *       cases in the order they were sent.</li>
      *   <li>{@code FULL_SUBMISSION} - every stored case (samples and hidden).</li>
@@ -309,7 +311,8 @@ public class SubmissionWorker {
                     testCase.getMemoryLimitKb()));
         }
 
-        if (submission.getType() == SubmissionType.CUSTOM_RUN) {
+        if (submission.getType() == SubmissionType.CUSTOM_RUN
+                || submission.getType() == SubmissionType.EXAMPLE_EVAL) {
             plan.addAll(customPlan(submission, index, problem));
         }
 
@@ -323,19 +326,23 @@ public class SubmissionWorker {
 
     /**
      * Stages the caller's own test cases into the submission work dir and
-     * appends them to the plan. Blank inputs are dropped; each case gets no
-     * expected file, so {@link CaseJudge} can only return ACCEPTED or an
-     * execution verdict for them.
+     * appends them to the plan, in the order they were sent - so
+     * {@code custom-N} lines up with the caller's "Custom N" tab.
+     *
+     * <p>A case that carries an expected output also gets a {@code .out} file
+     * and is graded normally by {@link CaseJudge} (it can be WRONG_ANSWER).
+     * A case without one is only executed, so its verdict can never be a
+     * mismatch. Blank inputs are dropped; leftover ids are never reused.
      *
      * <p>Only {@link Submission#getCustomTestcases()} is read. The legacy
      * {@code customInput} field is deliberately ignored: a single client
      * supplied stdin must never be able to stand in for a stored sample.
      */
     private List<JudgeCase> customPlan(Submission submission, int alreadyIndexed, Problem problem) {
-        List<String> inputs = new ArrayList<>();
+        List<CustomTestCaseInput> inputs = new ArrayList<>();
         if (submission.getCustomTestcases() != null) {
-            for (String input : submission.getCustomTestcases()) {
-                if (input != null && !input.isBlank()) {
+            for (CustomTestCaseInput input : submission.getCustomTestcases()) {
+                if (input != null && input.input() != null && !input.input().isBlank()) {
                     inputs.add(input);
                 }
             }
@@ -352,7 +359,7 @@ public class SubmissionWorker {
         int index = alreadyIndexed;
         try {
             Files.createDirectories(dir);
-            for (String input : inputs) {
+            for (CustomTestCaseInput input : inputs) {
                 if (cases.size() >= max) {
                     log.warn("Submission {} sent more than {} custom cases; ignoring the rest",
                             submission.getId(), max);
@@ -360,10 +367,17 @@ public class SubmissionWorker {
                 }
                 String caseId = "custom-" + (cases.size() + 1);
                 Path file = dir.resolve(caseId + ".in");
-                Files.writeString(file, input, StandardCharsets.UTF_8);
+                Files.writeString(file, input.input(), StandardCharsets.UTF_8);
+
+                Path expectedFile = null;
+                if (input.hasExpectedOutput()) {
+                    expectedFile = dir.resolve(caseId + ".out");
+                    Files.writeString(expectedFile, input.expectedOutput(), StandardCharsets.UTF_8);
+                }
+
                 cases.add(new JudgeCase(
                         ++index, caseId, JudgeCaseKind.CUSTOM,
-                        file, null, timeLimitMs, memoryLimitKb));
+                        file, expectedFile, timeLimitMs, memoryLimitKb));
             }
         } catch (IOException exception) {
             throw new DockerSandboxException("Could not stage custom testcase input", exception);

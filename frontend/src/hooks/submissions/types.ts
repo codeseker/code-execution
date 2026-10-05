@@ -7,16 +7,29 @@ export type SubmitRequest = {
 };
 
 /**
- * `modules/submission/dtos/RunRequest`.
+ * One entry of `customTestcases` - `modules/submission/dtos/CustomTestCaseRequest`.
+ *
+ * `expectedOutput` is optional: leave it empty to just see what the code
+ * prints, fill it in to get a normal pass/fail verdict for the case.
+ */
+export type CustomTestcase = {
+    customInput: string;
+    expectedOutput: string;
+};
+
+/**
+ * `modules/submission/dtos/RunRequest`, shared by
+ * `POST /problems/{id}/run` and `POST /problems/{id}/example-eval`.
  *
  * The sample test cases are NOT sent: the judge loads them from storage so
  * they can never be overridden, injected or reordered from the client. Only
- * the caller's own "Custom N" inputs travel with the request, in tab order.
+ * the caller's own "Custom N" cases travel with the request, in tab order,
+ * and each one carries its input plus an optional expected output.
  */
 export type RunRequest = {
     code: string;
     language: Language;
-    customTestcases?: string[] | null;
+    customTestcases?: CustomTestcase[] | null;
 };
 
 /** `modules/submission/dtos/SubmitResponse` - the JOB_QUEUED acknowledgement. */
@@ -68,9 +81,13 @@ export type SubmissionResult = {
 export type SubmissionDetail = {
     id: string;
     problemId: string;
+    /** Resolved server-side; null when the problem was removed. */
+    problemTitle: string | null;
     language: Language;
     type: SubmissionType;
     status: SubmissionStatus;
+    /** The source that was submitted, as judged. */
+    code: string | null;
     createdAt: string;
     /** null until the worker finishes. */
     result: SubmissionResult | null;
@@ -80,11 +97,17 @@ export type SubmissionDetail = {
 export type SubmissionSummary = {
     id: string;
     problemId: string;
+    /** Resolved server-side; null when the problem was removed. */
+    problemTitle: string | null;
     language: Language;
     type: SubmissionType;
     status: SubmissionStatus;
     /** null while queued or processing. */
     verdict: Verdict | null;
+    /** Summed wall clock of the run; null until judged. */
+    runtimeMs: number | null;
+    /** Peak memory of the run; null until judged. */
+    memoryKb: number | null;
     createdAt: string;
 };
 
@@ -130,7 +153,8 @@ export type SubmissionEvent =
           status: Verdict;
           /** null for hidden cases, which must never expose their data. */
           input: string | null;
-          /** Always null for CUSTOM cases - there is nothing to compare. */
+          /** null when the caller supplied no expected output for this
+           *  custom case - the case ran, but was never graded. */
           expectedOutput: string | null;
           /** Empty string = the program printed nothing. null = not exposed. */
           actualOutput: string | null;

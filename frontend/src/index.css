@@ -5,7 +5,12 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --navbar-height: 3.5rem;
+  /*
+   * Rendered height of `components/AppNavbar`. Kept in sync with the header's
+   * `h-navbar` so `min-h-app` / `height-workspace` subtract the real chrome
+   * instead of guessing it.
+   */
+  --navbar-height: 4.5rem;
   --background: oklch(0.9630 0.0100 98.8765);
   --foreground: oklch(0.3522 0.0361 94.6795);
   --card: oklch(0.9870 0.0060 98.8765);
@@ -272,6 +277,7 @@
   --text-page-title: var(--type-title);
   --min-height-app: calc(100dvh - var(--navbar-height));
   --height-workspace: calc(100dvh - var(--navbar-height));
+  --height-navbar: var(--navbar-height);
   --max-width-dialog: calc(100% - 2rem);
 
   --radius-sm: calc(var(--radius) - 4px);
@@ -361,5 +367,89 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+ * Shared chrome primitives used by the app shell, command palette and admin
+ * navigation. Composed from the same design tokens as the utility classes so
+ * light/dark themes stay in sync; kept here rather than inline because each one
+ * is reused across several surfaces.
+ */
+@layer components {
+  .icon-btn {
+    @apply inline-flex size-7 flex-none items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground;
+  }
+
+  .menu-item {
+    @apply flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-muted;
+  }
+
+  .kbd {
+    @apply inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-xs leading-none text-muted-foreground;
+  }
+
+  .popover {
+    @apply overflow-hidden rounded-lg border border-border bg-popover p-1.5 text-popover-foreground shadow-md;
+  }
+
+  .seg {
+    @apply inline-flex items-center gap-0.5 rounded-lg border border-border bg-muted p-0.5;
+  }
+
+  .seg-btn {
+    @apply rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground;
+  }
+
+  .seg-btn.is-active {
+    @apply bg-card text-foreground shadow-sm;
+  }
+
+  .scroll-y {
+    @apply overflow-y-auto;
+  }
+
+  /* Mirrors `components/ui/input` for the few native <input>/<select> nodes
+     that cannot use the component (e.g. a slug preview that is not editable). */
+  .input {
+    @apply h-8 w-full min-w-0 rounded-lg border border-control-border bg-transparent px-2.5 py-1 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30;
+  }
+
+  .input.select {
+    @apply cursor-pointer appearance-none bg-none pr-8;
+  }
+
+  .code-window {
+    @apply min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-editor-background;
+  }
+
+  .anim-fade-up {
+    animation: fade-up var(--duration-fast) var(--ease-standard);
+  }
+
+  .anim-scale-in {
+    animation: scale-in var(--duration-normal) var(--ease-standard);
   }
 }

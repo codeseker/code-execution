@@ -10,13 +10,15 @@ import com.example.codeexecution.modules.submission.entities.JudgeCaseKind;
  *
  * <p>Sample cases are always built from the problem's stored test cases, so
  * the client can neither override, inject nor reorder them. Custom cases are
- * the only client-influenced entries and they carry no expected output.
+ * the only client-influenced entries; one that carries an expected output is
+ * graded, one without is only executed.
  *
  * @param caseIndex 1-based position of this case in the run
  * @param caseId stable label (stored test-case id, or {@code custom-N})
  * @param kind visibility class, see {@link JudgeCaseKind}
  * @param inputFile host path of the {@code .in} file fed to stdin
- * @param expectedFile host path of the {@code .out} file; null for custom cases
+ * @param expectedFile host path of the {@code .out} file; null for a custom
+ *                    case whose caller supplied no expected output
  * @param timeLimitMs per-case wall-clock budget
  * @param memoryLimitKb advisory per-case memory budget
  */

@@ -9,7 +9,6 @@ import { Input } from '../../components/ui/input'
 import CustomLink from '../../components/CustomLink'
 import PaginationBar from '../../components/problems/PaginationBar'
 import { CatalogueHealth, ProblemTable } from '../../components/admin/ProblemTable'
-import ProblemEditorDialog from '../../components/admin/ProblemEditorDialog'
 import ConfirmDeleteDialog from '../../components/admin/ConfirmDeleteDialog'
 import { SubmissionStreamTable, UserTable } from '../../components/admin/AdminTables'
 import SubmissionFilters from '../../components/submissions/SubmissionFilters'
@@ -56,7 +55,6 @@ export function AdminProblems() {
   const [search, setSearch] = useState('')
   const [difficulty, setDifficulty] = useState<Difficulty | 'ALL'>('ALL')
   const [page, setPage] = useState(1)
-  const [editing, setEditing] = useState<AdminProblem | null>(null)
   const [pendingDelete, setPendingDelete] = useState<AdminProblem | null>(null)
 
   const query = useMemo(
@@ -88,8 +86,12 @@ export function AdminProblems() {
           title="Problem Catalog"
           meta={`${pagination?.totalElements ?? 0} problems`}
           actions={
-            <CustomLink variant="unstyled" to="/admin/problems/new" className="btn btn-primary">
-              <Icon name="plus" size={14} />
+            <CustomLink
+              variant="unstyled"
+              to="/admin/problems/new"
+              className="inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-primary px-4 text-sm font-medium text-black no-underline transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98]"
+            >
+              <Icon name="plus" size={14} className="shrink-0" />
               New Problem
             </CustomLink>
           }
@@ -152,18 +154,11 @@ export function AdminProblems() {
               }
             />
           ) : (
-            <ProblemTable
-              problems={problems}
-              loading={loading}
-              onOpen={setEditing}
-              onArchive={setPendingDelete}
-            />
+            <ProblemTable problems={problems} loading={loading} onArchive={setPendingDelete} />
           )}
           <PaginationBar pagination={pagination} page={page} onPageChange={setPage} noun="problems" />
         </section>
       </div>
-
-      {editing && <ProblemEditorDialog problem={editing} onClose={() => setEditing(null)} />}
 
       {pendingDelete && (
         <ConfirmDeleteDialog

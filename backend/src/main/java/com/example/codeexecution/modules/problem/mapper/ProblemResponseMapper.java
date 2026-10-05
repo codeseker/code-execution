@@ -41,7 +41,8 @@ public class ProblemResponseMapper {
                 testCase.getOutputFilePath(),
                 testCase.isSample(),
                 testCase.getTimeLimitMs(),
-                testCase.getMemoryLimitKb());
+                testCase.getMemoryLimitKb(),
+                testCase.getExplanation());
     }
 
     public static List<TestCaseResponse> toTestCaseResponses(List<TestCase> testCases) {
@@ -84,6 +85,8 @@ public class ProblemResponseMapper {
             String outputFilePath,
             boolean isSample,
             int timeLimitMs,
-            int memoryLimitKb) {
+            int memoryLimitKb,
+            /** Optional note attached by the problem setter; may be null. */
+            String explanation) {
     }
 }

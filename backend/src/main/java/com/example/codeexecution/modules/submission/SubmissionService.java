@@ -21,8 +21,10 @@ import com.example.codeexecution.common.responses.PaginationMeta;
 import com.example.codeexecution.modules.problem.ProblemRepository;
 import com.example.codeexecution.modules.problem.TestCaseRepository;
 import com.example.codeexecution.modules.problem.entities.Problem;
+import com.example.codeexecution.modules.problem.entities.TestCase;
 import com.example.codeexecution.modules.rbac.RbacService;
 import com.example.codeexecution.modules.submission.config.ExecutionProperties;
+import com.example.codeexecution.modules.submission.dtos.CustomTestCaseRequest;
 import com.example.codeexecution.modules.submission.dtos.JobMessage;
 import com.example.codeexecution.modules.submission.dtos.RunRequest;
 import com.example.codeexecution.modules.submission.dtos.SubmissionQueryDTO;
@@ -30,11 +32,12 @@ import com.example.codeexecution.modules.submission.dtos.SubmissionSummaryRespon
 import com.example.codeexecution.modules.submission.dtos.SubmitRequest;
 import com.example.codeexecution.modules.submission.dtos.SubmitResponse;
 import com.example.codeexecution.modules.submission.dtos.SubmissionResponse;
+import com.example.codeexecution.modules.submission.entities.CustomTestCaseInput;
 import com.example.codeexecution.modules.submission.entities.Language;
 import com.example.codeexecution.modules.submission.entities.Submission;
+import com.example.codeexecution.modules.submission.entities.SubmissionResult;
 import com.example.codeexecution.modules.submission.entities.SubmissionStatus;
 import com.example.codeexecution.modules.submission.entities.SubmissionType;
-import com.example.codeexecution.modules.submission.entities.Verdict;
 import com.example.codeexecution.modules.submission.mapper.SubmissionResponseMapper;
 import com.example.codeexecution.modules.submission.repositories.SubmissionRepository;
 import com.example.codeexecution.modules.submission.repositories.SubmissionResultRepository;
@@ -89,28 +92,49 @@ public class SubmissionService {
     }
 
     /**
-     * Creates a QUEUED submission and enqueues it.
+     * Creates a QUEUED <b>full submission</b> and enqueues it: every stored
+     * test case (samples and hidden) is judged and the statistics move.
      *
-     * @param type EXAMPLE_EVAL (sample cases only) or FULL_SUBMISSION
+     * @see #exampleEval(String, RunRequest, String)
      */
-    public SubmitResponse submit(
-            String problemId, SubmitRequest request, String userId, SubmissionType type) {
+    public SubmitResponse submit(String problemId, SubmitRequest request, String userId) {
 
         Problem problem = findPublished(problemId);
         validateCode(request.getCode());
         requireRuntime(request.getLanguage());
 
-        boolean isExample = type == SubmissionType.EXAMPLE_EVAL;
-        long testCaseCount = this.testCaseRepository.findByProblemId(problem.getId()).stream()
-                .filter(testCase -> !isExample || testCase.isSample())
-                .count();
+        long testCaseCount = this.testCaseRepository.findByProblemId(problem.getId()).size();
         if (testCaseCount == 0) {
-            throw new BadRequestException(isExample
-                    ? "This problem has no sample test cases to run"
-                    : "This problem has no test cases yet");
+            throw new BadRequestException("This problem has no test cases yet");
         }
 
-        return enqueue(problem, userId, request.getCode(), request.getLanguage(), type, null, null);
+        return enqueue(problem, userId, request.getCode(), request.getLanguage(),
+                SubmissionType.FULL_SUBMISSION, null, null);
+    }
+
+    /**
+     * The "Run samples" button: executes the caller's code against the
+     * problem's own <b>sample</b> test cases plus any custom test cases the
+     * caller wrote.
+     *
+     * <p>Identical to {@link #run} except for the {@link SubmissionType}: both
+     * judge samples + custom cases, neither reads a stored hidden case and
+     * neither touches the statistics. No statistics are touched.
+     */
+    public SubmitResponse exampleEval(String problemId, RunRequest request, String userId) {
+        Problem problem = findPublished(problemId);
+        validateCode(request.getCode());
+        requireRuntime(request.getLanguage());
+
+        boolean hasSamples = this.testCaseRepository.findByProblemId(problem.getId()).stream()
+                .anyMatch(TestCase::isSample);
+        if (!hasSamples) {
+            throw new BadRequestException("This problem has no sample test cases to run");
+        }
+
+        return enqueue(problem, userId, request.getCode(), request.getLanguage(),
+                SubmissionType.EXAMPLE_EVAL, null,
+                validateCustomTestcases(request.getCustomTestcases()));
     }
 
     /**
@@ -119,16 +143,17 @@ public class SubmissionService {
      *
      * <p>The samples are never part of the request - the worker loads them from
      * storage, so a client can neither override, inject nor reorder them. Only
-     * {@code customTestcases} comes from the client, and those cases have no
-     * expected output, so they can never produce WRONG_ANSWER. No statistics
-     * are touched.
+     * {@code customTestcases} comes from the client. A custom case carrying an
+     * expected output is graded normally; one without it is only executed, so
+     * it can never produce WRONG_ANSWER. No statistics are touched.
      */
     public SubmitResponse run(String problemId, RunRequest request, String userId) {
         Problem problem = findPublished(problemId);
         validateCode(request.getCode());
         requireRuntime(request.getLanguage());
 
-        List<String> customTestcases = validateCustomTestcases(request.getCustomTestcases());
+        List<CustomTestCaseInput> customTestcases =
+                validateCustomTestcases(request.getCustomTestcases());
 
         // An old client still posts a single `input`; accept it but never use
         // it, so the samples always come from storage.
@@ -144,10 +169,12 @@ public class SubmissionService {
 
     /**
      * Client-supplied custom test cases: count and per-entry length are capped,
-     * null and blank entries are dropped. Returns the accepted inputs in the
-     * order the caller sent them.
+     * null and blank inputs are dropped. Returns the accepted cases in the
+     * order the caller sent them, so the worker's {@code custom-N} ids line up
+     * with the caller's "Custom N" tabs.
      */
-    private List<String> validateCustomTestcases(List<String> requested) {
+    private List<CustomTestCaseInput> validateCustomTestcases(
+            List<CustomTestCaseRequest> requested) {
         if (requested == null || requested.isEmpty()) {
             return null;
         }
@@ -158,8 +185,12 @@ public class SubmissionService {
         }
 
         int maxChars = this.properties.getMaxInputChars();
-        List<String> accepted = new ArrayList<>();
-        for (String input : requested) {
+        List<CustomTestCaseInput> accepted = new ArrayList<>();
+        for (CustomTestCaseRequest testCase : requested) {
+            if (testCase == null) {
+                continue;
+            }
+            String input = testCase.customInput();
             if (input == null || input.isBlank()) {
                 continue;
             }
@@ -168,15 +199,23 @@ public class SubmissionService {
                         "a custom testcase input exceeds the maximum length of "
                                 + maxChars + " characters");
             }
-            accepted.add(input);
+            String expected = testCase.expectedOutput();
+            if (expected != null && expected.length() > maxChars) {
+                throw new BadRequestException(
+                        "a custom testcase expected output exceeds the maximum length of "
+                                + maxChars + " characters");
+            }
+            // A blank expected output is the same as none at all: run only.
+            accepted.add(new CustomTestCaseInput(
+                    input, expected == null || expected.isBlank() ? null : expected));
         }
         return accepted.isEmpty() ? null : accepted;
     }
 
     /**
-     * Shared back half of {@link #submit} and {@link #run}: records the
-     * ledger row, pushes the lightweight job payload onto the language
-     * queue and returns the QUEUED snapshot.
+     * Shared back half of {@link #submit}, {@link #exampleEval} and
+     * {@link #run}: records the ledger row, pushes the lightweight job payload
+     * onto the language queue and returns the QUEUED snapshot.
      */
     private SubmitResponse enqueue(
             Problem problem,
@@ -185,7 +224,7 @@ public class SubmissionService {
             Language language,
             SubmissionType type,
             String customInput,
-            List<String> customTestcases) {
+            List<CustomTestCaseInput> customTestcases) {
 
         Instant now = Instant.now();
         Submission submission = Submission.builder()
@@ -259,7 +298,35 @@ public class SubmissionService {
         // persisted (hidden cases carry none), so this is a plain read-back.
         var result = this.resultRepository.findBySubmissionId(submissionId).orElse(null);
 
-        return SubmissionResponseMapper.toSubmissionResponse(submission, result);
+        return SubmissionResponseMapper.toSubmissionResponse(
+                submission, result, problemTitle(submission.getProblemId()));
+    }
+
+    /** One batch lookup per page instead of N+1 reads. */
+    private Map<String, String> problemTitles(List<Submission> submissions) {
+        List<String> ids = submissions.stream()
+                .map(Submission::getProblemId)
+                .filter(id -> id != null && !id.isBlank())
+                .distinct()
+                .toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        return this.problemRepository.findAllById(ids).stream()
+                .filter(problem -> problem.getId() != null)
+                .collect(java.util.stream.Collectors.toMap(
+                        Problem::getId,
+                        Problem::getTitle,
+                        (first, second) -> first));
+    }
+
+    private String problemTitle(String problemId) {
+        if (problemId == null || problemId.isBlank()) {
+            return null;
+        }
+        return this.problemRepository.findById(problemId)
+                .map(Problem::getTitle)
+                .orElse(null);
     }
 
     /**
@@ -298,19 +365,27 @@ public class SubmissionService {
                 Submission.class);
 
         // One batch lookup for the whole page instead of N+1 reads.
-        Map<String, Verdict> verdicts = submissions.isEmpty()
+        Map<String, SubmissionResult> results = submissions.isEmpty()
                 ? Map.of()
                 : this.resultRepository.findBySubmissionIdIn(submissions.stream()
                         .map(Submission::getId)
                         .toList()).stream()
                         .collect(java.util.stream.Collectors.toMap(
                                 result -> result.getSubmissionId(),
-                                result -> result.getOverallVerdict(),
+                                result -> result,
                                 (first, second) -> first));
+        Map<String, String> titles = problemTitles(submissions);
 
         List<SubmissionSummaryResponse> items = submissions.stream()
-                .map(submission -> SubmissionResponseMapper.toSummary(
-                        submission, verdicts.get(submission.getId())))
+                .map(submission -> {
+                    SubmissionResult result = results.get(submission.getId());
+                    return SubmissionResponseMapper.toSummary(
+                            submission,
+                            result == null ? null : result.getOverallVerdict(),
+                            titles.get(submission.getProblemId()),
+                            result == null ? null : result.getTotalExecutionTimeMs(),
+                            result == null ? null : result.getPeakMemoryKb());
+                })
                 .toList();
 
         int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / limit);

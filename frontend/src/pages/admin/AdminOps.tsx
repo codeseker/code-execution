@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
 import { Switch } from '../../components/ui/switch'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 
 /* ================================================================== */
 /* Admin · System Health                                               */
@@ -79,40 +80,38 @@ export function AdminHealth() {
               <h2 className="text-lg font-semibold text-foreground">Services</h2>
               <p className="text-xs text-muted-foreground">Rolling 30-day uptime per dependency</p>
             </div>
-            <div className="overflow-x-auto">
-              <table className="ntable">
-                <thead>
-                  <tr>
-                    <th className="pl-5">Service</th>
-                    <th className="hidden md:table-cell">Region</th>
-                    <th>Uptime</th>
-                    <th className="hidden md:table-cell">Latency</th>
-                    <th className="pr-5 text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {SERVICES.map((s) => (
-                    <tr key={s.name}>
-                      <td className="pl-5">
-                        <span className="text-sm font-medium flex items-center gap-2.5 text-foreground">
-                          <Icon name="database" size={15} className="text-muted-foreground" />
-                          {s.name}
-                        </span>
-                      </td>
-                      <td className="font-mono text-xs hidden text-muted-foreground md:table-cell">{s.region}</td>
-                      <td className="tabular-nums text-sm text-muted-foreground">{s.uptime.toFixed(2)}%</td>
-                      <td className="text-sm tabular-nums hidden text-muted-foreground md:table-cell">{s.latency}</td>
-                      <td className="pr-5 text-right">
-                        <span className={cx('inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium', s.status === 'Operational' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground')}>
-                          <Icon name={s.status === 'Operational' ? 'checkCircle' : 'alert'} size={12} />
-                          {s.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="pl-5">Service</TableHead>
+                  <TableHead className="hidden md:table-cell">Region</TableHead>
+                  <TableHead>Uptime</TableHead>
+                  <TableHead className="hidden md:table-cell">Latency</TableHead>
+                  <TableHead className="pr-5 text-right">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {SERVICES.map((s) => (
+                  <TableRow key={s.name}>
+                    <TableCell className="pl-5">
+                      <span className="flex items-center gap-2.5 text-sm font-medium text-foreground">
+                        <Icon name="database" size={15} className="text-muted-foreground" />
+                        {s.name}
+                      </span>
+                    </TableCell>
+                    <TableCell className="hidden font-mono text-xs text-muted-foreground md:table-cell">{s.region}</TableCell>
+                    <TableCell className="text-sm tabular-nums text-muted-foreground">{s.uptime.toFixed(2)}%</TableCell>
+                    <TableCell className="hidden text-sm tabular-nums text-muted-foreground md:table-cell">{s.latency}</TableCell>
+                    <TableCell className="pr-5 text-right">
+                      <span className={cx('inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium', s.status === 'Operational' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground')}>
+                        <Icon name={s.status === 'Operational' ? 'checkCircle' : 'alert'} size={12} />
+                        {s.status}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </section>
 
           <div className="flex flex-col gap-4">
@@ -180,11 +179,11 @@ export function AdminSettings() {
           <div className="flex flex-col gap-4 p-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="field-label" htmlFor="s-name">Site name</label>
+                <label className="text-xs font-medium text-muted-foreground" htmlFor="s-name">Site name</label>
                 <Input id="s-name" className="h-9" value={siteName} onChange={(e) => setSiteName(e.target.value)} />
               </div>
               <div>
-                <label className="field-label" htmlFor="s-email">Support email</label>
+                <label className="text-xs font-medium text-muted-foreground" htmlFor="s-email">Support email</label>
                 <Input
                   id="s-email"
                   className="h-9"
@@ -195,7 +194,7 @@ export function AdminSettings() {
               </div>
             </div>
             <div>
-              <label className="field-label" htmlFor="s-lang">Default editor language</label>
+              <label className="text-xs font-medium text-muted-foreground" htmlFor="s-lang">Default editor language</label>
               <Select value={defaultLang} onValueChange={(value) => {
                 if (value !== null) setDefaultLang(value)
               }}>
@@ -253,8 +252,8 @@ export function AdminSettings() {
           <div className="flex flex-col gap-5 p-5">
             <div>
               <div className="flex items-baseline justify-between">
-                <label className="field-label" htmlFor="s-timeout">Run timeout</label>
-                <span className="font-mono text-xs -mt-4 mb-1.5 tabular-nums text-muted-foreground">{timeout}s</span>
+                <label className="text-xs font-medium text-muted-foreground" htmlFor="s-timeout">Run timeout</label>
+                <span className="font-mono text-xs tabular-nums text-muted-foreground">{timeout}s</span>
               </div>
               <input
                 id="s-timeout"

@@ -1,6 +1,7 @@
 import { Icon } from '../icons'
 import { Badge } from '../ui/badge'
 import { DifficultyBadge } from '../ui'
+import { TestcaseExample } from '../TestcaseBlock'
 import { formatKb, formatMs, formatPercent } from '../../lib/format'
 import type { PublicProblemDetail } from '../../hooks/problems/types'
 
@@ -77,13 +78,12 @@ export default function ProblemDescription({ problem, acceptanceRate }: Props) {
         <section className="space-y-3" aria-labelledby="examples-heading">
           <h2 id="examples-heading" className="text-sm font-semibold text-foreground">Examples</h2>
           {problem.sampleTestCases.map((sample, index) => (
-            <div key={sample.id} className="space-y-2">
-              <p className="text-sm font-semibold text-foreground">Example {index + 1}</p>
-              <div className="space-y-2 rounded-lg border border-border bg-muted/50 p-3 font-mono text-sm">
-                <p><span className="text-muted-foreground">Input</span><span className="text-foreground">: {sample.input}</span></p>
-                <p><span className="text-muted-foreground">Output</span><span className="text-foreground">: {sample.output}</span></p>
-              </div>
-            </div>
+            <TestcaseExample
+              key={sample.id}
+              index={index + 1}
+              input={sample.input}
+              output={sample.output}
+            />
           ))}
         </section>
       )}

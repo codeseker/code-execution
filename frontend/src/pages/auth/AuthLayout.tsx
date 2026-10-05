@@ -97,9 +97,9 @@ export function AuthProof({ note }: { note?: string }) {
 export function Divider({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-3 py-1" role="separator">
-      <span className="h-px grow bg-hair" />
+      <span className="h-px grow bg-border" />
       <span className="font-mono text-xs tracking-wide text-muted-foreground uppercase">{label}</span>
-      <span className="h-px grow bg-hair" />
+      <span className="h-px grow bg-border" />
     </div>
   )
 }

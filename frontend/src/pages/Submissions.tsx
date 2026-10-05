@@ -6,6 +6,7 @@ import { DifficultyBadge } from '../components/ui'
 import { Icon } from '../components/icons'
 import { Button } from '../components/ui/button'
 import { Skeleton } from '../components/ui/skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table'
 import CustomLink from '../components/CustomLink'
 import PaginationBar from '../components/problems/PaginationBar'
 import SubmissionFilters from '../components/submissions/SubmissionFilters'
@@ -14,7 +15,7 @@ import SubmissionDetailPanel from '../components/submissions/SubmissionDetailPan
 import usePublicProblemDetail from '../hooks/problems/public/usePublicProblemDetail'
 import { useMySubmissions } from '../hooks/submissions/useSubmissions'
 import useSubmission from '../hooks/submissions/useSubmissions'
-import { formatDateTime, languageLabel, relativeTime, statusToneClass, statusLabel } from '../lib/format'
+import { formatDateTime, formatKb, formatMs, languageLabel, relativeTime, statusToneClass, statusLabel, submissionTypeLabel } from '../lib/format'
 import type { Language, SubmissionStatus } from '../types/domain'
 import { useAuthStore } from '../stores/auth'
 
@@ -156,70 +157,77 @@ export default function Submissions() {
               )}
             />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="ntable">
-                <thead>
-                  <tr>
-                    <th className="pl-4">Status</th>
-                    <th>Type</th>
-                    <th>Language</th>
-                    <th className="hidden sm:table-cell">Submitted</th>
-                    <th className="pr-4 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {submissions.map((submission) => {
-                    const isSelected = submission.id === selectedId;
-                    return (
-                      <tr
-                        key={submission.id}
-                        className={cx('cursor-pointer', isSelected && 'bg-muted/40')}
-                        tabIndex={0}
-                        aria-selected={isSelected}
-                        onClick={() => setSelectedId(submission.id)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') setSelectedId(submission.id)
-                        }}
-                      >
-                        <td className="pl-4">
-                          <span
-                            className={cx(
-                              'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium',
-                              statusToneClass(submission.verdict ?? submission.status),
-                            )}
-                          >
-                            {submission.verdict ?? statusLabel(submission.status)}
-                          </span>
-                        </td>
-                        <td className="text-xs text-muted-foreground">
-                          {submission.type === 'FULL_SUBMISSION'
-                            ? 'Submit'
-                            : submission.type === 'EXAMPLE_EVAL'
-                              ? 'Samples'
-                              : 'Run'}
-                        </td>
-                        <td className="text-sm text-muted-foreground">{languageLabel(submission.language)}</td>
-                        <td className="hidden text-xs text-muted-foreground sm:table-cell" title={formatDateTime(submission.createdAt)}>
-                          {relativeTime(submission.createdAt)}
-                        </td>
-                        <td className="pr-4 text-right">
-                          {isSelected ? (
-                            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary">
-                              Inspecting
-                              <Icon name="arrowRight" size={13} />
-                            </span>
-                          ) : (
-                            <span className="icon-btn reveal inline-flex" aria-hidden>
-                              <Icon name="eye" size={15} />
-                            </span>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="pl-4">Status</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Language</TableHead>
+                  <TableHead className="text-right">Runtime</TableHead>
+                  <TableHead className="hidden text-right sm:table-cell">Memory</TableHead>
+                  <TableHead className="hidden sm:table-cell">Submitted</TableHead>
+                  <TableHead className="pr-4 text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {submissions.map((submission) => {
+                  const isSelected = submission.id === selectedId;
+                  const isRunning =
+                    submission.verdict === null &&
+                    (submission.status === 'QUEUED' || submission.status === 'PROCESSING');
+                  return (
+                    <TableRow
+                      key={submission.id}
+                      className={cx('cursor-pointer', isSelected && 'bg-muted/40')}
+                      aria-selected={isSelected}
+                      onClick={() => setSelectedId(submission.id)}
+                    >
+                      <TableCell className="pl-4">
+                        <span
+                          className={cx(
+                            'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium',
+                            statusToneClass(submission.verdict ?? submission.status),
                           )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        >
+                          {isRunning ? (
+                            <Spinner size={11} className="text-muted-foreground" />
+                          ) : null}
+                          {submission.verdict ?? statusLabel(submission.status)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {submissionTypeLabel(submission.type)}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {languageLabel(submission.language)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-xs text-muted-foreground tabular-nums">
+                        {submission.runtimeMs === null ? '—' : formatMs(submission.runtimeMs)}
+                      </TableCell>
+                      <TableCell className="hidden text-right font-mono text-xs text-muted-foreground tabular-nums sm:table-cell">
+                        {submission.memoryKb === null ? '—' : formatKb(submission.memoryKb)}
+                      </TableCell>
+                      <TableCell
+                        className="hidden text-xs text-muted-foreground sm:table-cell"
+                        title={formatDateTime(submission.createdAt)}
+                      >
+                        {relativeTime(submission.createdAt)}
+                      </TableCell>
+                      <TableCell className="pr-4 text-right">
+                        {isSelected ? (
+                          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary">
+                            Inspecting
+                            <Icon name="arrowRight" size={13} />
+                          </span>
+                        ) : (
+                          <Icon name="eye" size={15} className="text-muted-foreground" aria-hidden />
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           )}
 
           {submissions.length > 0 && (
