@@ -76,6 +76,14 @@ public class ProblemService {
                 .slug(slug)
                 .description(request.getDescription())
                 .problemStatement(request.getProblemStatement())
+                .inputFormat(request.getInputFormat())
+                .outputFormat(request.getOutputFormat())
+                .constraints(request.getConstraints())
+                .notes(request.getNotes())
+                .timeLimitMs(request.getTimeLimitMs() != null ? request.getTimeLimitMs() : 1000)
+                .memoryLimitKb(request.getMemoryLimitKb() != null ? request.getMemoryLimitKb() : 256000)
+                .starterCode(request.getStarterCode())
+                .source(request.getSource())
                 .difficulty(request.getDifficulty())
                 .tags(normalizeTags(request.getTags()))
                 .testCases(new ArrayList<>())
@@ -155,6 +163,30 @@ public class ProblemService {
         problem.setTitle(request.getTitle().trim());
         problem.setDescription(request.getDescription());
         problem.setProblemStatement(request.getProblemStatement());
+        if (request.getInputFormat() != null) {
+            problem.setInputFormat(request.getInputFormat());
+        }
+        if (request.getOutputFormat() != null) {
+            problem.setOutputFormat(request.getOutputFormat());
+        }
+        if (request.getConstraints() != null) {
+            problem.setConstraints(request.getConstraints());
+        }
+        if (request.getNotes() != null) {
+            problem.setNotes(request.getNotes());
+        }
+        if (request.getTimeLimitMs() != null) {
+            problem.setTimeLimitMs(request.getTimeLimitMs());
+        }
+        if (request.getMemoryLimitKb() != null) {
+            problem.setMemoryLimitKb(request.getMemoryLimitKb());
+        }
+        if (request.getStarterCode() != null) {
+            problem.setStarterCode(request.getStarterCode());
+        }
+        if (request.getSource() != null) {
+            problem.setSource(request.getSource());
+        }
         problem.setDifficulty(request.getDifficulty());
         problem.setTags(normalizeTags(request.getTags()));
         if (request.getIsPublished() != null) {
@@ -189,11 +221,17 @@ public class ProblemService {
 
         StoredFiles files = this.storageService.save(problem.getId(), input, output);
 
+        int nextOrder = this.testCaseRepository.findByProblemId(problem.getId()).stream()
+                .mapToInt(TestCase::getOrder)
+                .max()
+                .orElse(-1) + 1;
+
         TestCase testCase = TestCase.builder()
                 .problemId(problem.getId())
                 .inputFilePath(files.inputFilePath())
                 .outputFilePath(files.outputFilePath())
                 .isSample(isSample)
+                .order(nextOrder)
                 .timeLimitMs(timeLimitMs == null ? 1000 : timeLimitMs)
                 .memoryLimitKb(memoryLimitKb == null ? 256000 : memoryLimitKb)
                 .explanation(explanation == null || explanation.isBlank()

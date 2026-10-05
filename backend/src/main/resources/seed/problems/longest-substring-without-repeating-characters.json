@@ -1,0 +1,183 @@
+{
+  "title": "Longest Substring Without Repeating Characters",
+  "description": "Length of the longest contiguous slice whose characters are all distinct.",
+  "statement": "A telemetry stream repeats itself, and an operator wants the longest stretch that contains no repeated character at all.\n\nYou are given a text line. Report the length of the longest **contiguous** slice in which no character occurs twice. Characters are compared exactly as they appear: case matters, spaces and punctuation are ordinary characters, and the slice must be contiguous.\n\nThe natural technique is a sliding window plus a table of the last position each character was seen at, which lets the left edge jump forward only as far as it actually has to.",
+  "inputFormat": "The input is read from standard input as exactly one line:\n\n1. Line 1: the text. It may contain lowercase letters, uppercase letters, digits, spaces and punctuation, but never a newline (`1 <= length <= 10^5`). Read the entire line - spaces are part of the text.",
+  "outputFormat": "Print a single line containing the length of the longest slice without repeated characters as a single integer.",
+  "constraints": [
+    "1 <= length of the line <= 10^5",
+    "The line contains printable ASCII characters only (no newline inside it)",
+    "Comparison is case-sensitive and every printable character counts"
+  ],
+  "notes": "A slice of length 1 is always valid, so the answer is never 0. Do not compare case-insensitively and do not strip spaces: `  ` is a valid slice of length 2 and `aA` is a valid slice of length 2. A boolean 'seen' array that is never cleared is the classic wrong solution, because it must record the last index of each character rather than only whether the character ever appeared.",
+  "difficulty": "MEDIUM",
+  "tags": [
+    "string",
+    "sliding-window",
+    "hashing"
+  ],
+  "timeLimitMs": 1000,
+  "memoryLimitKb": 256000,
+  "starterCode": {
+    "python": "import sys\n\ndef main():\n    s = sys.stdin.readline().rstrip('\\n')\n    # TODO: print the result\n\nif __name__ == \"__main__\":\n    main()\n",
+    "javascript": "const fs = require('fs');\nconst raw = fs.readFileSync(0, 'utf8');\nconst s = raw.replace(/\\r?\\n$/, '');\n// TODO: print the result\n",
+    "java": "import java.io.BufferedReader;\nimport java.io.InputStreamReader;\n\npublic class Main {\n    public static void main(String[] args) throws Exception {\n        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n        String s = br.readLine();\n        if (s == null) {\n            s = \"\";\n        }\n        // TODO: print the result\n    }\n}\n",
+    "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n\n    string s;\n    getline(cin, s);\n\n    // TODO: print the result\n    return 0;\n}\n"
+  },
+  "source": "Original",
+  "testCases": [
+    {
+      "input": "abcabcbb\n",
+      "expectedOutput": "3\n",
+      "isSample": true,
+      "order": 0,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: slide a window that never contains a repeated character, remembering for each character the last index at which it appeared.\nStep 2: `abc` fills the window to length 3. The `a` at index 3 repeats the one at index 0, so the left edge moves to index 1 and the window becomes `bca`, still length 3.\nStep 3: the same happens at every following repeat: the window becomes `cab` (length 3), then `abc` (length 3), then shrinks to `cb` (length 2) and finally to `b`.\nStep 4: the longest window ever seen is 3, for example `abc` at indexes 0 to 2."
+    },
+    {
+      "input": "bbbbb\n",
+      "expectedOutput": "1\n",
+      "isSample": true,
+      "order": 1,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: the first `b` opens a window of length 1.\nStep 2: every following `b` repeats the one immediately before it, so the left edge has to move forward each time and the window never grows.\nStep 3: a single character is the best window available.\nStep 4: the answer is 1."
+    },
+    {
+      "input": "pwwkew\n",
+      "expectedOutput": "3\n",
+      "isSample": true,
+      "order": 2,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: `pw` is a clean window of length 2.\nStep 2: the second `w` repeats index 1, so the window restarts at index 2.\nStep 3: `wke` then `ew` are all distinct, giving a window of length 3 ending at the final `e`.\nStep 4: the answer is 3."
+    },
+    {
+      "input": "a\n",
+      "expectedOutput": "1\n",
+      "isSample": false,
+      "order": 100,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "single character"
+    },
+    {
+      "input": "ab\n",
+      "expectedOutput": "2\n",
+      "isSample": false,
+      "order": 101,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "two distinct characters"
+    },
+    {
+      "input": "aa\n",
+      "expectedOutput": "1\n",
+      "isSample": false,
+      "order": 102,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "every character repeats immediately"
+    },
+    {
+      "input": "abcdefghij\n",
+      "expectedOutput": "10\n",
+      "isSample": false,
+      "order": 103,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "all characters distinct"
+    },
+    {
+      "input": "abba\n",
+      "expectedOutput": "2\n",
+      "isSample": false,
+      "order": 104,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "repeated block at the end"
+    },
+    {
+      "input": "dvdf\n",
+      "expectedOutput": "3\n",
+      "isSample": false,
+      "order": 105,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "overlapping repeat windows"
+    },
+    {
+      "input": "tmmzuxt\n",
+      "expectedOutput": "5\n",
+      "isSample": false,
+      "order": 106,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "repeats that are not adjacent"
+    },
+    {
+      "input": " a b \n",
+      "expectedOutput": "3\n",
+      "isSample": false,
+      "order": 107,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "leading and trailing spaces are ordinary characters"
+    },
+    {
+      "input": "aA\n",
+      "expectedOutput": "2\n",
+      "isSample": false,
+      "order": 108,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "upper and lower case are different characters"
+    },
+    {
+      "input": "1234567890\n",
+      "expectedOutput": "10\n",
+      "isSample": false,
+      "order": 109,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "ten distinct digits"
+    },
+    {
+      "input": "1234512345\n",
+      "expectedOutput": "5\n",
+      "isSample": false,
+      "order": 110,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "two identical halves"
+    },
+    {
+      "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+      "expectedOutput": "1\n",
+      "isSample": false,
+      "order": 111,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "1000 identical characters"
+    },
+    {
+      "input": "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl\n",
+      "expectedOutput": "26\n",
+      "isSample": false,
+      "order": 112,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "1000 characters cycling through the alphabet"
+    },
+    {
+      "input": "abcdefghijklmnopqrstuvwxyzabcdefghijklmno\n",
+      "expectedOutput": "26\n",
+      "isSample": false,
+      "order": 113,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "long run then a repeat near the end"
+    }
+  ]
+}

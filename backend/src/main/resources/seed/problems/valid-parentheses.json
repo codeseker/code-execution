@@ -1,0 +1,173 @@
+{
+  "title": "Valid Parentheses",
+  "description": "Check whether a bracket string is balanced and correctly nested.",
+  "statement": "A compiler front-end needs to know that every opening bracket in a token stream is closed by the matching bracket, in the right order.\n\nYou are given a string built from the six bracket characters `(`, `)`, `[`, `]`, `{`, `}`.\n\nReport `true` when every bracket is closed by a bracket of the same kind and no bracket is closed before it is opened, otherwise report `false`. Nesting order matters: `([)]` is **not** balanced even though each bracket type appears as often as its partner.\n\nA stack is the natural tool - opening brackets are pushed, closing brackets must pop a matching opening bracket from the top.",
+  "inputFormat": "The input is read from standard input as exactly one line:\n\n1. Line 1: the bracket string, containing only the characters `(`, `)`, `[`, `]`, `{`, `}` and nothing else. The line is never empty (`1 <= length <= 100000`).",
+  "outputFormat": "Print a single line containing the lowercase word `true` if the bracket string is balanced, otherwise the lowercase word `false`.",
+  "constraints": [
+    "1 <= length of the string <= 10^5",
+    "The string contains only `(`, `)`, `[`, `]`, `{`, `}`",
+    "The input line is never empty"
+  ],
+  "notes": "Both failure modes must be caught: a closing bracket that does not match the innermost open bracket, and leftover opening brackets after the scan. Nesting can reach 500 levels in the test data, so recursion is unnecessary - and in some languages outright unsafe. Output must be lowercase.",
+  "difficulty": "EASY",
+  "tags": [
+    "stack",
+    "string"
+  ],
+  "timeLimitMs": 1000,
+  "memoryLimitKb": 256000,
+  "starterCode": {
+    "python": "import sys\n\ndef main():\n    s = sys.stdin.readline().rstrip('\\n')\n    # TODO: print the result\n\nif __name__ == \"__main__\":\n    main()\n",
+    "javascript": "const fs = require('fs');\nconst raw = fs.readFileSync(0, 'utf8');\nconst s = raw.replace(/\\r?\\n$/, '');\n// TODO: print the result\n",
+    "java": "import java.io.BufferedReader;\nimport java.io.InputStreamReader;\n\npublic class Main {\n    public static void main(String[] args) throws Exception {\n        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n        String s = br.readLine();\n        if (s == null) {\n            s = \"\";\n        }\n        // TODO: print the result\n    }\n}\n",
+    "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n\n    string s;\n    getline(cin, s);\n\n    // TODO: print the result\n    return 0;\n}\n"
+  },
+  "source": "Original",
+  "testCases": [
+    {
+      "input": "()[]{}\n",
+      "expectedOutput": "true\n",
+      "isSample": true,
+      "order": 0,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: `(` is pushed on the stack.\nStep 2: `)` pops it - the pair matches.\nStep 3: `[` is pushed, then `]` pops it - matches.\nStep 4: `{` is pushed, then `}` pops it - matches.\nStep 5: the stack is empty and no mismatch occurred, so the sequence is balanced: print `true`."
+    },
+    {
+      "input": "(])\n",
+      "expectedOutput": "false\n",
+      "isSample": true,
+      "order": 1,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: `(` is pushed.\nStep 2: the next character is `]`, which closes `[`, but the top of the stack is `(` - the types disagree.\nStep 3: a closing bracket that does not match the innermost open bracket is fatal, so print `false`."
+    },
+    {
+      "input": "([{}])\n",
+      "expectedOutput": "true\n",
+      "isSample": true,
+      "order": 2,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: push `(`, then push `[` - the stack is `( [ `.\nStep 2: `{` and then `}` cancel out.\nStep 3: `]` pops `[`, and `)` pops `(`.\nStep 4: the stack is empty at the end, so the brackets nest correctly: print `true`."
+    },
+    {
+      "input": "()\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 100,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "shortest balanced sequence"
+    },
+    {
+      "input": "(\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 101,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "single opening bracket, nothing closes it"
+    },
+    {
+      "input": ")\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 102,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "single closing bracket with nothing to close"
+    },
+    {
+      "input": "(]\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 103,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "wrong bracket type on the very first close"
+    },
+    {
+      "input": "([)]\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 104,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "correct nesting order but wrong pairing"
+    },
+    {
+      "input": "((()))\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 105,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "three levels of nesting"
+    },
+    {
+      "input": "]\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 106,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "closing bracket alone"
+    },
+    {
+      "input": "}{\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 107,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "closing bracket before any opener"
+    },
+    {
+      "input": "()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 108,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "1000-character balanced sequence"
+    },
+    {
+      "input": "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 109,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "500 levels of nesting"
+    },
+    {
+      "input": "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((())))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 110,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "one opening bracket left unmatched"
+    },
+    {
+      "input": "()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()]\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 111,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "deep sequence broken at the very end"
+    },
+    {
+      "input": "([]){}\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 112,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "mixed bracket types in pairs"
+    }
+  ]
+}

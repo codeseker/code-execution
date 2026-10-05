@@ -192,6 +192,23 @@ export function formatMs(ms: number | null | undefined): string {
     return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(2)} s`;
 }
 
+/** Judge limits are quoted per test: `2000` -> "2 seconds", `1500` -> "1.5 seconds". */
+export function formatTimeLimit(ms: number | null | undefined): string {
+    if (ms === null || ms === undefined || Number.isNaN(ms)) return "-";
+    const seconds = ms / 1000;
+    const value = Number.isInteger(seconds) ? String(seconds) : String(Number(seconds.toFixed(2)));
+    return `${value} ${seconds === 1 ? "second" : "seconds"}`;
+}
+
+/** Judge limits are quoted per test: `256000` -> "250 MB". */
+export function formatMemoryLimit(kb: number | null | undefined): string {
+    if (kb === null || kb === undefined || Number.isNaN(kb)) return "-";
+    if (kb < 1024) return `${kb} KB`;
+    const megabytes = kb / 1024;
+    const value = Number.isInteger(megabytes) ? String(megabytes) : megabytes.toFixed(1);
+    return `${value} MB`;
+}
+
 /** Compact relative time for submission rows ("3m ago"). */
 export function relativeTime(iso: string | null | undefined): string {
     if (!iso) return "-";

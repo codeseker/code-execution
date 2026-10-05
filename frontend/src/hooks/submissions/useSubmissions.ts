@@ -44,6 +44,7 @@ export default function useSubmission(id: string | undefined, options: { live?: 
 export function useMySubmissions(query: SubmissionQuery = {}, options: { enabled?: boolean } = {}) {
     const enabled = options.enabled ?? true;
     const params = toSubmissionParams(query);
+    params["type"] = "FULL_SUBMISSION"; 
 
     const result = useQuery({
         queryKey: submissionKeys.list(query),

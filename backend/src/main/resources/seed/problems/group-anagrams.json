@@ -1,0 +1,176 @@
+{
+  "title": "Group Anagrams",
+  "description": "Group words whose letters are a permutation of each other.",
+  "statement": "A dictionary service wants to know which of its words are just rearrangements of each other.\n\nYou are given a list of words. Partition them so that two words land in the same group **if and only if** one is a rearrangement of the other, and report the groups.\n\nTwo words are anagrams exactly when they contain the same letters with the same multiplicities, so sorting the letters of a word gives a canonical key: equal keys mean the same group.\n\nTo keep the output deterministic, the words inside each group are printed in ascending lexicographic order, and the groups themselves are printed ordered by their contents. Every input word appears in exactly one line.",
+  "inputFormat": "The input is read from standard input:\n\n1. Line 1: integer `n` - the number of words (`0 <= n <= 10000`).\n2. Lines 2 to n+1: one word per line. A word is a sequence of lowercase ASCII letters and may be empty, in which case the line itself is empty. Always read one whole line per word - words are not space separated.",
+  "outputFormat": "Each line contains one group: the words of that group separated by single spaces, sorted ascending within the line, and the lines themselves sorted ascending lexicographically. If there are no words at all (`n = 0`), print the single line `NONE`.",
+  "constraints": [
+    "0 <= n <= 10^4",
+    "0 <= word length <= 100, words use lowercase ASCII letters only",
+    "Each input word appears in exactly one output line",
+    "Words are not space separated, so an empty line is a legal word"
+  ],
+  "notes": "Sorting each word to build the key is `O(total length * log max length)` and is perfectly adequate. Counting letters instead gives a linear-time key. The empty word is a real word: its key is the empty string and it forms its own group unless another empty word is present, in which case they merge. Print `NONE` for `n = 0` so the output is never empty.",
+  "difficulty": "MEDIUM",
+  "tags": [
+    "array",
+    "hashing",
+    "sorting",
+    "strings"
+  ],
+  "timeLimitMs": 1000,
+  "memoryLimitKb": 256000,
+  "starterCode": {
+    "python": "import sys\n\ndef main():\n    lines = sys.stdin.read().split('\\n')\n    n = int(lines[0].strip())\n    words = [lines[i + 1].strip() for i in range(n)]\n    # TODO: print the result\n\nif __name__ == \"__main__\":\n    main()\n",
+    "javascript": "const fs = require('fs');\nconst lines = fs.readFileSync(0, 'utf8').split(/\\r?\\n/);\nconst n = parseInt(lines[0].trim(), 10);\nconst words = [];\nfor (let i = 0; i < n; i++) {\n    words.push(lines[i + 1].trim());\n}\n// TODO: print the result\n",
+    "java": "import java.io.BufferedReader;\nimport java.io.InputStreamReader;\n\npublic class Main {\n    public static void main(String[] args) throws Exception {\n        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n        int n = Integer.parseInt(br.readLine().trim());\n        String[] words = new String[n];\n        for (int i = 0; i < n; i++) {\n            words[i] = br.readLine().trim();\n        }\n        // TODO: print the result\n    }\n}\n",
+    "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n\n    int n;\n    cin >> n;\n    cin.ignore(numeric_limits<streamsize>::max(), '\\n');\n    vector<string> words(n);\n    for (int i = 0; i < n; i++) {\n        getline(cin, words[i]);\n    }\n\n    // TODO: print the result\n    return 0;\n}\n"
+  },
+  "source": "Original",
+  "testCases": [
+    {
+      "input": "6\neat\ntea\ntan\nate\nnat\nbat\n",
+      "expectedOutput": "ate eat tea\nbat\nnat tan\n",
+      "isSample": true,
+      "order": 0,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: group words that share the same multiset of letters. A convenient key is the word's letters in sorted order.\nStep 2: `eat`, `tea` and `ate` all sort to `aet`, so they form one group; `tan` and `nat` sort to `ant`, forming a second; `bat` sorts to `abt`, a third.\nStep 3: sort the words inside each group and sort the groups themselves, so the output is deterministic.\nStep 4: the answer is the three lines `ate eat tea`, `ant nat tan`, `abt bat`."
+    },
+    {
+      "input": "3\n\na\naa\n",
+      "expectedOutput": "\na\naa\n",
+      "isSample": true,
+      "order": 1,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: a word is identified by the multiset of its letters, so a word's sorted letters are its key. The empty word has the empty key, the word `a` keys to `a`, and `aa` keys to `aa`.\nStep 2: no two of these keys match, so three groups result: the empty word alone, `a` alone, and `aa` alone.\nStep 3: the empty word is a legal word even though it prints as an empty line, and it sorts before every non-empty group.\nStep 4: the output is therefore three lines: an empty line, then `a`, then `aa`."
+    },
+    {
+      "input": "3\nab\nba\nabc\n",
+      "expectedOutput": "ab ba\nabc\n",
+      "isSample": true,
+      "order": 2,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: `ab` and `ba` share the key `ab`, so they form one group; `abc` keys to `abc` and forms a group of its own.\nStep 2: inside the first group the words are sorted, giving `ab ba`.\nStep 3: the group lines themselves are sorted, and `ab ba` precedes `abc`.\nStep 4: print the two lines `ab ba` and `abc`."
+    },
+    {
+      "input": "0\n",
+      "expectedOutput": "NONE\n",
+      "isSample": false,
+      "order": 100,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "no words at all"
+    },
+    {
+      "input": "1\na\n",
+      "expectedOutput": "a\n",
+      "isSample": false,
+      "order": 101,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "single character word"
+    },
+    {
+      "input": "2\na\na\n",
+      "expectedOutput": "a a\n",
+      "isSample": false,
+      "order": 102,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "the same word twice makes one group of two"
+    },
+    {
+      "input": "2\nab\nba\n",
+      "expectedOutput": "ab ba\n",
+      "isSample": false,
+      "order": 103,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "two anagram partners"
+    },
+    {
+      "input": "2\nab\ncd\n",
+      "expectedOutput": "ab\ncd\n",
+      "isSample": false,
+      "order": 104,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "no anagrams at all"
+    },
+    {
+      "input": "6\nabc\nbca\ncab\nxyz\nzyx\nqrs\n",
+      "expectedOutput": "abc bca cab\nqrs\nxyz zyx\n",
+      "isSample": false,
+      "order": 105,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "three clean groups"
+    },
+    {
+      "input": "6\nlisten\nsilent\nenlist\ninlets\ngoogle\nelgoog\n",
+      "expectedOutput": "elgoog google\nenlist inlets listen silent\n",
+      "isSample": false,
+      "order": 106,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "classic anagram clusters of different sizes"
+    },
+    {
+      "input": "1\ndddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\n",
+      "expectedOutput": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\n",
+      "isSample": false,
+      "order": 107,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "64 identical characters in one word"
+    },
+    {
+      "input": "8\ntea\ntan\nate\neat\nnat\nbat\ntab\nant\n",
+      "expectedOutput": "ant nat tan\nate eat tea\nbat tab\n",
+      "isSample": false,
+      "order": 108,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "eight words with a large overlapping group"
+    },
+    {
+      "input": "2\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+      "expectedOutput": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+      "isSample": false,
+      "order": 109,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "two long identical words"
+    },
+    {
+      "input": "4\n\na\naa\naaa\n",
+      "expectedOutput": "\na\naa\naaa\n",
+      "isSample": false,
+      "order": 110,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "an empty word joins the group of its own key"
+    },
+    {
+      "input": "6\nzyx\nxyz\nabc\nbca\ncab\ncba\n",
+      "expectedOutput": "abc bca cab cba\nxyz zyx\n",
+      "isSample": false,
+      "order": 111,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "three groups of three"
+    },
+    {
+      "input": "26\nab\nba\ncd\ndc\nef\nfe\ngh\nhg\nij\nji\nkl\nlk\nmn\nnm\nop\npo\nqr\nrq\nst\nts\nuv\nvu\nwx\nxw\nyz\nzy\n",
+      "expectedOutput": "ab ba\ncd dc\nef fe\ngh hg\nij ji\nkl lk\nmn nm\nop po\nqr rq\nst ts\nuv vu\nwx xw\nyz zy\n",
+      "isSample": false,
+      "order": 112,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "13 anagram pairs, 26 words"
+    }
+  ]
+}

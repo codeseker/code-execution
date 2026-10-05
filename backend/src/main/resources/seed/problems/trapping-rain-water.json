@@ -1,0 +1,184 @@
+{
+  "title": "Trapping Rain Water",
+  "description": "Total units of water retained between an elevation profile's bars.",
+  "statement": "An elevation profile is given as a row of bars whose widths are all one unit.\n\nRain falls and settles between the bars. Report the total number of units of water the profile can hold.\n\nAbove bar `i`, the water level can rise no higher than the shorter of the tallest bar on its left and the tallest bar on its right, so the units held there are `min(left_max, right_max) - height[i]`. Bars at the ends never hold water because one side has no bar at all.\n\nComputing both maxima from scratch would be quadratic; a two-pointer sweep that always advances the shorter of the two current bars keeps the accumulated maximum on the other side already known, making the whole pass linear.",
+  "inputFormat": "The input is read from standard input as exactly two lines:\n\n1. Line 1: integer `n` - the number of bars (`0 <= n <= 10^5`).\n2. Line 2: `n` space-separated integers `height[0] ... height[n-1]`. When `n` is 0 this line is empty.",
+  "outputFormat": "Print a single line containing the total number of trapped water units as a single integer (`0` when fewer than two bars are given).",
+  "constraints": [
+    "0 <= n <= 10^5",
+    "0 <= height[i] <= 10^5",
+    "All bars are one unit wide",
+    "The total can exceed a 32-bit integer (up to about 10^10), so use a 64-bit accumulator"
+  ],
+  "notes": "`n = 0`, `n = 1` and `n = 2` all hold 0 units, because the end bars always leak. A monotonically rising or falling profile holds nothing at all. Do not clamp the per-bar contribution at zero by accident - it is never negative, since the accumulated maximum on the processed side is always at least the current bar's height. The 64-bit accumulator matters: a 100000-bar profile traps far more than 2^31.",
+  "difficulty": "HARD",
+  "tags": [
+    "array",
+    "two-pointers",
+    "stack"
+  ],
+  "timeLimitMs": 1000,
+  "memoryLimitKb": 256000,
+  "starterCode": {
+    "python": "import sys\n\ndef main():\n    data = sys.stdin.buffer.read().split()\n    n = int(data[0])\n    nums = [int(x) for x in data[1:1 + n]]\n    # TODO: print the result\n\nif __name__ == \"__main__\":\n    main()\n",
+    "javascript": "const fs = require('fs');\nconst data = fs.readFileSync(0, 'utf8').trim().split(/\\s+/).filter((t) => t.length > 0);\nconst n = parseInt(data[0], 10);\nconst nums = data.slice(1, 1 + n).map(Number);\n// TODO: print the result\n",
+    "java": "import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        long[] nums = new long[n];\n        for (int i = 0; i < n; i++) {\n            nums[i] = sc.nextLong();\n        }\n        // TODO: print the result\n        sc.close();\n    }\n}\n",
+    "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n\n    int n;\n    cin >> n;\n    vector<long long> nums(n);\n    for (int i = 0; i < n; i++) {\n        cin >> nums[i];\n    }\n    // TODO: print the result\n    return 0;\n}\n"
+  },
+  "source": "Original",
+  "testCases": [
+    {
+      "input": "12\n0 1 0 2 1 0 1 3 2 1 2 1\n",
+      "expectedOutput": "6\n",
+      "isSample": true,
+      "order": 0,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: the units held above a bar equal `min(tallest bar on its left, tallest bar on its right) - height of the bar`, and the two end bars always hold nothing.\nStep 2: the tallest bar in this profile is the 3 at index 7, so for every position before it the right-hand limit is 3 and the left-hand limit comes from the tallest bar seen so far.\nStep 3: filling in the units per index gives 0, 0, 1, 0, 1, 2, 1, 0, 0, 1, 0, 0.\nStep 4: index 2 fills up to 1 because of the bar of height 1 at index 1, and index 5 fills up to 2 because of the bar of height 2 at index 3.\nStep 5: the contributions are 1 (index 2) + 1 (index 4) + 2 (index 5) + 1 (index 6) + 1 (index 9) = 6."
+    },
+    {
+      "input": "6\n4 2 0 3 2 5\n",
+      "expectedOutput": "9\n",
+      "isSample": true,
+      "order": 1,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: heights 4 and 5 are the outer walls.\nStep 2: index 1 (height 2) is bounded by the wall of 4 on its left and the wall of 5 on its right, so it holds `min(4, 5) - 2 = 2` units.\nStep 3: index 2 (height 0) holds `min(4, 5) - 0 = 4` units.\nStep 4: index 3 (height 3) holds `min(4, 5) - 3 = 1` unit, and index 4 (height 2) holds 2.\nStep 5: the total is 2 + 4 + 1 + 2 = 9."
+    },
+    {
+      "input": "5\n3 0 2 0 4\n",
+      "expectedOutput": "7\n",
+      "isSample": true,
+      "order": 2,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: the bars are 3, 0, 2, 0, 4, so the leftmost and rightmost bars leak and hold nothing.\nStep 2: index 1 (height 0) is bounded by the bar of 3 on its left and the bar of 4 on its right, so it holds `min(3, 4) - 0 = 3` units.\nStep 3: index 2 (height 2) is also bounded by 3 and 4, so it holds `3 - 2 = 1` unit.\nStep 4: index 3 (height 0) is bounded by 3 and 4 as well, so it holds `3 - 0 = 3` units.\nStep 5: the total is 3 + 1 + 3 = 7."
+    },
+    {
+      "input": "0\n\n",
+      "expectedOutput": "0\n",
+      "isSample": false,
+      "order": 100,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "no bars at all"
+    },
+    {
+      "input": "1\n5\n",
+      "expectedOutput": "0\n",
+      "isSample": false,
+      "order": 101,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "a single bar holds nothing"
+    },
+    {
+      "input": "2\n5 7\n",
+      "expectedOutput": "0\n",
+      "isSample": false,
+      "order": 102,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "two bars hold nothing"
+    },
+    {
+      "input": "3\n0 0 0\n",
+      "expectedOutput": "0\n",
+      "isSample": false,
+      "order": 103,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "all zero heights"
+    },
+    {
+      "input": "4\n5 5 5 5\n",
+      "expectedOutput": "0\n",
+      "isSample": false,
+      "order": 104,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "all equal heights hold nothing"
+    },
+    {
+      "input": "5\n1 2 3 4 5\n",
+      "expectedOutput": "0\n",
+      "isSample": false,
+      "order": 105,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "strictly increasing holds nothing"
+    },
+    {
+      "input": "5\n5 4 3 2 1\n",
+      "expectedOutput": "0\n",
+      "isSample": false,
+      "order": 106,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "strictly decreasing holds nothing"
+    },
+    {
+      "input": "5\n3 0 0 0 3\n",
+      "expectedOutput": "9\n",
+      "isSample": false,
+      "order": 107,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "one deep pocket"
+    },
+    {
+      "input": "7\n2 0 2 0 2 0 2\n",
+      "expectedOutput": "6\n",
+      "isSample": false,
+      "order": 108,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "repeated peaks and pockets"
+    },
+    {
+      "input": "5\n10 1 10 1 10\n",
+      "expectedOutput": "18\n",
+      "isSample": false,
+      "order": 109,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "tall peaks separated by notches"
+    },
+    {
+      "input": "4\n5 4 1 2\n",
+      "expectedOutput": "1\n",
+      "isSample": false,
+      "order": 110,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "highest bar at the left end"
+    },
+    {
+      "input": "4\n1 2 4 5\n",
+      "expectedOutput": "0\n",
+      "isSample": false,
+      "order": 111,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "highest bar at the right end"
+    },
+    {
+      "input": "300\n4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5 4 2 0 3 2 5\n",
+      "expectedOutput": "695\n",
+      "isSample": false,
+      "order": 112,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "600-element boundary input"
+    },
+    {
+      "input": "400\n0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 200 199 198 197 196 195 194 193 192 191 190 189 188 187 186 185 184 183 182 181 180 179 178 177 176 175 174 173 172 171 170 169 168 167 166 165 164 163 162 161 160 159 158 157 156 155 154 153 152 151 150 149 148 147 146 145 144 143 142 141 140 139 138 137 136 135 134 133 132 131 130 129 128 127 126 125 124 123 122 121 120 119 118 117 116 115 114 113 112 111 110 109 108 107 106 105 104 103 102 101 100 99 98 97 96 95 94 93 92 91 90 89 88 87 86 85 84 83 82 81 80 79 78 77 76 75 74 73 72 71 70 69 68 67 66 65 64 63 62 61 60 59 58 57 56 55 54 53 52 51 50 49 48 47 46 45 44 43 42 41 40 39 38 37 36 35 34 33 32 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1\n",
+      "expectedOutput": "0\n",
+      "isSample": false,
+      "order": 113,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "400-element valley"
+    }
+  ]
+}

@@ -1,0 +1,174 @@
+{
+  "title": "Best Time to Buy and Sell Stock",
+  "description": "Maximum profit obtainable from buying once and selling once on later days.",
+  "statement": "You are given a daily price series `prices` for a single instrument.\n\nYou may perform **at most one** transaction: pick a day to buy and a strictly later day to sell. The profit is `prices[sell] - prices[buy]`.\n\nReport the largest profit available. If no transaction can be profitable - the series is empty, has a single day, or only ever falls - report `0`, which stands for choosing not to trade at all.\n\nScanning the series once while remembering the cheapest price seen so far is enough; a full search over all buy/sell pairs is unnecessary.",
+  "inputFormat": "The input is read from standard input as exactly two lines:\n\n1. Line 1: integer `n` - the number of prices (`0 <= n <= 100000`).\n2. Line 2: `n` space-separated integers `prices[0] ... prices[n-1]`. When `n` is 0 this line is empty.",
+  "outputFormat": "Print a single line containing the maximum achievable profit as a single integer (`0` when no profitable transaction exists).",
+  "constraints": [
+    "0 <= n <= 10^5",
+    "-10^9 <= prices[i] <= 10^9",
+    "The buy day must come strictly before the sell day",
+    "The answer fits in a signed 64-bit integer"
+  ],
+  "notes": "`n = 0` is legal and the answer is `0`. Prices may be negative, which changes nothing: only the difference between two days matters. Buying and selling on the same day yields `0`, so it can never beat a real profit and never needs to be considered separately.",
+  "difficulty": "EASY",
+  "tags": [
+    "array",
+    "dynamic-programming"
+  ],
+  "timeLimitMs": 1000,
+  "memoryLimitKb": 256000,
+  "starterCode": {
+    "python": "import sys\n\ndef main():\n    data = sys.stdin.buffer.read().split()\n    n = int(data[0])\n    nums = [int(x) for x in data[1:1 + n]]\n    # TODO: print the result\n\nif __name__ == \"__main__\":\n    main()\n",
+    "javascript": "const fs = require('fs');\nconst data = fs.readFileSync(0, 'utf8').trim().split(/\\s+/).filter((t) => t.length > 0);\nconst n = parseInt(data[0], 10);\nconst nums = data.slice(1, 1 + n).map(Number);\n// TODO: print the result\n",
+    "java": "import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        long[] nums = new long[n];\n        for (int i = 0; i < n; i++) {\n            nums[i] = sc.nextLong();\n        }\n        // TODO: print the result\n        sc.close();\n    }\n}\n",
+    "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n\n    int n;\n    cin >> n;\n    vector<long long> nums(n);\n    for (int i = 0; i < n; i++) {\n        cin >> nums[i];\n    }\n    // TODO: print the result\n    return 0;\n}\n"
+  },
+  "source": "Original",
+  "testCases": [
+    {
+      "input": "6\n7 1 5 3 6 4\n",
+      "expectedOutput": "5\n",
+      "isSample": true,
+      "order": 0,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: track the cheapest price seen so far. At 7 the minimum is 7 and no trade is possible yet.\nStep 2: at 1 the minimum drops to 1, so any later sale is measured from 1.\nStep 3: selling at 5 gives 5-1=4, at 6 gives 5, at 4 gives 3.\nStep 4: the best sale is 6 minus the minimum 1, so the answer is 5."
+    },
+    {
+      "input": "5\n7 6 4 3 1\n",
+      "expectedOutput": "0\n",
+      "isSample": true,
+      "order": 1,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: the price only ever falls - 7, 6, 4, 3, 1.\nStep 2: buying at any earlier day always costs more than selling on a later day.\nStep 3: no single transaction can earn a positive profit.\nStep 4: the best achievable profit is therefore 0."
+    },
+    {
+      "input": "5\n1 2 3 4 5\n",
+      "expectedOutput": "4\n",
+      "isSample": true,
+      "order": 2,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: the array is strictly increasing, so the cheapest day is always the first one.\nStep 2: buy at 1 on day 0 and sell at 5 on day 4.\nStep 3: the difference is 5-1=4, which is the whole span and cannot be beaten.\nStep 4: the answer is 4."
+    },
+    {
+      "input": "0\n\n",
+      "expectedOutput": "0\n",
+      "isSample": false,
+      "order": 100,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "empty price series"
+    },
+    {
+      "input": "1\n5\n",
+      "expectedOutput": "0\n",
+      "isSample": false,
+      "order": 101,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "single day cannot produce a trade"
+    },
+    {
+      "input": "2\n1 2\n",
+      "expectedOutput": "1\n",
+      "isSample": false,
+      "order": 102,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "two days, price rises"
+    },
+    {
+      "input": "2\n2 1\n",
+      "expectedOutput": "0\n",
+      "isSample": false,
+      "order": 103,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "two days, price falls"
+    },
+    {
+      "input": "4\n3 3 3 3\n",
+      "expectedOutput": "0\n",
+      "isSample": false,
+      "order": 104,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "all prices identical"
+    },
+    {
+      "input": "3\n0 0 0\n",
+      "expectedOutput": "0\n",
+      "isSample": false,
+      "order": 105,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "all prices zero"
+    },
+    {
+      "input": "3\n-5 -1 -9\n",
+      "expectedOutput": "4\n",
+      "isSample": false,
+      "order": 106,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "negative prices still allow a profit"
+    },
+    {
+      "input": "4\n3 9 2 8\n",
+      "expectedOutput": "6\n",
+      "isSample": false,
+      "order": 107,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "two separate peaks, keep the better one"
+    },
+    {
+      "input": "5\n2 3 1 4 5\n",
+      "expectedOutput": "4\n",
+      "isSample": false,
+      "order": 108,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "minimum sits in the middle"
+    },
+    {
+      "input": "5\n10 8 6 4 2\n",
+      "expectedOutput": "0\n",
+      "isSample": false,
+      "order": 109,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "strictly decreasing"
+    },
+    {
+      "input": "5\n4 4 4 5 4\n",
+      "expectedOutput": "1\n",
+      "isSample": false,
+      "order": 110,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "flat then one small rise"
+    },
+    {
+      "input": "1000\n1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5\n",
+      "expectedOutput": "4\n",
+      "isSample": false,
+      "order": 111,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "1000-element boundary input"
+    },
+    {
+      "input": "4\n1000000000 0 1000000000 0\n",
+      "expectedOutput": "1000000000\n",
+      "isSample": false,
+      "order": 112,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "extreme bounds"
+    }
+  ]
+}

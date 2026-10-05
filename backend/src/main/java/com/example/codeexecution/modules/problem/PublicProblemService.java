@@ -6,6 +6,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -29,13 +31,10 @@ import com.example.codeexecution.modules.submission.services.LanguageRegistry;
  * problems only.
  *
  * - The list exposes public metadata only (never statement internals,
- *   never test case paths) plus the judge-maintained acceptance counters
- *   ({@code totalSubmissions} / {@code acceptedSubmissions} /
- *   {@code acceptanceRate}) that the workers bump after every full
- *   submission.
- * - The detail payload includes the markdown statement, limits, language
+ *   never test case paths) plus the judge-maintained acceptance counters.
+ * - The detail payload includes the structured statement, limits, language
  *   starter templates and only the public sample test cases with their
- *   literal input/output text.
+ *   literal input/output text and explanations.
  */
 @Service
 public class PublicProblemService {
@@ -131,38 +130,50 @@ public class PublicProblemService {
         int timeLimit = all.stream()
                 .mapToInt(TestCase::getTimeLimitMs)
                 .max()
-                .orElse(DEFAULT_TIME_LIMIT_MS);
+                .orElse(problem.getTimeLimitMs() > 0 ? problem.getTimeLimitMs() : DEFAULT_TIME_LIMIT_MS);
         int memoryLimit = all.stream()
                 .mapToInt(TestCase::getMemoryLimitKb)
                 .max()
-                .orElse(DEFAULT_MEMORY_LIMIT_KB);
+                .orElse(problem.getMemoryLimitKb() > 0 ? problem.getMemoryLimitKb() : DEFAULT_MEMORY_LIMIT_KB);
 
-        // Sorted by id so the sample order shown here is exactly the order the judge
-        // runs them in, which is what lets the UI map a streamed CASE_RESULT
-        // straight onto a testcase tab.
-        List<SampleTestCase> samples = all.stream()
+        List<TestCase> samples = all.stream()
                 .filter(TestCase::isSample)
-                .sorted(java.util.Comparator.comparing(TestCase::getId))
+                .sorted(java.util.Comparator.comparingInt(TestCase::getOrder)
+                        .thenComparing(TestCase::getId))
+                .toList();
+
+        List<SampleTestCase> sampleResponses = samples.stream()
                 .map(testCase -> new SampleTestCase(
                         testCase.getId(),
                         readCapped(testCase.getInputFilePath()),
                         readCapped(testCase.getOutputFilePath()),
+                        testCase.getExplanation() == null ? "" : testCase.getExplanation(),
                         testCase.getTimeLimitMs(),
                         testCase.getMemoryLimitKb()))
                 .toList();
 
+        Map<String, String> templates = this.languageRegistry.starterTemplates();
+        if (problem.getStarterCode() != null && !problem.getStarterCode().isEmpty()) {
+            templates = new java.util.LinkedHashMap<>(templates);
+            templates.putAll(problem.getStarterCode());
+        }
+
         return new PublicProblemDetailResponse(
                 problem.getId(),
-                problem.getTitle(),
                 problem.getSlug(),
+                problem.getTitle(),
                 problem.getDescription(),
-                problem.getProblemStatement(),
                 problem.getDifficulty(),
                 problem.getTags() == null ? List.of() : problem.getTags(),
+                problem.getProblemStatement(),
+                problem.getInputFormat() == null ? "" : problem.getInputFormat(),
+                problem.getOutputFormat() == null ? "" : problem.getOutputFormat(),
+                problem.getConstraints() == null ? List.of() : problem.getConstraints(),
+                problem.getNotes() == null ? "" : problem.getNotes(),
                 timeLimit,
                 memoryLimit,
-                this.languageRegistry.starterTemplates(),
-                samples);
+                templates,
+                sampleResponses);
     }
 
     /**

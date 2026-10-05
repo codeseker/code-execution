@@ -1,0 +1,194 @@
+{
+  "title": "Word Break",
+  "description": "Decide whether a string can be segmented into a sequence of dictionary words.",
+  "statement": "A search engine tokenises text using a fixed vocabulary.\n\nYou are given a string `s` and a vocabulary of words. Report whether **all** of `s` can be cut into consecutive pieces, where every piece is a word from the vocabulary. Word reuse is unlimited and pieces must cover the string completely, with no gaps and no leftovers.\n\nGreedily taking the longest matching word at each position is not correct: a prefix may match a word and still leave a suffix that cannot be segmented, while a shorter choice would have succeeded. Tracking which prefixes are reachable makes the decision exact.\n\nThe vocabulary may be empty, in which case only an empty string could be segmented - and since the string is never empty, the answer is `false`.",
+  "inputFormat": "The input is read from standard input:\n\n1. Line 1: the string `s` - lowercase ASCII letters only, never empty (`1 <= length <= 300`). Read the whole line.\n2. Line 2: integer `n` - the number of vocabulary words (`0 <= n <= 1000`).\n3. Lines 3 to n+2: one vocabulary word per line, lowercase ASCII letters. The vocabulary may contain duplicates.",
+  "outputFormat": "Print a single line containing the lowercase word `true` if `s` can be fully segmented into vocabulary words, otherwise the lowercase word `false`.",
+  "constraints": [
+    "1 <= length of s <= 300",
+    "0 <= n <= 1000",
+    "0 <= word length <= 300",
+    "s and every word use lowercase ASCII letters only",
+    "A quadratic table of reachable prefixes is fast enough; substring comparison cost is ignored"
+  ],
+  "notes": "Duplicate vocabulary entries change nothing, and a vocabulary word longer than `s` can never be used. `n = 0` is legal and always yields `false`. `abab` with the vocabulary `aba bab` is the classic trap: taking the longest matching word first leaves the single character `b` stranded, while the correct split is `ab` + `ab`. Storing the vocabulary in a hash set keeps the inner membership test constant time.",
+  "difficulty": "MEDIUM",
+  "tags": [
+    "string",
+    "dynamic-programming",
+    "hashing"
+  ],
+  "timeLimitMs": 1000,
+  "memoryLimitKb": 256000,
+  "starterCode": {
+    "python": "import sys\n\ndef main():\n    lines = sys.stdin.read().split('\\n')\n    s = lines[0].strip()\n    n = int(lines[1].strip())\n    words = [lines[i + 2].strip() for i in range(n)]\n    # TODO: print the result\n\nif __name__ == \"__main__\":\n    main()\n",
+    "javascript": "const fs = require('fs');\nconst lines = fs.readFileSync(0, 'utf8').split(/\\r?\\n/);\nconst s = (lines[0] ?? '').trim();\nconst n = parseInt((lines[1] ?? '0').trim(), 10);\nconst words = [];\nfor (let i = 0; i < n; i++) {\n    words.push((lines[i + 2] ?? '').trim());\n}\n// TODO: print the result\n",
+    "java": "import java.io.BufferedReader;\nimport java.io.InputStreamReader;\n\npublic class Main {\n    public static void main(String[] args) throws Exception {\n        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n        String s = br.readLine().trim();\n        int n = Integer.parseInt(br.readLine().trim());\n        String[] words = new String[n];\n        for (int i = 0; i < n; i++) {\n            words[i] = br.readLine().trim();\n        }\n        // TODO: print the result\n    }\n}\n",
+    "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n\n    string s;\n    getline(cin, s);\n    int n;\n    cin >> n;\n    cin.ignore(numeric_limits<streamsize>::max(), '\\n');\n    vector<string> words(n);\n    for (int i = 0; i < n; i++) {\n        getline(cin, words[i]);\n    }\n\n    // TODO: print the result\n    return 0;\n}\n"
+  },
+  "source": "Original",
+  "testCases": [
+    {
+      "input": "leetcode\n2\nleet\ncode\n",
+      "expectedOutput": "true\n",
+      "isSample": true,
+      "order": 0,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: let reach[i] mean that the first i characters of the string can be segmented into dictionary words. reach[0] is true - the empty prefix needs nothing.\nStep 2: reach[4] becomes true because the prefix `leet` is in the dictionary.\nStep 3: reach[8] becomes true because the prefix `leetcode` can follow the already reachable prefix `leet` with the word `code`.\nStep 4: reach[8] is true, so print `true`."
+    },
+    {
+      "input": "applepenapple\n2\napple\npen\n",
+      "expectedOutput": "true\n",
+      "isSample": true,
+      "order": 1,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: `apple` is a dictionary word, so the prefix of length 5 becomes reachable.\nStep 2: `pen` follows it, extending reachability to length 8.\nStep 3: `apple` appears again at the end of the string, reaching length 13.\nStep 4: the whole string is segmentable, so print `true`."
+    },
+    {
+      "input": "catsandog\n5\ncats\ndog\nsand\nand\ncat\n",
+      "expectedOutput": "false\n",
+      "isSample": true,
+      "order": 2,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: `cats` reaches length 4.\nStep 2: the next characters are `and`, which is a word, so length 7 becomes reachable; `andog` cannot be formed because `dog` would have to start in the middle of it.\nStep 3: no reachable prefix reaches length 9.\nStep 4: print `false`."
+    },
+    {
+      "input": "a\n1\na\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 100,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "shortest possible success"
+    },
+    {
+      "input": "a\n1\nb\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 101,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "shortest possible failure"
+    },
+    {
+      "input": "a\n0\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 102,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "empty dictionary"
+    },
+    {
+      "input": "aaaaaa\n3\na\naa\naaa\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 103,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "many overlapping segmentations"
+    },
+    {
+      "input": "abc\n1\nabc\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 104,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "the whole string is a single word"
+    },
+    {
+      "input": "abc\n2\nab\nc\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 105,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "two words"
+    },
+    {
+      "input": "abab\n1\nab\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 106,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "string is an exact repetition"
+    },
+    {
+      "input": "abab\n2\naba\nbab\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 107,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "greedy longest-prefix choice would fail here"
+    },
+    {
+      "input": "aaaaaaa\n2\naaaa\naaa\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 108,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "backtracking over repeated prefixes"
+    },
+    {
+      "input": "dogsandcats\n3\ndog\nsand\ncat\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 109,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "failure with a plausible prefix"
+    },
+    {
+      "input": "leetcode\n3\nle\net\ncode\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 110,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "the same word from a different split"
+    },
+    {
+      "input": "programming\n3\nprog\nram\nming\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 111,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "no segmentation exists"
+    },
+    {
+      "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n3\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\na\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 112,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "long string with long overlapping words"
+    },
+    {
+      "input": "supersecretword\n5\nsuper\nsecret\nword\nsupersecret\nwordsecret\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 113,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "long dictionary with redundant entries"
+    },
+    {
+      "input": "catdogcat\n3\ncat\ndog\ncatdog\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 114,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "two valid segmentations"
+    }
+  ]
+}

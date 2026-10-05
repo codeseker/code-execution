@@ -39,7 +39,7 @@ public class Problem {
     /** Short one-line summary shown in listings. */
     private String description;
 
-    /** Full markdown/HTML problem statement. */
+    /** Full markdown problem statement (the story / prompt only). */
     private String problemStatement;
 
     private Difficulty difficulty;
@@ -49,6 +49,31 @@ public class Problem {
 
     /** Ids of the {@link TestCase}s belonging to this problem. */
     private java.util.List<String> testCases;
+
+    /** Structured input format description (markdown). */
+    private String inputFormat;
+
+    /** Structured output format description (markdown). */
+    private String outputFormat;
+
+    /** Constraints as individual items, e.g. "0 <= n <= 10^5". */
+    private java.util.List<String> constraints;
+
+    /** Optional notes / caveats (markdown). */
+    private String notes;
+
+    /** Per-problem defaults inherited by test cases that omit their own limits. */
+    @Builder.Default
+    private int timeLimitMs = 1000;
+
+    @Builder.Default
+    private int memoryLimitKb = 256000;
+
+    /** Language -> starter template source (pre-filled in the editor). */
+    private java.util.Map<String, String> starterCode;
+
+    /** Optional source / attribution. */
+    private String source;
 
     /** Id of the user who created the problem. */
     private String createdBy;

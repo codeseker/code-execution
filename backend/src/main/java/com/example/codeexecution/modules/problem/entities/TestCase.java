@@ -29,6 +29,10 @@ public class TestCase {
     @Indexed
     private String problemId;
 
+    /** 0-based position inside the problem; used for stable rendering. */
+    @Builder.Default
+    private int order = 0;
+
     /** Path/S3 URL of the {@code .in} file. */
     private String inputFilePath;
 

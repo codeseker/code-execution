@@ -19,6 +19,7 @@ import { EmptyState } from '../components/ui'
 import ProblemDescription from '../components/workspace/ProblemDescription'
 import RunConsole from '../components/workspace/RunConsole'
 import WorkspaceSubmissionsTab from '../components/workspace/WorkspaceSubmissionsTab'
+import { formatTestcaseText } from '../components/TestcaseBlock'
 import {
   createCustomTestCase,
   toCustomTestcasePayload,
@@ -31,12 +32,17 @@ import useActiveSubmission from '../hooks/submissions/useActiveSubmission'
 import { useMySubmissions } from '../hooks/submissions/useSubmissions'
 import useToggleBookmark from '../hooks/lists/useToggleBookmark'
 import { LANGUAGES, type Language, type SubmissionType } from '../types/domain'
+import type { SampleTestCase } from '../hooks/problems/types'
 import { languageLabel } from '../lib/format'
 import { useAuthStore } from '../stores/auth'
 import { errorToast } from '../toast'
 
 const TABS = ['Description', 'Submissions'] as const
 type Tab = (typeof TABS)[number]
+
+/** Mobile-only panes; the desktop layout uses the resizable split instead. */
+const PANES = ['problem', 'code', 'testcases'] as const
+type Pane = (typeof PANES)[number]
 
 /** Default editor language when the problem ships no template for it. */
 const FALLBACK_LANGUAGE: Language = 'cpp'
@@ -60,7 +66,7 @@ export default function Workspace() {
   const [focusCustomTestCaseId, setFocusCustomTestCaseId] = useState<string | null>(null)
   const [consoleTab, setConsoleTab] = useState<'testcase' | 'result'>('testcase')
   const nextCustomTestCaseId = useRef(1)
-  const [pane, setPane] = useState<'description' | 'code' | 'testcases'>('description')
+  const [pane, setPane] = useState<Pane>('problem')
   const [consoleOpen, setConsoleOpen] = useState(true)
   const [autoComplete, setAutoComplete] = useState(true)
   const [fontSize, setFontSize] = useState(13)
@@ -80,7 +86,7 @@ export default function Workspace() {
 
   const availableLanguages = useMemo<Language[]>(() => {
     if (!problem) return []
-    const fromTemplates = Object.keys(problem.languageTemplates).filter(isLanguage)
+    const fromTemplates = Object.keys(problem.starterCode).filter(isLanguage)
     return fromTemplates.length > 0 ? fromTemplates : [...LANGUAGES]
   }, [problem])
 
@@ -108,7 +114,7 @@ export default function Workspace() {
 
   useEffect(() => {
     if (!problem) return
-    const preferred = problem.languageTemplates[language]
+    const preferred = problem.starterCode[language]
     setCode(preferred ?? '')
   }, [problem, language])
 
@@ -203,8 +209,36 @@ export default function Workspace() {
     [],
   )
 
+  /**
+   * "Use as custom input" on a sample: fills the first still-empty custom case
+   * with the sample input (and its expected output, so the case is graded), or
+   * appends a new one. The console is revealed so the user sees the result.
+   */
+  const useSampleAsCustomInput = useCallback(
+    (sample: SampleTestCase) => {
+      const blank = customTestCases.find((item) => item.input.trim().length === 0)
+      const id = blank?.id ?? `custom-${nextCustomTestCaseId.current++}`
+      const next: CustomTestCase = {
+        id,
+        input: formatTestcaseText(sample.input),
+        expectedOutput: formatTestcaseText(sample.output),
+      }
+      setCustomTestCases((current) =>
+        current.some((item) => item.id === id)
+          ? current.map((item) => (item.id === id ? next : item))
+          : [...current, next],
+      )
+      setActiveTestCaseId(`custom:${id}`)
+      setFocusCustomTestCaseId(id)
+      setConsoleOpen(true)
+      setConsoleTab('testcase')
+      setPane('testcases')
+    },
+    [customTestCases],
+  )
+
   const { submissions, loading: submissionsLoading, refetch: refetchSubmissions } = useMySubmissions(
-    useMemo(() => ({ problemId: problem?.id, limit: 10 }), [problem?.id]),
+    useMemo(() => ({ problemId: problem?.id, limit: 10, type: "FULL_SUBMISSION" }), [problem?.id]),
     { enabled: Boolean(problem) && isAuthenticated },
   )
 
@@ -352,7 +386,7 @@ export default function Workspace() {
       <div className="min-h-0 grow overflow-y-auto">
         <div className="px-4 pb-8 pt-5 sm:px-6">
           {tab === 'Description' ? (
-            <ProblemDescription problem={problem} />
+            <ProblemDescription problem={problem} onUseAsCustomInput={useSampleAsCustomInput} />
           ) : (
             <WorkspaceSubmissionsTab
               submissions={submissions}
@@ -387,7 +421,7 @@ export default function Workspace() {
           className="shrink-0"
           aria-label="Reset code to starter template"
           title="Reset code"
-          onClick={() => setCode(problem.languageTemplates[language] ?? '')}
+          onClick={() => setCode(problem.starterCode[language] ?? '')}
         >
           <Icon name="refresh" size={15} />
         </Button>
@@ -580,13 +614,13 @@ export default function Workspace() {
         </div>
 
         <div className="flex min-h-0 grow flex-col gap-2 p-2 md:hidden">
-          <BaseTabs value={pane} onValueChange={(value) => setPane(value as typeof pane)} className="flex min-h-0 grow flex-col gap-2">
+          <BaseTabs value={pane} onValueChange={(value) => setPane(value as Pane)} className="flex min-h-0 grow flex-col gap-2">
             <BaseTabsList className="h-11 shrink-0 rounded-lg bg-muted/40 p-1">
-              <BaseTabsTrigger value="description" className="h-9 flex-1">Description</BaseTabsTrigger>
+              <BaseTabsTrigger value="problem" className="h-9 flex-1">Problem</BaseTabsTrigger>
               <BaseTabsTrigger value="code" className="h-9 flex-1">Code</BaseTabsTrigger>
               <BaseTabsTrigger value="testcases" className="h-9 flex-1">Testcases</BaseTabsTrigger>
             </BaseTabsList>
-            <BaseTabsPanel value="description" className="min-h-0 grow">
+            <BaseTabsPanel value="problem" className="min-h-0 grow">
               <PanelSurface className="h-full">{problemPane}</PanelSurface>
             </BaseTabsPanel>
             <BaseTabsPanel value="code" className="min-h-0 grow">

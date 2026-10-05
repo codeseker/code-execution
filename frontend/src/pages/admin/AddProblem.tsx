@@ -125,6 +125,12 @@ export default function AddProblem() {
   const [topicDraft, setTopicDraft] = useState<string | null>(null)
   const [description, setDescription] = useState('')
   const [markdown, setMarkdown] = useState('')
+  const [inputFormat, setInputFormat] = useState('')
+  const [outputFormat, setOutputFormat] = useState('')
+  const [constraints, setConstraints] = useState('')
+  const [notes, setNotes] = useState('')
+  const [starterCode, setStarterCode] = useState<Record<string, string>>({})
+  const [source, setSource] = useState('')
   const [isPublished, setIsPublished] = useState(false)
   const [errors, setErrors] = useState<FieldErrors>({})
   const [formError, setFormError] = useState('')
@@ -150,7 +156,7 @@ export default function AddProblem() {
   const incompleteCount = testcases.length - readyTestcases.length
 
   // Warn before closing the tab with unsaved work.
-  const dirty = !created && Boolean(title || description || markdown || topics.length)
+  const dirty = !created && Boolean(title || description || markdown || inputFormat || outputFormat || constraints || notes || source || starterCode && Object.keys(starterCode).length || topics.length)
   useEffect(() => {
     if (!dirty) return
     const handler = (event: BeforeUnloadEvent) => event.preventDefault()
@@ -203,6 +209,12 @@ export default function AddProblem() {
             difficulty,
             tags: topics,
             isPublished,
+            inputFormat: inputFormat.trim() || null,
+            outputFormat: outputFormat.trim() || null,
+            constraints: constraints.trim() ? constraints.split('\n').map((line) => line.trim()).filter(Boolean) : null,
+            notes: notes.trim() || null,
+            starterCode: Object.keys(starterCode).length > 0 && !starterCode.__invalid ? starterCode : null,
+            source: source.trim() || null,
           })
           setCreated(problem)
         } catch {
@@ -270,7 +282,7 @@ export default function AddProblem() {
         {locked && (
           <p className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground" role="status">
             <Icon name="info" size={14} className="mt-0.5 flex-none" />
-            This problem has been created. Title, difficulty and statement are locked here; edit them from the problem catalog.
+            This problem has been created. Core fields are locked here; edit them from the problem catalog.
           </p>
         )}
 
@@ -414,9 +426,86 @@ export default function AddProblem() {
           </div>
         </SectionCard>
 
-        {/* ---- 02 Problem statement ---- */}
+        {/* ---- 02 Problem structure ---- */}
+        <SectionCard step="02" title="Problem Structure" subtitle="Input/output contracts, constraints and hints">
+          <div className="flex flex-col gap-5 p-5">
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Field label="Input Format" hint="Markdown describing how input is laid out">
+                <Textarea
+                  id="p-input-format"
+                  className="block min-h-24 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm shadow-none focus-visible:ring-0"
+                  placeholder="The input is read from standard input as exactly three lines..."
+                  value={inputFormat}
+                  disabled={fieldsDisabled}
+                  onChange={(event) => setInputFormat(event.target.value)}
+                />
+              </Field>
+              <Field label="Output Format" hint="Markdown describing expected output">
+                <Textarea
+                  id="p-output-format"
+                  className="block min-h-24 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm shadow-none focus-visible:ring-0"
+                  placeholder="Print a single line containing the two indices..."
+                  value={outputFormat}
+                  disabled={fieldsDisabled}
+                  onChange={(event) => setOutputFormat(event.target.value)}
+                />
+              </Field>
+            </div>
+
+            <Field label="Constraints" hint="One rule per line; rendered as a bulleted list">
+              <Textarea
+                id="p-constraints"
+                className="block min-h-24 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm shadow-none focus-visible:ring-0 font-mono"
+                placeholder={"2 <= n <= 10^5\n-10^9 <= nums[i] <= 10^9\nA valid pair is guaranteed to exist"}
+                value={constraints}
+                disabled={fieldsDisabled}
+                onChange={(event) => setConstraints(event.target.value)}
+              />
+            </Field>
+
+            <Field label="Notes" hint="Optional caveats or footnotes in markdown">
+              <Textarea
+                id="p-notes"
+                className="block min-h-20 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm shadow-none focus-visible:ring-0"
+                placeholder="Because a solution always exists you never need to print `-1 -1`..."
+                value={notes}
+                disabled={fieldsDisabled}
+                onChange={(event) => setNotes(event.target.value)}
+              />
+            </Field>
+
+            <Field label="Starter Code" hint="JSON object mapping language keys to starter source">
+              <Textarea
+                id="p-starter-code"
+                className="block min-h-40 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm shadow-none focus-visible:ring-0 font-mono"
+                placeholder={`{\n  "python": "def main():\\n    # TODO\\n",\n  "java": "public class Main {\\n}"\n}`}
+                value={starterCode && Object.keys(starterCode).length > 0 ? JSON.stringify(starterCode, null, 2) : ''}
+                disabled={fieldsDisabled}
+                onChange={(event) => {
+                  const raw = event.target.value.trim()
+                  if (!raw) { setStarterCode({}); return }
+                  try { setStarterCode(JSON.parse(raw)) } catch { setStarterCode({ __invalid: raw }) }
+                }}
+              />
+            </Field>
+
+            <Field label="Source" hint="Where the problem originates from">
+              <Input
+                id="p-source"
+                className="h-9"
+                maxLength={200}
+                placeholder="Original / LeetCode / Interview"
+                value={source}
+                disabled={fieldsDisabled}
+                onChange={(event) => setSource(event.target.value)}
+              />
+            </Field>
+          </div>
+        </SectionCard>
+
+        {/* ---- 03 Problem statement ---- */}
         <SectionCard
-          step="02"
+          step="03"
           title="Problem Statement"
           subtitle="Markdown prompt served to candidates"
           aside={
@@ -458,9 +547,9 @@ export default function AddProblem() {
           )}
         </SectionCard>
 
-        {/* ---- 03 Test cases ---- */}
+        {/* ---- 04 Test cases ---- */}
         <SectionCard
-          step="03"
+          step="04"
           title="Test Cases"
           subtitle="Uploaded right after the problem is created"
           aside={

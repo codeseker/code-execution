@@ -2,6 +2,7 @@ package com.example.codeexecution.modules.problem.mapper;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 import com.example.codeexecution.common.responses.PaginationMeta;
 import com.example.codeexecution.modules.problem.entities.Difficulty;
@@ -21,11 +22,19 @@ public class ProblemResponseMapper {
                 problem.getSlug(),
                 problem.getDescription(),
                 problem.getProblemStatement(),
+                problem.getInputFormat(),
+                problem.getOutputFormat(),
+                problem.getConstraints() == null ? List.of() : problem.getConstraints(),
+                problem.getNotes(),
                 problem.getDifficulty(),
                 problem.getTags() == null ? List.of() : problem.getTags(),
                 problem.isPublished(),
                 problem.isDeleted(),
                 problem.getCreatedBy(),
+                problem.getTimeLimitMs(),
+                problem.getMemoryLimitKb(),
+                problem.getStarterCode() == null ? Map.of() : problem.getStarterCode(),
+                problem.getSource(),
                 testCaseCount,
                 problem.getTotalSubmissions(),
                 problem.getAcceptedSubmissions(),
@@ -40,6 +49,7 @@ public class ProblemResponseMapper {
                 testCase.getInputFilePath(),
                 testCase.getOutputFilePath(),
                 testCase.isSample(),
+                testCase.getOrder(),
                 testCase.getTimeLimitMs(),
                 testCase.getMemoryLimitKb(),
                 testCase.getExplanation());
@@ -67,15 +77,24 @@ public class ProblemResponseMapper {
             String slug,
             String description,
             String problemStatement,
+            String inputFormat,
+            String outputFormat,
+            List<String> constraints,
+            String notes,
             Difficulty difficulty,
             List<String> tags,
             boolean isPublished,
-            boolean isDeleted,                String createdBy,
-                long testCaseCount,
-                long totalSubmissions,
-                long acceptedSubmissions,
-                Instant createdAt,
-                Instant updatedAt) {
+            boolean isDeleted,
+            String createdBy,
+            int timeLimitMs,
+            int memoryLimitKb,
+            Map<String, String> starterCode,
+            String source,
+            long testCaseCount,
+            long totalSubmissions,
+            long acceptedSubmissions,
+            Instant createdAt,
+            Instant updatedAt) {
     }
 
     public record TestCaseResponse(
@@ -84,9 +103,9 @@ public class ProblemResponseMapper {
             String inputFilePath,
             String outputFilePath,
             boolean isSample,
+            int order,
             int timeLimitMs,
             int memoryLimitKb,
-            /** Optional note attached by the problem setter; may be null. */
             String explanation) {
     }
 }

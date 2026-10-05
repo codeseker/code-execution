@@ -1,0 +1,194 @@
+{
+  "title": "Regular Expression Matching",
+  "description": "Full-string match of a pattern built from literals, dot and star.",
+  "statement": "A validation service must decide whether an entire identifier matches a supplied pattern, without any partial matches and without regular-expression syntax beyond two operators.\n\nYou are given a string `s` and a pattern `p`. The pattern is built from three kinds of element:\n\n- a lowercase letter, which matches that letter exactly;\n- `.`, which matches any single character;\n- `*`, which applies to the element before it and means **zero or more** repetitions of that element (for example `a*` matches `aaa`, `a` or nothing at all).\n\nReport `true` only when the pattern matches the **whole** string - a pattern that covers just a prefix is a failure. A pattern that a regular-expression engine would reject (for instance a leading `*`) never matches.\n\nThe natural solution is dynamic programming over prefixes, in which each cell records whether one prefix of the string matches one prefix of the pattern, and a star collapses to two cases: skip the starred element, or consume one character and stay on the same pattern position.",
+  "inputFormat": "The input is read from standard input as exactly two lines:\n\n1. Line 1: the string `s` - lowercase ASCII letters only, never empty (`1 <= length <= 200`).\n2. Line 2: the pattern `p` - a non-empty sequence of lowercase letters, `.` and `*` (`1 <= length <= 200`). A pattern may begin with `*` or contain `**`, and such a pattern never matches. Read each line in full.",
+  "outputFormat": "Print a single line containing the lowercase word `true` if `p` matches the entire string `s`, otherwise the lowercase word `false`.",
+  "constraints": [
+    "1 <= length of s <= 200",
+    "1 <= length of p <= 200",
+    "s contains lowercase ASCII letters only",
+    "p contains lowercase ASCII letters, `.` and `*` only",
+    "The match must cover the whole string; partial matches do not count"
+  ],
+  "notes": "`*` always follows a character, and zero repetitions is always allowed - so `a*` matches the empty contribution, and `ab*` matches `a`. Use `re.fullmatch` and `re.match` with an explicit end anchor carefully: Python's `re` also understands operators the problem does not define, so if your language's engine supports `+`, `?`, `[]` or `()`, do not let them leak into the interpretation. A pattern beginning with `*` is invalid and never matches.",
+  "difficulty": "HARD",
+  "tags": [
+    "string",
+    "dynamic-programming",
+    "recursion"
+  ],
+  "timeLimitMs": 1000,
+  "memoryLimitKb": 256000,
+  "starterCode": {
+    "python": "import sys\n\ndef main():\n    s = sys.stdin.readline().rstrip('\\n')\n    p = sys.stdin.readline().rstrip('\\n')\n    # TODO: print the result\n\nif __name__ == \"__main__\":\n    main()\n",
+    "javascript": "const fs = require('fs');\nconst lines = fs.readFileSync(0, 'utf8').split(/\\r?\\n/);\nconst s = (lines[0] ?? '').replace(/\\r$/, '');\nconst p = (lines[1] ?? '').replace(/\\r$/, '');\n// TODO: print the result\n",
+    "java": "import java.io.BufferedReader;\nimport java.io.InputStreamReader;\n\npublic class Main {\n    public static void main(String[] args) throws Exception {\n        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n        String s = br.readLine();\n        String p = br.readLine();\n        if (s == null) s = \"\";\n        if (p == null) p = \"\";\n        // TODO: print the result\n    }\n}\n",
+    "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n\n    string s, p;\n    getline(cin, s);\n    getline(cin, p);\n\n    // TODO: print the result\n    return 0;\n}\n"
+  },
+  "source": "Original",
+  "testCases": [
+    {
+      "input": "aa\na\n",
+      "expectedOutput": "false\n",
+      "isSample": true,
+      "order": 0,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: the pattern is one literal `a`, so it can match a string of length 1 only.\nStep 2: `s` has length 2.\nStep 3: there is no way for one literal to consume two characters, and the pattern does not cover the whole string.\nStep 4: the full match fails, so print `false`."
+    },
+    {
+      "input": "aa\na*\n",
+      "expectedOutput": "true\n",
+      "isSample": true,
+      "order": 1,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: `a*` matches zero or more repetitions of the character `a`.\nStep 2: two repetitions consume the whole string, so the match covers all of `s`.\nStep 3: the match succeeds.\nStep 4: print `true`."
+    },
+    {
+      "input": "ab\n.*\n",
+      "expectedOutput": "true\n",
+      "isSample": true,
+      "order": 2,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: `.` matches any single character and `*` allows zero or more of them.\nStep 2: two repetitions of `.` consume `a` and `b`.\nStep 3: the pattern covers the entire string, so the match succeeds.\nStep 4: print `true`."
+    },
+    {
+      "input": "a\nb\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 100,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "single literal mismatch"
+    },
+    {
+      "input": "abc\nabc\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 101,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "exact literal match"
+    },
+    {
+      "input": "abc\nabd\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 102,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "literal differs only at the end"
+    },
+    {
+      "input": "aaa\na.a\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 103,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "the dot covers the middle character"
+    },
+    {
+      "input": "aab\nc*a*b\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 104,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "the leading star matches zero times"
+    },
+    {
+      "input": "aaa\nab*a\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 105,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "the middle star matches zero times, one `a` remains"
+    },
+    {
+      "input": "ab\n..*\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 106,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "dots plus a greedy star"
+    },
+    {
+      "input": "mississippi\nmis*is*p*.\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 107,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "star after an s that occurs many times; the trailing dot cannot cover the extra letters"
+    },
+    {
+      "input": "mississippi\nmis*is*ip*.\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 108,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "the last pattern element consumes the remaining letters"
+    },
+    {
+      "input": "abc\na.c\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 109,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "dot in the middle"
+    },
+    {
+      "input": "abc\na.c*\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 110,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "a trailing star that may match nothing"
+    },
+    {
+      "input": "abcd\n.*d\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 111,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "star greedily covering the prefix"
+    },
+    {
+      "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\na*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*a*\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 112,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "40 characters against 22 stars, still a full match"
+    },
+    {
+      "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab\na*b\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 113,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "long run consumed by one star plus a literal"
+    },
+    {
+      "input": "abc\na*c\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 114,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "the star cannot bridge over the `b`"
+    }
+  ]
+}

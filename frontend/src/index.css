@@ -445,6 +445,13 @@
     @apply min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-editor-background;
   }
 
+  /* Display equations can be wider than the panel; scroll them, never clip. */
+  .katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-block: 0.125rem;
+  }
+
   .anim-fade-up {
     animation: fade-up var(--duration-fast) var(--ease-standard);
   }

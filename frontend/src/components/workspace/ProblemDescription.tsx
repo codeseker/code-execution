@@ -1,60 +1,68 @@
-import { Icon } from '../icons'
+import type { ReactNode } from 'react'
+import { Icon, type IconName } from '../icons'
+import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
 import { DifficultyBadge } from '../ui'
 import { TestcaseExample } from '../TestcaseBlock'
-import { formatKb, formatMs, formatPercent } from '../../lib/format'
-import type { PublicProblemDetail } from '../../hooks/problems/types'
+import MarkdownRenderer from '../markdown/MarkdownRenderer'
+import { formatMemoryLimit, formatPercent, formatTimeLimit } from '../../lib/format'
+import type { PublicProblemDetail, SampleTestCase } from '../../hooks/problems/types'
 
 type Props = {
   problem: PublicProblemDetail
   acceptanceRate?: number | null
+  /** Hands a sample to the workspace so it can become a custom testcase. */
+  onUseAsCustomInput?: (sample: SampleTestCase) => void
 }
 
-/** Renders the light markdown used in statements: **bold** and `code`. */
-function RichText({ text }: { text: string }) {
-  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
+/** One titled block of the statement; sections stack with a shared rhythm. */
+function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
-    <>
-      {parts.map((part, index) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          return <strong key={index} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>
-        }
-        if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
-          return <code key={index} className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">{part.slice(1, -1)}</code>
-        }
-        return <span key={index}>{part}</span>
-      })}
-    </>
+    <section className="min-w-0 space-y-3" aria-labelledby={`${id}-heading`}>
+      <h2 id={`${id}-heading`} className="border-b border-border pb-2 text-base font-semibold text-foreground">
+        {title}
+      </h2>
+      {children}
+    </section>
+  )
+}
+
+/** "time limit per test: 2 seconds" / "memory limit per test: 250 MB". */
+function Limit({ icon, children }: { icon: IconName; children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+      <Icon name={icon} size={13} />
+      {children}
+    </span>
   )
 }
 
 /**
- * `GET /problems/{slug}` statement view. The backend ships the statement as one
- * markdown blob plus the public sample cases, so the split into paragraphs,
- * examples and constraints happens here rather than on the server.
+ * `GET /problems/{slug}` statement view, laid out the way competitive
+ * programming sites present a problem: title, metadata, then the story, the
+ * input/output formats, the constraints, the numbered examples and the notes.
+ *
+ * <p>Everything except the examples is markdown authored by the problem setter
+ * and rendered through {@link MarkdownRenderer}; the examples are judge data,
+ * so they stay in {@link TestcaseExample} blocks with copy buttons.
  */
-export default function ProblemDescription({ problem, acceptanceRate }: Props) {
-  const paragraphs = problem.problemStatement.split(/\n{2,}/).filter(Boolean)
-  const constraints = paragraphs.filter((block) => /^constraints/im.test(block))
+export default function ProblemDescription({ problem, acceptanceRate, onUseAsCustomInput }: Props) {
+  const { sampleTestCases } = problem
 
   return (
-    <article className="mx-auto flex max-w-190 flex-col gap-6">
+    <article className="mx-auto flex max-w-190 flex-col gap-7">
       <header className="space-y-3">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">{problem.title}</h1>
         {problem.description && (
-          <p className="text-sm leading-6 text-muted-foreground">{problem.description}</p>
+          <MarkdownRenderer className="leading-6">{problem.description}</MarkdownRenderer>
         )}
         <div className="flex flex-wrap items-center gap-2">
           <DifficultyBadge difficulty={problem.difficulty} />
-          {problem.tags.map((tag) => <Badge key={tag} variant="secondary">{tag}</Badge>)}
-          <Badge variant="outline" className="gap-1.5">
-            <Icon name="timer" size={12} />
-            {formatMs(problem.defaultTimeLimitMs)}
-          </Badge>
-          <Badge variant="outline" className="gap-1.5">
-            <Icon name="database" size={12} />
-            {formatKb(problem.defaultMemoryLimitKb)}
-          </Badge>
+          {problem.tags.map((tag) => (
+            <Badge key={tag} variant="secondary">
+              {tag}
+            </Badge>
+          ))}
           {acceptanceRate != null && (
             <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
               <Icon name="activity" size={16} />
@@ -62,43 +70,79 @@ export default function ProblemDescription({ problem, acceptanceRate }: Props) {
             </span>
           )}
         </div>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
+          <Limit icon="timer">time limit per test: {formatTimeLimit(problem.timeLimitMs)}</Limit>
+          <Limit icon="database">memory limit per test: {formatMemoryLimit(problem.memoryLimitKb)}</Limit>
+        </div>
       </header>
 
-      <div className="space-y-4">
-        {paragraphs.map((paragraph, index) =>
-          constraints.includes(paragraph) ? null : (
-            <p key={index} className="text-sm leading-7 text-muted-foreground">
-              <RichText text={paragraph} />
-            </p>
-          ),
-        )}
-      </div>
-
-      {problem.sampleTestCases.length > 0 && (
-        <section className="space-y-3" aria-labelledby="examples-heading">
-          <h2 id="examples-heading" className="text-sm font-semibold text-foreground">Examples</h2>
-          {problem.sampleTestCases.map((sample, index) => (
-            <TestcaseExample
-              key={sample.id}
-              index={index + 1}
-              input={sample.input}
-              output={sample.output}
-            />
-          ))}
-        </section>
+      {problem.statement && (
+        <Section id="statement" title="Problem statement">
+          <MarkdownRenderer>{problem.statement}</MarkdownRenderer>
+        </Section>
       )}
 
-      {constraints.length > 0 && (
-        <section className="space-y-3" aria-labelledby="constraints-heading">
-          <h2 id="constraints-heading" className="text-sm font-semibold text-foreground">Constraints</h2>
-          <ul className="list-disc space-y-2 pl-5 text-sm leading-6 text-muted-foreground">
-            {constraints.map((block) => (
-              <li key={block}>
-                <code className="font-mono text-foreground">{block.replace(/^constraints:?/i, '').trim()}</code>
+      {problem.inputFormat && (
+        <Section id="input" title="Input">
+          <MarkdownRenderer>{problem.inputFormat}</MarkdownRenderer>
+        </Section>
+      )}
+
+      {problem.outputFormat && (
+        <Section id="output" title="Output">
+          <MarkdownRenderer>{problem.outputFormat}</MarkdownRenderer>
+        </Section>
+      )}
+
+      {problem.constraints.length > 0 && (
+        <Section id="constraints" title="Constraints">
+          <ul className="list-disc space-y-1.5 pl-5 marker:text-muted-foreground/60">
+            {problem.constraints.map((constraint, index) => (
+              <li key={`${index}-${constraint}`}>
+                <MarkdownRenderer>{constraint}</MarkdownRenderer>
               </li>
             ))}
           </ul>
-        </section>
+        </Section>
+      )}
+
+      {sampleTestCases.length > 0 && (
+        <Section id="examples" title="Examples">
+          <div className="space-y-3">
+            {sampleTestCases.map((sample, index) => (
+              <TestcaseExample
+                key={sample.id}
+                index={index + 1}
+                input={sample.input}
+                output={sample.output}
+                explanation={sample.explanation}
+                showLineNumbers
+                inputActions={
+                  onUseAsCustomInput ? (
+                    null
+                    // <Button
+                    //   type="button"
+                    //   variant="ghost"
+                    //   size="xs"
+                    //   className="h-5 gap-1 px-1.5 text-xs text-muted-foreground"
+                    //   aria-label={`Use Example ${index + 1} input as a custom testcase`}
+                    //   onClick={() => onUseAsCustomInput(sample)}
+                    // >
+                    //   <Icon name="terminal" size={12} />
+                    //   <span className="hidden sm:inline">Use as custom input</span>
+                    // </Button>
+                  ) : undefined
+                }
+              />
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {problem.notes && (
+        <Section id="notes" title="Notes">
+          <MarkdownRenderer>{problem.notes}</MarkdownRenderer>
+        </Section>
       )}
     </article>
   )

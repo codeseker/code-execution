@@ -19,6 +19,8 @@ export type SampleTestCase = {
     id: string;
     input: string;
     output: string;
+    /** Why this sample works; empty when the setter left none. */
+    explanation: string;
     timeLimitMs: number;
     memoryLimitKb: number;
 };
@@ -26,17 +28,52 @@ export type SampleTestCase = {
 /** `modules/problem/dtos/PublicProblemDetailResponse` - `GET /problems/{slug}`. */
 export type PublicProblemDetail = {
     id: string;
-    title: string;
     slug: string;
+    title: string;
     description: string | null;
-    problemStatement: string;
     difficulty: Difficulty;
     tags: string[];
-    defaultTimeLimitMs: number;
-    defaultMemoryLimitKb: number;
+    /** Markdown body of the problem (the story / prompt). */
+    statement: string;
+    /** Markdown describing how the input is laid out. */
+    inputFormat: string;
+    /** Markdown describing what the program has to print. */
+    outputFormat: string;
+    /** One rule per entry; rendered as a bulleted list. */
+    constraints: string[];
+    /** Optional caveats / footnotes (markdown). */
+    notes: string | null;
+    timeLimitMs: number;
+    memoryLimitKb: number;
     /** language -> starter source; keys are `Language` enum names. */
-    languageTemplates: Record<string, string>;
+    starterCode: Record<string, string>;
     sampleTestCases: SampleTestCase[];
+};
+
+/**
+ * Raw wire payload of `GET /problems/{slug}`, before normalisation.
+ *
+ * <p>Every field is optional and the pre-rename aliases are kept because the
+ * detail response changed shape once already (`problemStatement` /
+ * `defaultTimeLimitMs` / `defaultMemoryLimitKb` / `languageTemplates`). See
+ * `normalizeProblemDetail` for the single place that folds both shapes into a
+ * {@link PublicProblemDetail}.
+ */
+export type PublicProblemDetailPayload = Partial<
+    Omit<PublicProblemDetail, "description" | "constraints" | "notes" | "sampleTestCases">
+> & {
+    description?: string | null;
+    constraints?: string[] | null;
+    notes?: string | null;
+    sampleTestCases?: Array<Partial<SampleTestCase>> | null;
+    /** Pre-rename alias of `statement`. */
+    problemStatement?: string | null;
+    /** Pre-rename alias of `timeLimitMs`. */
+    defaultTimeLimitMs?: number | null;
+    /** Pre-rename alias of `memoryLimitKb`. */
+    defaultMemoryLimitKb?: number | null;
+    /** Pre-rename alias of `starterCode`. */
+    languageTemplates?: Record<string, string> | null;
 };
 
 /** `ProblemResponseMapper.ProblemResponse` - admin catalogue row. */
@@ -85,6 +122,12 @@ export type CreateProblemPayload = {
     difficulty: Difficulty;
     tags?: string[];
     isPublished?: boolean;
+    inputFormat?: string | null;
+    outputFormat?: string | null;
+    constraints?: string[] | null;
+    notes?: string | null;
+    starterCode?: Record<string, string> | null;
+    source?: string | null;
 };
 
 /** `modules/problem/dtos/UpdateProblemDTO` - full replace, slug stays stable. */

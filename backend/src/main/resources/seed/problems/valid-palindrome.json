@@ -1,0 +1,182 @@
+{
+  "title": "Valid Palindrome",
+  "description": "Decide whether a text line reads the same forwards and backwards, ignoring case and punctuation.",
+  "statement": "A security gate reads a line of text off a badge scanner and the badge reader notices that a suspicious number of badges look the same from both directions.\n\nYou are given one line of text. Decide whether it is a palindrome, where:\n\n- comparison ignores the case of letters;\n- every character that is neither an ASCII letter nor an ASCII digit is treated as if it were not there at all;\n- after both rules are applied, the remaining sequence must equal its own reverse.\n\nA line may therefore become empty or a single character after cleaning, and both cases are palindromes.",
+  "inputFormat": "The input is read from standard input as exactly one line:\n\n1. Line 1: the text to test. It may contain ASCII letters, digits, spaces and punctuation characters, and it never contains a newline. Read the whole line - do not split it on spaces.",
+  "outputFormat": "Print a single line containing the lowercase word `true` if the cleaned text is a palindrome, otherwise the lowercase word `false`.",
+  "constraints": [
+    "1 <= length of the line <= 10^5",
+    "The line contains printable ASCII characters only (no newline inside it)",
+    "Only ASCII letters and ASCII digits count as alphanumeric; other characters are ignored"
+  ],
+  "notes": "The comparison is case-insensitive, so `0P` is `false` while `0p` is `true`. Because the input line is guaranteed non-empty you never have to deal with a truly empty line, but a line made only of punctuation cleans down to the empty string and is still a palindrome.",
+  "difficulty": "EASY",
+  "tags": [
+    "two-pointers",
+    "string"
+  ],
+  "timeLimitMs": 1000,
+  "memoryLimitKb": 256000,
+  "starterCode": {
+    "python": "import sys\n\ndef main():\n    s = sys.stdin.readline().rstrip('\\n')\n    # TODO: print the result\n\nif __name__ == \"__main__\":\n    main()\n",
+    "javascript": "const fs = require('fs');\nconst raw = fs.readFileSync(0, 'utf8');\nconst s = raw.replace(/\\r?\\n$/, '');\n// TODO: print the result\n",
+    "java": "import java.io.BufferedReader;\nimport java.io.InputStreamReader;\n\npublic class Main {\n    public static void main(String[] args) throws Exception {\n        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n        String s = br.readLine();\n        if (s == null) {\n            s = \"\";\n        }\n        // TODO: print the result\n    }\n}\n",
+    "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n\n    string s;\n    getline(cin, s);\n\n    // TODO: print the result\n    return 0;\n}\n"
+  },
+  "source": "Original",
+  "testCases": [
+    {
+      "input": "A man, a plan, a canal: Panama\n",
+      "expectedOutput": "true\n",
+      "isSample": true,
+      "order": 0,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: drop every character that is not a letter or a digit, giving `amanaplanacanalpanama`.\nStep 2: lower-case it, because the comparison ignores case.\nStep 3: read the cleaned string forwards (`amanaplanacanalpanama`) and backwards (`amanaplanacanalpanama`) - they are identical, so print `true`."
+    },
+    {
+      "input": "race a car\n",
+      "expectedOutput": "false\n",
+      "isSample": true,
+      "order": 1,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: remove the space and lower-case the rest: `raceacar`.\nStep 2: the first half `race` reversed is `ecar`, which does not match the second half `acar`.\nStep 3: the string differs from its reverse, so print `false`."
+    },
+    {
+      "input": "0P\n",
+      "expectedOutput": "false\n",
+      "isSample": true,
+      "order": 2,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "Step 1: both characters survive filtering, so the cleaned string is `0p`.\nStep 2: its reverse is `p0`, which is different.\nStep 3: the two sides differ, so print `false`."
+    },
+    {
+      "input": "abc\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 100,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "odd length, mismatch in the middle"
+    },
+    {
+      "input": "abba\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 101,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "classic palindrome with an even length"
+    },
+    {
+      "input": "a\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 102,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "single character is always a palindrome"
+    },
+    {
+      "input": "aa\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 103,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "two identical characters"
+    },
+    {
+      "input": ".,!\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 104,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "nothing survives filtering, so the empty cleaned string matches itself"
+    },
+    {
+      "input": "ab_a\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 105,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "underscore is ignored, letters still mirror"
+    },
+    {
+      "input": "12321\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 106,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "digits only"
+    },
+    {
+      "input": "12345\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 107,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "digits that do not mirror"
+    },
+    {
+      "input": "Was it a car or a cat I saw\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 108,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "long mixed-case phrase"
+    },
+    {
+      "input": "ab\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 109,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "two different characters"
+    },
+    {
+      "input": "aaAAaa\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 110,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "every letter pair is equal ignoring case"
+    },
+    {
+      "input": "No 'x' in Nixon\n",
+      "expectedOutput": "true\n",
+      "isSample": false,
+      "order": 111,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "quoted word breaks a naive mirror check"
+    },
+    {
+      "input": "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 112,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "1000-character palindrome"
+    },
+    {
+      "input": "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababac\n",
+      "expectedOutput": "false\n",
+      "isSample": false,
+      "order": 113,
+      "timeLimitMs": 1000,
+      "memoryLimitKb": 256000,
+      "explanation": "1000 characters whose last pair differs"
+    }
+  ]
+}

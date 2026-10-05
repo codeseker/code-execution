@@ -3,15 +3,18 @@ import type { AxiosError } from "axios";
 import { apiGet } from "../../../utils/api/methods";
 import { ENDPOINTS } from "../endpoints";
 import { problemKeys } from "../keys";
-import type { PublicProblemDetail } from "../types";
+import type { PublicProblemDetail, PublicProblemDetailPayload } from "../types";
+import { normalizeProblemDetail } from "./normalizeProblemDetail";
 
 /** `GET /problems/{slug}` - statement, limits, templates and samples only. */
 export default function usePublicProblemDetail(slug: string | undefined) {
     const result = useQuery({
         queryKey: problemKeys.publicDetail(slug ?? ""),
         queryFn: async (): Promise<PublicProblemDetail> => {
-            const response = await apiGet<PublicProblemDetail>(ENDPOINTS.PUBLIC_DETAIL(slug ?? ""));
-            return response.data;
+            const response = await apiGet<PublicProblemDetailPayload>(
+                ENDPOINTS.PUBLIC_DETAIL(slug ?? ""),
+            );
+            return normalizeProblemDetail(response.data);
         },
         enabled: Boolean(slug),
         staleTime: 60_000,
